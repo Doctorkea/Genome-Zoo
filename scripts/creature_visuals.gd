@@ -3,30 +3,27 @@ class_name CreatureVisuals
 
 ## Runtime trait renderer for a single creature.
 ##
-## Shape traits (Head/Neck/Body/Limbs/Eyes) are swapped by assigning a new
-## Texture2D to each slot's Sprite2D. Skin/coat traits are applied to every
-## part at once via a shared palette-swap ShaderMaterial. See
-## docs/ART_PIPELINE.md for the full rationale.
+## Shape traits are swapped by assigning a new Texture2D to each slot's
+## Sprite2D. Skin/color is applied to every part at once via a shared
+## palette-swap ShaderMaterial. Placeholder textures come from the
+## PlaceholderArt autoload. See docs/ART_PIPELINE.md for the full rationale.
 
-## Grayscale shape textures, keyed by slot name. Populate from your trait
-## data table (see docs/GAME_DESIGN.md) — index order should match the
-## trait library's option order for that slot.
-@export var head_options: Array[Texture2D] = []
-@export var neck_options: Array[Texture2D] = []
-@export var body_options: Array[Texture2D] = []
-@export var limb_options: Array[Texture2D] = []
-@export var eye_options: Array[Texture2D] = []
+const SLOTS: Array[String] = ["tail", "legs", "arms", "body", "head", "eyes", "mouth"]
 
-## 1px-tall color-strip textures, one per skin/coat trait (Fur, Scales, Slime, ...).
-@export var skin_palettes: Array[Texture2D] = []
-
-@onready var _slots: Dictionary = {
-	"head": $Head,
-	"neck": $Neck,
+@onready var _slot_nodes: Dictionary = {
+	"tail": $Tail,
+	"legs": $Legs,
+	"arms": $Arms,
 	"body": $Body,
-	"limbs": $Limbs,
+	"head": $Head,
 	"eyes": $Eyes,
+	"mouth": $Mouth,
 }
+
+var _options: Dictionary = {} # slot (String) -> Array[Texture2D]
+var _current_index: Dictionary = {} # slot (String) -> int
+var _palette_options: Array[Texture2D] = []
+var _current_palette_index: int = 0
 
 var _skin_material: ShaderMaterial
 
@@ -34,45 +31,53 @@ var _skin_material: ShaderMaterial
 func _ready() -> void:
 	_skin_material = ShaderMaterial.new()
 	_skin_material.shader = load("res://scripts/shaders/palette_swap.gdshader")
-	for sprite in _slots.values():
+
+	_palette_options = PlaceholderArt.get_palette_options()
+
+	for slot in SLOTS:
+		_options[slot] = PlaceholderArt.get_shape_options(slot)
+		_current_index[slot] = 0
+		var sprite: Sprite2D = _slot_nodes[slot]
 		sprite.material = _skin_material
-	if not skin_palettes.is_empty():
-		set_skin(0)
+		if not _options[slot].is_empty():
+			sprite.texture = _options[slot][0]
+
+	set_skin(0)
 
 
-## Swap the shape shown in a given slot ("head", "neck", "body", "limbs", "eyes")
-## to the option at `option_index` in that slot's array.
+func get_slots() -> Array[String]:
+	return SLOTS
+
+
+func get_option_count(slot: String) -> int:
+	return _options.get(slot, []).size()
+
+
+func get_current_index(slot: String) -> int:
+	return _current_index.get(slot, 0)
+
+
+func get_current_palette_index() -> int:
+	return _current_palette_index
+
+
+## Swap the shape shown in a given slot to the option at `option_index`.
 func set_part_shape(slot: String, option_index: int) -> void:
-	var options := _options_for_slot(slot)
+	var options: Array = _options.get(slot, [])
 	if options.is_empty():
 		return
-	var sprite: Sprite2D = _slots.get(slot)
+	var index: int = option_index % options.size()
+	var sprite: Sprite2D = _slot_nodes.get(slot)
 	if sprite == null:
 		push_warning("CreatureVisuals: unknown slot '%s'" % slot)
 		return
-	sprite.texture = options[option_index % options.size()]
+	sprite.texture = options[index]
+	_current_index[slot] = index
 
 
-## Recolor every part at once by picking a palette (skin/coat trait) index.
+## Recolor every part at once by picking a palette (skin/coat) index.
 func set_skin(option_index: int) -> void:
-	if skin_palettes.is_empty():
+	if _palette_options.is_empty():
 		return
-	_skin_material.set_shader_parameter(
-		"palette", skin_palettes[option_index % skin_palettes.size()]
-	)
-
-
-func _options_for_slot(slot: String) -> Array:
-	match slot:
-		"head":
-			return head_options
-		"neck":
-			return neck_options
-		"body":
-			return body_options
-		"limbs":
-			return limb_options
-		"eyes":
-			return eye_options
-		_:
-			return []
+	_current_palette_index = option_index % _palette_options.size()
+	_skin_material.set_shader_parameter("palette", _palette_options[_current_palette_index])

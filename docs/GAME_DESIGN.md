@@ -41,7 +41,13 @@ both visitor approval and its dominant skill archetype.
 | Gross | Off-putting, a liability if overused |
 | Silly | Goofy, endearing, low stakes |
 
-## MVP trait library — 6 slots × 3 options
+## MVP trait library
+
+> **Update:** the base demo expanded this to 7 shape slots — Body, Head, Eyes, Mouth, Arms, Legs, Tail —
+> instead of the original 6 below, plus a separate Color slot for skin/coat. See
+> [`DEMO.md`](./DEMO.md) and [`ART_PIPELINE.md`](./ART_PIPELINE.md) for the implemented version. The table
+> below is kept as the original tag-design reference; re-tag the new slot list against it before content
+> (real trait balancing, visitor reactions) gets built on top of the demo.
 
 Pure data — buildable before any art exists. Each option is one texture the artist draws once.
 

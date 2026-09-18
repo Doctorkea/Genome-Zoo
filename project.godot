@@ -1,21 +1,28 @@
 ; Engine configuration file.
 ; It's best edited using the editor UI and not directly,
-; since the parameters that go here are meant to be edited
-; using the UI and not by hand, unless you know what you are doing.
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
 [application]
 
 config/name="Evolution Zoo"
-run/main_scene="res://scenes/Creature.tscn"
+run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+Events="*res://scripts/events.gd"
+GridService="*res://scripts/grid_service.gd"
+PlaceholderArt="*res://scripts/placeholder_art.gd"
+MutagenService="*res://scripts/mutagen_service.gd"
 
 [display]
 
-; Base pixel-art resolution. Rendered at this size, then scaled up — see
-; docs/ART_PIPELINE.md for why these stretch settings are set explicitly
-; rather than left at the engine default (the default changed in 4.7).
 window/size/viewport_width=640
 window/size/viewport_height=360
 window/size/window_width_override=1280
@@ -26,10 +33,6 @@ window/stretch/scale_mode="integer"
 
 [rendering]
 
-; Compatibility (OpenGL 3.3) instead of the default Forward+ (Vulkan).
-; Forward+ crashes on some older Intel integrated GPUs (e.g. HD 620) — see
-; docs/ART_PIPELINE.md#engine-version-godot-47. Also just the right renderer
-; for a 2D pixel-art game regardless; Forward+ is 3D-oriented overkill here.
+textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-textures/canvas_textures/default_texture_filter=0

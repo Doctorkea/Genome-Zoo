@@ -10,6 +10,8 @@ repel visitors and unlock new skills.
 
 ## Docs
 
+- [`docs/DEMO.md`](docs/DEMO.md) — **start here.** What's actually playable, controls, and what's still a
+  placeholder in the base demo.
 - [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) — full game design doc: core loop, trait/tag system, visitor
   archetypes, skill archetypes, 48-hour build plan, open questions.
 - [`docs/ART_PIPELINE.md`](docs/ART_PIPELINE.md) — how creature trait art actually gets rendered in Godot
