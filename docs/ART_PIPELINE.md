@@ -100,11 +100,30 @@ parts actually stack (Body → Limbs → Neck → Head → Eyes is a reasonable 
 
 ## Art checklist for your artist
 
+- **Creatures are side-on** (profile view), not top-down, even though the zoo/pen grid itself is top-down —
+  this is the same convention as most 2D zoo/farm sims (side-view characters read as recognizable animals;
+  top-down animal silhouettes usually just look like blobs). The rig faces **right** by default; the game
+  mirrors the whole creature horizontally when it walks left, so only draw the right-facing version of
+  each part.
 - The project's base resolution is **640×360** (see [Engine version](#engine-version-godot-47) below), scaled
-  up by integer multiples. Size creature parts relative to that — e.g. a full creature around 120–200px tall
-  leaves room for the zoo background and UI around it.
-- Fixed canvas size per slot (pick one, e.g. 64×64 or 128×128 — bigger if you want more detail, but keep it
-  the same for every option in that slot).
+  up by integer multiples. A full creature should read clearly around 100–160px wide on screen. Suggested
+  per-slot canvas sizes for the side-on rig (positions set in `scenes/Creature.tscn`):
+
+  | Slot | Canvas | Notes |
+  | --- | --- | --- |
+  | Body | 96×56 | horizontal torso, the anchor everything else is positioned around |
+  | Head | 48×48 | front of body, raised |
+  | Eyes | 16×12 | see open question below on 1 vs. 2 eyes |
+  | Mouth | 20×12 | front-bottom of head / snout |
+  | Arms (front legs) | 20×32 | front-bottom of body |
+  | Legs (back legs) | 20×32 | back-bottom of body |
+  | Tail | 36×24 | back of body |
+
+  If you'd rather work at a larger canvas for comfort, use a **clean integer multiple** of the target (e.g.
+  draw the body at 384×224 and export at exactly ÷4) rather than an arbitrary size — a non-integer downscale
+  blurs/aliases nearest-filtered pixel art and defeats the point of this pipeline.
+- Fixed canvas size per slot (same size for every option within that slot, so pivots stay aligned — sizes
+  can differ *between* slots, per the table above).
 - One shared reference/pose guide to draw every shape option on top of, so pivots line up.
 - Shape art (`art/creatures/parts/`) is **grayscale only** — no color. Use luminance for shading (darker =
   shadow, lighter = highlight); the palette shader adds all color at runtime.

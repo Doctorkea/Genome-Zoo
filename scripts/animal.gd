@@ -42,7 +42,17 @@ func _physics_process(_delta: float) -> void:
 		velocity = Vector2.ZERO
 	else:
 		velocity = to_target.normalized() * SPEED
+		_face_direction(velocity.x)
 	move_and_slide()
+
+
+## The creature rig is drawn facing right by default (see Creature.tscn).
+## Mirror the whole rig around its own local origin when walking left, since
+## it's a side-on sprite, not a top-down one.
+func _face_direction(x_velocity: float) -> void:
+	if absf(x_velocity) < 1.0:
+		return
+	visuals.scale.x = 1.0 if x_velocity > 0.0 else -1.0
 
 
 func _pick_new_target() -> void:
