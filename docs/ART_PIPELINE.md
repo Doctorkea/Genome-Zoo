@@ -1,0 +1,129 @@
+# Creature Rendering Pipeline (Godot 4, 2D pixel art)
+
+## The question
+
+> Will I just have template body styles (round head, bulky head, etc) that have no texture, and I overlay a
+> texture on top of it?
+
+Close, but split it into **two different systems** — this is the standard "paper doll" approach used for
+modular 2D characters, plus one addition that saves your artist a huge amount of redundant work.
+
+## The two systems
+
+### 1. Shape traits → swappable, fully-drawn parts (paper doll)
+
+Head, Neck, Body, Limbs, and Eyes are **not** blank templates with a texture overlaid — each option (Round
+Head, Horned Head, Bulbous Head, ...) is a small, fully-drawn sprite that the artist draws **once**. At
+runtime you don't overlay anything onto a shape; you just swap which texture a given `Sprite2D` node is
+showing.
+
+- One `Node2D` root per creature ("rig").
+- One child `Sprite2D` per trait **slot** (`Head`, `Neck`, `Body`, `Limbs`, `Eyes`), positioned at a fixed
+  offset from the root that never changes.
+- Changing a trait = calling `sprite.texture = new_texture` on that slot's `Sprite2D`. Nothing moves,
+  nothing is re-laid-out.
+- Every option for a given slot must share the same canvas size and pivot point, so any Head option lines
+  up with any Neck/Body combination. Give the artist a single reference rig image (a grid/pose guide) to
+  draw every variant on top of — this is the one thing that has to be consistent across the whole trait
+  library.
+
+This is well-established for exactly this use case — see `docs/references.md` for the sources this is based
+on (layered `Sprite2D`s per part, one `AnimationPlayer` driving all of them in sync once animation is added).
+
+### 2. Skin/Coat trait → a shared palette-swap shader, not new art per shape
+
+This is the part worth doing differently from a naive "just overlay a texture" approach. If Fur / Scales /
+Slime were separate hand-painted textures, your artist would need a separate texture **per shape per skin**
+— 3 heads × 3 skins, 3 bodies × 3 skins, etc. That's a combinatorial explosion for a 2-person, 48-hour team.
+
+Instead:
+
+- The artist draws every shape option **once**, in grayscale (luminance only — light/shadow, no color).
+- A single canvas-item shader samples that grayscale value and looks it up in a small **palette texture**
+  (a 1-pixel-tall strip of colors) to produce the final color, alpha preserved from the source.
+- "Fur" / "Scales" / "Slime" become three different palette textures, not three different sets of shape
+  art. Swapping skin = swapping one small texture on a shared `ShaderMaterial`, applied to every part
+  `Sprite2D` at once so the whole creature recolors consistently in one call.
+
+```glsl
+// scripts/shaders/palette_swap.gdshader
+shader_type canvas_item;
+
+uniform sampler2D palette : filter_nearest;
+
+void fragment() {
+    vec4 source = texture(TEXTURE, UV);
+    vec4 result = texture(palette, vec2(source.r, 0.5));
+    result.a = source.a;
+    COLOR = result;
+}
+```
+
+Set both the sprite textures and the palette texture's filter to **Nearest** in the Import settings (Godot
+defaults to linear filtering, which blurs pixel art).
+
+Trade-off to flag to your artist: this makes skin/coat traits a **color** difference (warm brown fur vs.
+cool teal scales vs. glossy green slime), not a different surface **pattern**. That's the right call for a
+jam — true alternate patterns per shape are a stretch goal only (see below), not MVP.
+
+## Godot project layout
+
+```
+scenes/
+  Creature.tscn        # Node2D root + one Sprite2D per slot, see below
+scripts/
+  creature_visuals.gd  # runtime part/skin swapping (already scaffolded)
+  shaders/
+    palette_swap.gdshader
+art/
+  creatures/
+    parts/             # {slot}_{option}.png, e.g. head_horned.png — grayscale
+    palettes/          # {skin_name}.png — 1px-tall color strips, e.g. scales.png
+```
+
+`Creature.tscn` node tree:
+
+```
+Creature (Node2D, script: creature_visuals.gd)
+├── Body    (Sprite2D)
+├── Neck    (Sprite2D)
+├── Head    (Sprite2D)
+├── Limbs   (Sprite2D)
+└── Eyes    (Sprite2D)
+```
+
+Draw order = child order in the scene tree (later children draw on top), so order these to match how the
+parts actually stack (Body → Limbs → Neck → Head → Eyes is a reasonable default; adjust once real art exists).
+
+## Art checklist for your artist
+
+- Fixed canvas size per slot (pick one, e.g. 64×64 or 128×128 — bigger if you want more detail, but keep it
+  the same for every option in that slot).
+- One shared reference/pose guide to draw every shape option on top of, so pivots line up.
+- Shape art (`art/creatures/parts/`) is **grayscale only** — no color. Use luminance for shading (darker =
+  shadow, lighter = highlight); the palette shader adds all color at runtime.
+- Palette textures (`art/creatures/palettes/`) are tiny — a handful of pixels wide, 1 pixel tall, each pixel
+  a color stop from dark to light.
+- Import settings on every texture: Filter → **Nearest** (Project Settings → Rendering → Textures →
+  Canvas Textures → Default Texture Filter, plus per-file overrides as needed) to keep pixel art crisp.
+
+## Roadmap
+
+1. **MVP (Day 1)** — static idle pose only. Swap textures per slot, apply palette shader for skin. This is
+   all the trait system needs for the DNA Lab loop to be visible and functional.
+2. **Animation sync (Day 2, if time)** — give every part `Sprite2D` matching `Hframes`, drive their shared
+   `frame` property from one `AnimationPlayer` so idle/walk/trick animations stay in sync across every part
+   regardless of which shape is equipped.
+3. **Stretch** — true alternate surface patterns (not just palette recolors) for skin traits, as an
+   additional swappable texture layer rather than a shader, once the MVP loop is proven and there's spare
+   art time.
+
+## Starter code
+
+- `scripts/creature_visuals.gd` — swaps part textures per slot and drives the shared palette-swap material.
+- `scripts/shaders/palette_swap.gdshader` — the shader above.
+- `scenes/Creature.tscn` — the node tree above, ready for the artist's textures to be dropped in.
+
+## References
+
+See [`references.md`](./references.md) for the specific threads/repos/shaders this pipeline is based on.
