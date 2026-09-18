@@ -150,6 +150,29 @@ against the [4.6→4.7 migration guide](https://docs.godotengine.org/en/stable/t
 - Everything else new in 4.7 (HDR display output, Control offset transforms, the new Asset Store,
   `DrawableTexture2D`, standalone Android export) is unrelated to this pipeline — nothing to act on there.
 
+### Renderer: Compatibility, not Forward+
+
+The project uses the **Compatibility** (OpenGL 3.3) renderer, set via `renderer/rendering_method` in
+`project.godot`, instead of Godot's default **Forward+** (Vulkan).
+
+This isn't just a stylistic choice — Forward+ **crashed the editor on open** on a machine with an Intel HD
+Graphics 620 integrated GPU (confirmed via Windows crash dumps: `vulkan-1.dll` and Intel's Vulkan driver
+`igvk64.dll` were loaded at the moment of the crash). Older/integrated Intel GPUs have historically weak
+Vulkan driver support, and this is a known class of crash for Godot 4's Forward+ renderer on that hardware.
+Compatibility mode doesn't touch Vulkan at all.
+
+It's also just the right renderer for this project regardless of the crash: Forward+'s clustered
+lighting/3D pipeline is overkill for 2D pixel art, and Compatibility has lower overhead for exactly the kind
+of sprite-stacking + simple shader work this game does.
+
+If a teammate hits a similar "editor crashes on opening the project" issue on a different machine, the
+general checklist is:
+1. Confirm the renderer in `project.godot` → `[rendering] renderer/rendering_method` is `gl_compatibility`
+   (it should already be, from this commit).
+2. Update GPU drivers — this alone fixes many Forward+/Vulkan crashes even without switching renderers.
+3. As a last resort, launch the editor with `--rendering-driver opengl3` once to force Compatibility even
+   if a stale editor setting is overriding the project setting.
+
 ## References
 
 See [`references.md`](./references.md) for the specific threads/repos/shaders this pipeline is based on.

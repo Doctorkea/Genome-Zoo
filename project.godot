@@ -9,7 +9,7 @@ config_version=5
 
 config/name="Evolution Zoo"
 run/main_scene="res://scenes/Creature.tscn"
-config/features=PackedStringArray("4.7", "Forward Plus")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [display]
 
@@ -26,4 +26,10 @@ window/stretch/scale_mode="integer"
 
 [rendering]
 
+; Compatibility (OpenGL 3.3) instead of the default Forward+ (Vulkan).
+; Forward+ crashes on some older Intel integrated GPUs (e.g. HD 620) — see
+; docs/ART_PIPELINE.md#engine-version-godot-47. Also just the right renderer
+; for a 2D pixel-art game regardless; Forward+ is 3D-oriented overkill here.
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
