@@ -9,7 +9,20 @@ config_version=5
 
 config/name="Evolution Zoo"
 run/main_scene="res://scenes/Creature.tscn"
-config/features=PackedStringArray("4.3", "Forward Plus")
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[display]
+
+; Base pixel-art resolution. Rendered at this size, then scaled up — see
+; docs/ART_PIPELINE.md for why these stretch settings are set explicitly
+; rather than left at the engine default (the default changed in 4.7).
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="viewport"
+window/stretch/aspect="keep"
+window/stretch/scale_mode="integer"
 
 [rendering]
 

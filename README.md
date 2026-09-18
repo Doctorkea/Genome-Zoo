@@ -1,6 +1,9 @@
 # Evolution Zoo
 
-Game jam project — theme: **Evolution**. Godot 4, 2D pixel art, team of 2.
+Game jam project — theme: **Evolution**. Godot 4.7, 2D pixel art, team of 2.
+
+Base resolution 640×360, integer-scaled (`viewport` stretch mode) — see
+[`docs/ART_PIPELINE.md`](docs/ART_PIPELINE.md#engine-version-godot-47) for why.
 
 Run a zoo, mutate your creatures' DNA in a lab minigame, and watch the same trait changes both attract or
 repel visitors and unlock new skills.

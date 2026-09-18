@@ -1,4 +1,7 @@
-# Creature Rendering Pipeline (Godot 4, 2D pixel art)
+# Creature Rendering Pipeline (Godot 4.7, 2D pixel art)
+
+> Verified against the Godot 4.7 release (June 2026) — see the
+> [Engine version](#engine-version-godot-47) section below for what changed and what didn't.
 
 ## The question
 
@@ -97,6 +100,9 @@ parts actually stack (Body → Limbs → Neck → Head → Eyes is a reasonable 
 
 ## Art checklist for your artist
 
+- The project's base resolution is **640×360** (see [Engine version](#engine-version-godot-47) below), scaled
+  up by integer multiples. Size creature parts relative to that — e.g. a full creature around 120–200px tall
+  leaves room for the zoo background and UI around it.
 - Fixed canvas size per slot (pick one, e.g. 64×64 or 128×128 — bigger if you want more detail, but keep it
   the same for every option in that slot).
 - One shared reference/pose guide to draw every shape option on top of, so pivots line up.
@@ -123,6 +129,26 @@ parts actually stack (Body → Limbs → Neck → Head → Eyes is a reasonable 
 - `scripts/creature_visuals.gd` — swaps part textures per slot and drives the shared palette-swap material.
 - `scripts/shaders/palette_swap.gdshader` — the shader above.
 - `scenes/Creature.tscn` — the node tree above, ready for the artist's textures to be dropped in.
+
+## Engine version: Godot 4.7
+
+This project targets **Godot 4.7** (`config/features` in `project.godot`), released 18 June 2026. Checked
+against the [4.6→4.7 migration guide](https://docs.godotengine.org/en/stable/tutorials/migrating/upgrading_to_godot_4.7.html):
+
+- **Nothing in this pipeline needed code changes.** None of 4.7's breaking API changes touch `Sprite2D`,
+  `Node2D`, `ShaderMaterial`, canvas-item shaders, or typed `Array`/`Dictionary` usage the way we use them.
+  `creature_visuals.gd` and `palette_swap.gdshader` are unaffected as written.
+- **One default did change and matters for us:** new projects created in 4.7 default to
+  `display/window/stretch/mode = canvas_items` and `stretch/aspect = expand` (previously `disabled`/`keep`).
+  Left alone, that's the wrong call for pixel art — non-integer scaling blurs/distorts grayscale part art and
+  makes the palette shader's nearest-neighbor lookup look inconsistent at different window sizes.
+- **Fix, already applied in `project.godot`:** explicit `[display]` block setting a 640×360 base resolution,
+  `stretch/mode = "viewport"`, `stretch/aspect = "keep"`, and `stretch/scale_mode = "integer"` — the
+  standard pixel-art setup, rendering at the low base resolution and only ever scaling by whole numbers.
+  This makes the project's scaling behavior explicit and stable regardless of which Godot version opens it,
+  rather than riding on whatever the engine's current default happens to be.
+- Everything else new in 4.7 (HDR display output, Control offset transforms, the new Asset Store,
+  `DrawableTexture2D`, standalone Android export) is unrelated to this pipeline — nothing to act on there.
 
 ## References
 

@@ -17,3 +17,10 @@ Sources used to put together `ART_PIPELINE.md`.
 - [Palette Swap (no recolor / recolor) — Godot Shaders](https://godotshaders.com/shader/palette-swap-no-recolor-recolor/)
 - [Palette swap shader + alpha handling discussion — r/godot](https://www.reddit.com/r/godot/comments/pjcfc0/help_with_a_palette_swap_shader_affecting_opacity/)
 - [Introduction to Shaders in Godot 4 — Kodeco (luminosity/grayscale weighting)](https://www.kodeco.com/43354079-introduction-to-shaders-in-godot-4/page/2)
+
+## Engine version — Godot 4.7
+
+- [Godot 4.7 release announcement](https://godotengine.org/releases/4.7/)
+- [Godot 4.7 changelog](https://github.com/godotengine/godot/blob/4.7-stable/CHANGELOG.md)
+- [Upgrading from Godot 4.6 to Godot 4.7 (migration guide)](https://docs.godotengine.org/en/stable/tutorials/migrating/upgrading_to_godot_4.7.html)
+- [Multiple resolutions — pixel-art stretch/scale settings](https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html)

@@ -1,6 +1,6 @@
 # Evolution Zoo — Game Design Doc
 
-Jam theme: **Evolution**. Team: 2 (1 programmer/designer, 1 dedicated pixel artist). Engine: **Godot 4** (2D only, no 3D).
+Jam theme: **Evolution**. Team: 2 (1 programmer/designer, 1 dedicated pixel artist). Engine: **Godot 4.7** (2D only, no 3D).
 
 ## Pitch
 
