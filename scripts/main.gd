@@ -34,7 +34,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_zoom_camera(ZOOM_STEP)
 	elif event is InputEventMouseMotion and _panning:
-		var delta := (event.position - _pan_start_mouse) / _camera.zoom
+		var motion := event as InputEventMouseMotion
+		var delta: Vector2 = (motion.position - _pan_start_mouse) / _camera.zoom
 		_camera.position = _pan_start_cam - delta
 
 

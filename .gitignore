@@ -19,3 +19,6 @@ Thumbs.db
 .env
 .env.*
 *.key
+
+# Transient debug output from headless test runs
+godot_run.log

@@ -56,9 +56,22 @@ Per the plan we agreed on before building:
 
 ## Known rough edges to expect
 
-This was written without being able to run the Godot editor directly, so treat it as a first pass:
-- GDScript syntax/typing errors are possible — report the exact editor error and it's a quick fix.
 - The creature rig's part offsets (`scenes/Creature.tscn`) are eyeballed, not tuned — some shape
   combinations will look goofy. That's expected placeholder behavior, not a bug.
 - Procedural shapes are intentionally simple (circles, ellipses, rects, triangles) — "doesn't have to be
   good," per the brief.
+
+## Headless smoke test
+
+`tests/smoke_test.gd` + `tests/smoke_test.tscn` exercise every core system (grid math, pen sizing, animal
+placement, creature mutation, build mode, the mutagen economy, and the full HUD build including the
+SubViewport thumbnail) without needing real mouse/window input. Useful for catching script errors fast
+after a change, without waiting on a manual playtest. Run it from a terminal:
+
+```
+"<path to Godot_v4.7.2-stable_win64_console.exe>" --path "<project path>" --headless "res://tests/smoke_test.tscn"
+```
+
+It prints `=== SMOKE TEST PASSED ===` on success, or the exact script error and line number on failure.
+It's a plain scene, not a build artifact — safe to ignore in the editor, and safe to delete once the game
+outgrows it.
