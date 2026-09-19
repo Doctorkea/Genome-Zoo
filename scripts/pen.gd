@@ -1,13 +1,12 @@
 extends Node2D
 class_name Pen
 
-## A placeable zoo enclosure. Footprint is set in grid cells; the floor and
-## solid fence walls are generated at runtime so one scene covers every pen
-## size (a Prison-Architect-style rectangular prefab). Placeholder visuals
-## only — see docs/ART_PIPELINE.md.
+## A placeable zoo enclosure. Footprint is set in grid cells; solid fence
+## walls are generated at runtime so one scene covers every pen size
+## (a Prison-Architect-style rectangular prefab). World grass tiles show
+## through the interior — see docs/ART_PIPELINE.md.
 
 const WALL_THICKNESS: float = 10.0
-const FLOOR_COLOR: Color = Color(0.36, 0.52, 0.30) # placeholder grass green
 const WALL_COLOR: Color = Color(0.42, 0.30, 0.20) # placeholder fence brown
 
 const FENCE_LAYER: int = 4 # bit for "fences" — animals set collision_mask to this
@@ -18,7 +17,6 @@ var animals: Array[Node] = []
 
 
 func _ready() -> void:
-	_build_floor()
 	_build_walls()
 
 
@@ -44,12 +42,6 @@ func register_animal(animal: Node) -> void:
 
 func unregister_animal(animal: Node) -> void:
 	animals.erase(animal)
-
-
-func _build_floor() -> void:
-	var floor_poly := _make_rect_polygon(get_size_pixels(), FLOOR_COLOR)
-	floor_poly.z_index = -10
-	add_child(floor_poly)
 
 
 func _build_walls() -> void:

@@ -43,38 +43,39 @@ both visitor approval and its dominant skill archetype.
 
 ## MVP trait library
 
-> **Update:** the base demo uses 6 shape slots — Body, Head, Eyes, Front Legs, Back Legs, Tail —
-> (mouth/snout is drawn on the Head). See
-> instead of the original 6 below, plus a separate Color slot for skin/coat. See
-> [`DEMO.md`](./DEMO.md) and [`ART_PIPELINE.md`](./ART_PIPELINE.md) for the implemented version. The table
-> below is kept as the original tag-design reference; re-tag the new slot list against it before content
-> (real trait balancing, visitor reactions) gets built on top of the demo.
+Implemented in `scripts/trait_library.gd`. Six shape slots (Body, Head, Eyes, Front Legs,
+Back Legs, Tail) plus a Color slot for skin/coat. Mouth/snout is drawn on the Head — there is no
+Neck slot; Tail carries the old Neck tag swings. Front and Back Legs are independent picks with
+the same three silhouettes.
 
-Pure data — buildable before any art exists. Each option is one texture the artist draws once.
+Each option is one texture the artist draws once (or one palette strip, for Color).
 
 | Slot | Option | Tags | Design note |
 | --- | --- | --- | --- |
+| Body | Slim Body | Elegant | Core enabler for Nimble tricks |
+| Body | Round Body | Cute, Bulky | Core enabler for Tanky |
+| Body | Spiky Body | Scary, Majestic | Core enabler for Predator/Showpiece |
 | Head | Round Head | Cute | Safe baseline pick, favored by Families |
-| Head | Horned Head | Scary, Majestic | Feeds Predator or Showpiece archetype |
-| Head | Bulbous Head | Weird, Gross | Feeds Novelty archetype, risky with Families |
+| Head | Horned Head | Scary, Majestic | Feeds Predator or Showpiece |
+| Head | Bulbous Head | Weird, Gross | Feeds Novelty, risky with Families |
 | Eyes | Big Round Eyes | Cute, Silly | Strong Families draw |
 | Eyes | Beady Eyes | Scary | Cheap Predator tag, minimal visual cost |
-| Eyes | Compound Multi-Eyes | Weird, Gross | High Novelty, disgust risk |
-| Neck | Short Neck | Cute, Bulky | Pushes toward Bulky/Tanky archetype |
-| Neck | Long Elegant Neck | Elegant, Weird | Pushes toward Nimble archetype |
-| Neck | Extra Neck (2nd head) | Weird, Gross | High-risk Novelty swing |
-| Body | Slim Body | Elegant | Core enabler for Nimble tricks |
-| Body | Round Body | Cute, Bulky | Core enabler for Bulky/Tanky |
-| Body | Spiky Body | Scary, Majestic | Core enabler for Predator/Showpiece |
-| Limbs | Short Stubby Legs | Cute, Bulky | Locks out jump/trick ability |
-| Limbs | Long Slender Legs | Elegant, Silly | Unlocks jump/trick ability |
-| Limbs | Many Legs | Weird, Gross | Novelty swing, unsettles Families |
-| Skin / Coat | Soft Fur | Cute | Cheapest, safest, lowest ceiling |
-| Skin / Coat | Iridescent Scales | Majestic, Elegant | Best all-round crowd pleaser |
-| Skin / Coat | Oozing Slime | Gross, Weird | Highest Novelty, highest Families risk |
+| Eyes | Compound Eyes | Weird, Gross | High Novelty, disgust risk |
+| Front Legs | Stubby Front Legs | Cute, Bulky | Locks out jump/trick ability |
+| Front Legs | Slender Front Legs | Elegant, Silly | Unlocks jump/trick ability |
+| Front Legs | Many Front Legs | Weird, Gross | Novelty swing, unsettles Families |
+| Back Legs | Stubby Back Legs | Cute, Bulky | Same tags as front, independent pick |
+| Back Legs | Slender Back Legs | Elegant, Silly | Same tags as front, independent pick |
+| Back Legs | Many Back Legs | Weird, Gross | Same tags as front, independent pick |
+| Tail | Short Tail | Cute, Bulky | Replaces the old Short Neck swing |
+| Tail | Long Tail | Elegant, Weird | Replaces the old Long Neck swing |
+| Tail | Forked Tail | Weird, Gross | Replaces the old Extra Neck swing |
+| Color | Soft Fur | Cute | Cheapest, safest, lowest ceiling |
+| Color | Iridescent Scales | Majestic, Elegant | Best all-round crowd pleaser |
+| Color | Oozing Slime | Gross, Weird | Highest Novelty, highest Families risk |
 
-> Implementation note: `Skin / Coat` is handled differently from the other five slots — see
-> [`ART_PIPELINE.md`](./ART_PIPELINE.md). It's a color palette applied via shader on top of every part, not a
+> Implementation note: `Color` is handled differently from the shape slots — see
+> [`ART_PIPELINE.md`](./ART_PIPELINE.md). It's a palette applied via shader on top of every part, not a
 > separate texture per shape combination.
 
 ## Visitor archetypes
@@ -110,12 +111,12 @@ determines its archetype automatically.
 ## 48-hour build plan
 
 ### Day 1 — systems over art
-- [ ] Build trait/tag data table — 6 slots × 3 options, data only, no art needed yet
-- [ ] Build creature renderer that swaps parts per slot (placeholder shapes are fine)
-- [ ] Build the tag-scoring function → dominant archetype + per-visitor-type approval score
-- [ ] Build DNA Lab UI: 3-option draft picker wired to a mutagen point currency
-- [ ] Build a static zoo scene: background + creature display + revenue counter
-- [ ] Wire the full loop once end-to-end (spend → mutate → rescore), even if it looks ugly
+- [x] Build trait/tag data table — 6 slots × 3 options, data only, no art needed yet
+- [x] Build creature renderer that swaps parts per slot (placeholder shapes are fine)
+- [x] Build the tag-scoring function → dominant archetype + per-visitor-type approval score
+- [x] Build DNA Lab UI: 3-option draft picker wired to a mutagen point currency
+- [x] Build a static zoo scene: background + creature display + revenue counter
+- [ ] Wire the full loop once end-to-end (spend → mutate → rescore → visitors react)
 
 ### Day 2 — loop, feedback, polish
 - [ ] Implement the day/round cycle: earn → spend → open zoo → react → repeat

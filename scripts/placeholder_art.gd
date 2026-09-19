@@ -8,8 +8,19 @@ extends Node
 ## up. Replace with real art of the same canvas size later; nothing else changes.
 ##
 ## See docs/ART_PIPELINE.md. Autoloaded as "PlaceholderArt".
+##
+## Drop real 100×100 grayscale PNGs into ART_FILES to replace a procedural
+## option in-place. Missing files keep the generated shape.
 
 const CANVAS_SIZE: int = 100 # matches GridService.CELL_SIZE / one grass tile
+
+## slot -> { option_index: res:// path }
+const ART_FILES: Dictionary = {
+	"body": {0: "res://art/creatures/parts/body_jimothy.png"},
+	"head": {0: "res://art/creatures/parts/head_jimothy.png"},
+	"front_legs": {0: "res://art/creatures/parts/front_legs_jimothy.png"},
+	"back_legs": {0: "res://art/creatures/parts/back_legs_jimothy.png"},
+}
 const LIGHT_DIR: Vector2 = Vector2(-0.6, -0.8)
 
 ## Shared pose regions inside the 100×100 guide (side-on, facing right).
@@ -49,22 +60,40 @@ func get_palette_options() -> Array[Texture2D]:
 
 
 func _generate_slot(slot: String) -> Array[Texture2D]:
+	var textures: Array[Texture2D] = []
 	match slot:
 		"body":
-			return _make_body_options()
+			textures = _make_body_options()
 		"head":
-			return _make_head_options()
+			textures = _make_head_options()
 		"eyes":
-			return _make_eyes_options()
+			textures = _make_eyes_options()
 		"front_legs":
-			return _make_front_legs_options()
+			textures = _make_front_legs_options()
 		"back_legs":
-			return _make_back_legs_options()
+			textures = _make_back_legs_options()
 		"tail":
-			return _make_tail_options()
+			textures = _make_tail_options()
 		_:
 			push_warning("PlaceholderArt: unknown slot '%s'" % slot)
 			return []
+	return _apply_file_art(slot, textures)
+
+
+func _apply_file_art(slot: String, textures: Array[Texture2D]) -> Array[Texture2D]:
+	var files: Dictionary = ART_FILES.get(slot, {})
+	for index in files:
+		var path := str(files[index])
+		if not ResourceLoader.exists(path):
+			push_warning("PlaceholderArt: missing part art %s" % path)
+			continue
+		var tex := load(path) as Texture2D
+		if tex == null:
+			continue
+		var i: int = int(index)
+		if i >= 0 and i < textures.size():
+			textures[i] = tex
+	return textures
 
 
 func _blank() -> Image:

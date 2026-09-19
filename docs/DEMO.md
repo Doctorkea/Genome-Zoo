@@ -14,11 +14,11 @@ If the editor was already open while these files were added, use **Project → R
 | --- | --- |
 | Pan camera | Right-click drag |
 | Zoom camera | Scroll wheel |
-| Place a pen | Toolbar → "Place Small Pen" / "Place Large Pen", then left-click a green (valid) cell |
-| Place an animal | Toolbar → "Place Animal", then left-click inside a placed pen |
-| Inspect an animal | Left-click it directly (works in any mode) |
-| Edit an animal's DNA | Select it, click "Edit DNA" in the stats panel |
-| Cancel current tool | Toolbar → "Cancel" |
+| Place a pen | Bottom dock → Pens → Small / Large, then left-click a green (valid) cell |
+| Place an animal | Bottom dock → Place animal, then left-click inside a placed pen |
+| Inspect an animal | Left-click it — an exhibit card opens on the right |
+| Edit an animal's DNA | Exhibit card → Open DNA Lab, then pick a slot to draft three options |
+| Cancel current tool | Bottom dock → Cancel, or click the active tool again |
 
 ## What's implemented
 
@@ -30,16 +30,21 @@ If the editor was already open while these files were added, use **Project → R
   footprint; animals physically collide with them via `move_and_slide()`, not just a soft bounds check.
 - **Animals** — placed inside a pen, wander to random points within it on a randomized timer, click to
   select. `scripts/animal.gd`.
-- **Click-to-inspect GUI** — clicking an animal shows a stats panel (top-right, Container-anchored to the
-  1280×720 viewport) with a **live thumbnail** (a second `Camera2D` inside a `SubViewport` that shares the
-  main world's `World2D`) plus its name and currently-equipped parts. Empty HUD space uses
+- **HUD** — tycoon layout: thin top plaque + mutagen counter, **bottom build dock** (Pens / Animals),
+  right-side **exhibit card** on select (live thumbnail, archetype, visitor meters, tags). DNA Lab is a
+  paper workbench: pick a slot, spend 5 mutagen, choose one of three named options. Empty HUD space uses
   `MOUSE_FILTER_IGNORE` so clicks still reach animals.
+- **Trait tags + scoring** — every part option carries 1–2 tags (`scripts/trait_library.gd`). Tag totals
+  pick a skill archetype (Nimble / Tanky / Predator / Novelty / Showpiece) and two visitor-approval
+  scores. Mutating a slot rescores immediately.
 - **Creature creation demo** — 6 shape slots (Body, Head, Eyes, Front Legs, Back Legs, Tail), 3 options
   each, plus a Color slot (one colour applied to the whole creature). Every part is a uniform **100×100**
   transparent PNG canvas (one grass tile); snout is part of the Head sprite.
-- **DNA Lab minigame principle** — a placeholder mutagen-point counter ticks up over time (+1 every 3s,
-  starting at 15); each "Mutate" costs 5 points and reveals that slot's options to pick from. No real
-  visitor economy feeds it yet — see [`GAME_DESIGN.md`](./GAME_DESIGN.md) for where that plugs in later.
+- **DNA Lab minigame principle** — mutagen ticks up over time (+1 every 3s, starting at 15) and sits in
+  the top-right counter. Each slot draft costs 5 and reveals that slot's named 3-option cards. Slot
+  buttons disable when you can't afford a draft. No real visitor economy feeds the points yet — see
+  [`GAME_DESIGN.md`](./GAME_DESIGN.md) for where that plugs in later.
+- **Floor grid** — 16×10 `TileMapLayer` of the artist's 100×100 grass tiles (plain grass plus scattered flower variants) so pens sit on real floor art.
 - **Filler art** — every shape and color is generated procedurally at runtime in
   `scripts/placeholder_art.gd` (grayscale shapes + palette-swap shader, per `ART_PIPELINE.md`). Zero binary
   asset files. Replace slot-by-slot with real art later by swapping what `PlaceholderArt` returns for that
@@ -49,12 +54,11 @@ If the editor was already open while these files were added, use **Project → R
 
 Per the plan we agreed on before building:
 
-- No visitor/revenue economy — pure builder + creature systems.
+- No visitor/revenue economy — tag scores are visible, but nobody walks the zoo yet.
 - No save/load — everything resets when you stop running the scene.
 - Only 2 pen prefabs (Small/Large) — not the full pen catalog.
 - No animal-vs-animal collision — they can visually overlap each other (only pen fences block movement).
-- No build-mode active-button highlighting, rotation, or move/demolish — placement is one-shot and permanent
-  for this proof of concept.
+- No rotation or move/demolish — placement is one-shot and permanent for this proof of concept.
 
 ## Known rough edges to expect
 

@@ -30,12 +30,42 @@ func _ready() -> void:
 
 func set_mode(mode: int) -> void:
 	current_mode = mode
-	_ghost.visible = mode == Mode.PLACE_PEN_SMALL or mode == Mode.PLACE_PEN_LARGE
+	_ghost.visible = false
+
+
+## Places a small pen and one Jimothy so the part-art demo is visible on Play.
+func spawn_starter_exhibit() -> Animal:
+	var origin_cell := Vector2i(4, 2)
+	var size_cells := Vector2i(4, 3)
+	var pen := PEN_SCENE.instantiate() as Pen
+	pen.footprint_cells = size_cells
+	pen.position = GridService.cell_to_world(origin_cell)
+	add_child(pen)
+	GridService.occupy_area(origin_cell, size_cells, pen)
+	_pens.append(pen)
+
+	var animal := ANIMAL_SCENE.instantiate() as Animal
+	pen.add_child(animal)
+	var interior: Rect2 = pen.get_interior_bounds()
+	animal.position = interior.position + interior.size * 0.5
+	animal.set_pen(pen)
+	_animal_count += 1
+	animal.creature_name = "Jimothy"
+	animal.visuals.set_slot_visible("eyes", false)
+	animal.visuals.set_slot_visible("tail", false)
+	animal.set_physics_process(false)
+	pen.register_animal(animal)
+	return animal
 
 
 func _process(_delta: float) -> void:
 	if current_mode == Mode.PLACE_PEN_SMALL or current_mode == Mode.PLACE_PEN_LARGE:
-		_update_ghost()
+		var over_gui := get_viewport().gui_get_hovered_control() != null
+		_ghost.visible = not over_gui
+		if not over_gui:
+			_update_ghost()
+	else:
+		_ghost.visible = false
 
 
 func _update_ghost() -> void:

@@ -71,7 +71,23 @@ func set_part_shape(slot: String, option_index: int) -> void:
 		push_warning("CreatureVisuals: unknown slot '%s'" % slot)
 		return
 	sprite.texture = options[index]
+	sprite.visible = true
 	_current_index[slot] = index
+
+
+## Hide a slot without changing its option index. Used by the Jimothy demo so
+## the procedural eyes/tail don't sit on top of the real part art.
+func set_slot_visible(slot: String, slot_visible: bool) -> void:
+	var sprite: Sprite2D = _slot_nodes.get(slot)
+	if sprite == null:
+		push_warning("CreatureVisuals: unknown slot '%s'" % slot)
+		return
+	sprite.visible = slot_visible
+
+
+func is_slot_visible(slot: String) -> bool:
+	var sprite: Sprite2D = _slot_nodes.get(slot)
+	return sprite != null and sprite.visible
 
 
 ## Recolor every part at once by picking a palette (skin/coat) index.

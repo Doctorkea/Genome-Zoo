@@ -75,11 +75,24 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 
 
 func get_stats() -> Dictionary:
+	var score: Dictionary = TraitLibrary.score_visuals(visuals)
 	var parts: Array = []
 	for slot in visuals.get_slots():
-		parts.append("%s #%d" % [slot.capitalize(), visuals.get_current_index(slot) + 1])
+		if not visuals.is_slot_visible(slot):
+			continue
+		var index: int = visuals.get_current_index(slot)
+		var option: Dictionary = TraitLibrary.get_option(slot, index)
+		parts.append(option.get("name", TraitLibrary.option_label(slot, index)))
+	var color_option: Dictionary = TraitLibrary.get_option(
+		TraitLibrary.COLOR_SLOT, visuals.get_current_palette_index()
+	)
+	parts.append(color_option.get("name", "Color"))
 	return {
 		"name": creature_name,
 		"parts": parts,
 		"color_index": visuals.get_current_palette_index(),
+		"archetype": score.get("archetype", "Unspecialized"),
+		"tags": score.get("tags", {}),
+		"families": int(score.get("families", 0)),
+		"thrill": int(score.get("thrill", 0)),
 	}

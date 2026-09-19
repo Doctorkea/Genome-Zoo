@@ -3,9 +3,8 @@ extends Node2D
 ## Root of the demo: wires the camera, build mode, and HUD together.
 ## Right-drag to pan, scroll wheel to zoom. See docs/DEMO.md.
 
-const ZOOM_STEP: float = 0.1
-const MIN_ZOOM: float = 0.5
-const MAX_ZOOM: float = 2.5
+## Integer zoom so floor tiles stay on pixel boundaries.
+const ZOOM_LEVELS: Array[float] = [0.5, 1.0, 2.0]
 
 @onready var _build_mode: BuildMode = $BuildMode
 @onready var _hud: Control = $HUDLayer/HUD
@@ -19,8 +18,22 @@ var _pan_start_cam: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	# 2D physics picking (click-to-select on animals) is off by default.
 	get_viewport().physics_object_picking = true
+	_fit_window_to_hud()
 	_camera.make_current()
 	_hud.set_build_mode(_build_mode)
+	var exhibit: Animal = _build_mode.spawn_starter_exhibit()
+	_camera.position = exhibit.global_position.round()
+	_camera.zoom = Vector2(2.0, 2.0)
+
+
+func _fit_window_to_hud() -> void:
+	# Integer window scale crops a 1280x720 HUD inside a smaller editor game tab.
+	# Keep-aspect fractional scale letterboxes the full frame instead.
+	var win := get_window()
+	win.content_scale_size = Vector2i(1280, 720)
+	win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+	win.content_scale_stretch = Window.CONTENT_SCALE_STRETCH_FRACTIONAL
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -30,15 +43,24 @@ func _unhandled_input(event: InputEvent) -> void:
 			_pan_start_mouse = event.position
 			_pan_start_cam = _camera.position
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			_zoom_camera(-ZOOM_STEP)
+			_zoom_camera(-1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			_zoom_camera(ZOOM_STEP)
+			_zoom_camera(1)
 	elif event is InputEventMouseMotion and _panning:
 		var motion := event as InputEventMouseMotion
 		var delta: Vector2 = (motion.position - _pan_start_mouse) / _camera.zoom
-		_camera.position = _pan_start_cam - delta
+		_camera.position = (_pan_start_cam - delta).round()
 
 
-func _zoom_camera(amount: float) -> void:
-	var new_zoom: float = clampf(_camera.zoom.x + amount, MIN_ZOOM, MAX_ZOOM)
+func _zoom_camera(direction: int) -> void:
+	var current: float = _camera.zoom.x
+	var index := 0
+	var best_dist: float = absf(ZOOM_LEVELS[0] - current)
+	for i in range(ZOOM_LEVELS.size()):
+		var dist: float = absf(ZOOM_LEVELS[i] - current)
+		if dist < best_dist:
+			best_dist = dist
+			index = i
+	index = clampi(index + direction, 0, ZOOM_LEVELS.size() - 1)
+	var new_zoom: float = ZOOM_LEVELS[index]
 	_camera.zoom = Vector2(new_zoom, new_zoom)

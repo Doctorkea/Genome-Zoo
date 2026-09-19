@@ -142,6 +142,12 @@ content box — cropping breaks alignment when parts are stacked.
 ### Floor / pens (for scale)
 Grass tiles are **100×100**. One assembled creature ≈ one tile on the floor.
 
+Live floor art lives in `art/tiles/grass/`:
+- `grass_1.png` … `grass_5.png` — plain grass variants
+- `grass_flowers_1.png` … `grass_flowers_4.png` — grass with flowers
+
+`scripts/floor_grid.gd` builds a `TileMapLayer` from those PNGs. Keep new floor tiles at exactly **100×100**, nearest-neighbor, no atlas packing required.
+
 ## Roadmap
 
 1. **MVP (Day 1)** — static idle pose only. Swap textures per slot, apply palette shader for skin. This is
@@ -172,10 +178,10 @@ against the [4.6→4.7 migration guide](https://docs.godotengine.org/en/stable/t
   Left alone, that's the wrong call for pixel art — non-integer scaling blurs/distorts grayscale part art and
   makes the palette shader's nearest-neighbor lookup look inconsistent at different window sizes.
 - **Fix, already applied in `project.godot`:** explicit `[display]` block setting a 1280×720 base resolution,
-  `stretch/mode = "viewport"`, `stretch/aspect = "keep"`, and `stretch/scale_mode = "integer"` — the
-  standard pixel-art setup, rendering at the low base resolution and only ever scaling by whole numbers.
-  This makes the project's scaling behavior explicit and stable regardless of which Godot version opens it,
-  rather than riding on whatever the engine's current default happens to be.
+  `stretch/mode = "viewport"`, `stretch/aspect = "keep"`. Integer scale is *not* used while playing from the
+  editor — a laptop game tab smaller than 1280×720 would crop the HUD off the bottom and right. Fractional
+  keep-aspect scaling letterboxes the full 1280×720 frame so the dock stays visible. Nearest-filter on
+  textures still keeps pixel art sharp; maximize the game window for the crispest look.
 - Everything else new in 4.7 (HDR display output, Control offset transforms, the new Asset Store,
   `DrawableTexture2D`, standalone Android export) is unrelated to this pipeline — nothing to act on there.
 

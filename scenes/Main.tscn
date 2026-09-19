@@ -1,19 +1,29 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://cpsh2on66eerm"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/build_mode.gd" id="2"]
+[ext_resource type="Script" uid="uid://b7v63rteo8bli" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" uid="uid://eid84sf4u1qx" path="res://scripts/build_mode.gd" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="3"]
+[ext_resource type="Script" uid="uid://dm0a47nf1g0u3" path="res://scripts/floor_grid.gd" id="4"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=2062453724]
 script = ExtResource("1")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="FloorGrid" type="Node2D" parent="." unique_id=462868905]
+script = ExtResource("4")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=149173057]
 position = Vector2(640, 360)
 
-[node name="BuildMode" type="Node2D" parent="."]
+[node name="BuildMode" type="Node2D" parent="." unique_id=1699456024]
 script = ExtResource("2")
 
-[node name="HUDLayer" type="CanvasLayer" parent="."]
+[node name="HUDLayer" type="CanvasLayer" parent="." unique_id=1846086212]
 layer = 10
 
-[node name="HUD" parent="HUDLayer" instance=ExtResource("3")]
+[node name="HUD" parent="HUDLayer" unique_id=131024474 instance=ExtResource("3")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
