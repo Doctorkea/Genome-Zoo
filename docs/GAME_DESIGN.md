@@ -43,7 +43,8 @@ both visitor approval and its dominant skill archetype.
 
 ## MVP trait library
 
-> **Update:** the base demo expanded this to 7 shape slots — Body, Head, Eyes, Mouth, Arms, Legs, Tail —
+> **Update:** the base demo expanded this to 7 shape slots — Body, Head, Eyes, Mouth, Front Legs, Back Legs,
+> Tail —
 > instead of the original 6 below, plus a separate Color slot for skin/coat. See
 > [`DEMO.md`](./DEMO.md) and [`ART_PIPELINE.md`](./ART_PIPELINE.md) for the implemented version. The table
 > below is kept as the original tag-design reference; re-tag the new slot list against it before content

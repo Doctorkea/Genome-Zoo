@@ -32,8 +32,8 @@ If the editor was already open while these files were added, use **Project → R
 - **Click-to-inspect GUI** — clicking an animal shows a stats panel with a **live thumbnail** (a second
   `Camera2D` inside a `SubViewport` that shares the main world's `World2D` — it's rendering the actual
   animal in the world, not a copy) plus its name and currently-equipped parts.
-- **Creature creation demo** — 7 shape slots (Body, Head, Eyes, Mouth, Arms, Legs, Tail), 3 options each,
-  plus a Color slot (3 palettes) — the full trait-swap + palette-swap pipeline from
+- **Creature creation demo** — 7 shape slots (Body, Head, Eyes, Mouth, Front Legs, Back Legs, Tail), 3 options
+  each, plus a Color slot (3 palettes) — the full trait-swap + palette-swap pipeline from
   [`ART_PIPELINE.md`](./ART_PIPELINE.md), all working end to end.
 - **DNA Lab minigame principle** — a placeholder mutagen-point counter ticks up over time (+1 every 3s,
   starting at 15); each "Mutate" costs 5 points and reveals that slot's options to pick from. No real

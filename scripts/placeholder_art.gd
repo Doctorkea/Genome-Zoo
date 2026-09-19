@@ -43,10 +43,10 @@ func _generate_slot(slot: String) -> Array[Texture2D]:
 			return _make_eyes_options()
 		"mouth":
 			return _make_mouth_options()
-		"arms":
-			return _make_arms_options()
-		"legs":
-			return _make_legs_options()
+		"front_legs":
+			return _make_front_legs_options()
+		"back_legs":
+			return _make_back_legs_options()
 		"tail":
 			return _make_tail_options()
 		_:
@@ -85,17 +85,15 @@ func _make_head_options() -> Array[Texture2D]:
 
 
 func _make_eyes_options() -> Array[Texture2D]:
-	var img0 := _new_image(28, 14)
-	_fill_circle(img0, 8, 7, 5)
-	_fill_circle(img0, 20, 7, 5)
+	# Single eye — this is a side-on profile view, not a front-facing view.
+	var img0 := _new_image(16, 16)
+	_fill_circle(img0, 8, 8, 5)
 
-	var img1 := _new_image(30, 16)
+	var img1 := _new_image(16, 16)
 	_fill_circle(img1, 8, 8, 7)
-	_fill_circle(img1, 22, 8, 7)
 
-	var img2 := _new_image(28, 10)
-	_fill_ellipse(img2, 8, 5, 6, 2)
-	_fill_ellipse(img2, 20, 5, 6, 2)
+	var img2 := _new_image(16, 16)
+	_fill_ellipse(img2, 8, 8, 6, 2)
 
 	var options: Array[Texture2D] = [_to_texture(img0), _to_texture(img1), _to_texture(img2)]
 	return options
@@ -117,7 +115,7 @@ func _make_mouth_options() -> Array[Texture2D]:
 	return options
 
 
-func _make_arms_options() -> Array[Texture2D]:
+func _make_front_legs_options() -> Array[Texture2D]:
 	var img0 := _new_image(44, 18)
 	_fill_rect(img0, 0, 4, 10, 14)
 	_fill_rect(img0, 34, 4, 44, 14)
@@ -134,7 +132,7 @@ func _make_arms_options() -> Array[Texture2D]:
 	return options
 
 
-func _make_legs_options() -> Array[Texture2D]:
+func _make_back_legs_options() -> Array[Texture2D]:
 	var img0 := _new_image(36, 18)
 	_fill_rect(img0, 4, 0, 15, 18)
 	_fill_rect(img0, 21, 0, 32, 18)

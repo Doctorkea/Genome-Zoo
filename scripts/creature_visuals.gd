@@ -8,12 +8,12 @@ class_name CreatureVisuals
 ## palette-swap ShaderMaterial. Placeholder textures come from the
 ## PlaceholderArt autoload. See docs/ART_PIPELINE.md for the full rationale.
 
-const SLOTS: Array[String] = ["tail", "legs", "arms", "body", "head", "eyes", "mouth"]
+const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head", "eyes", "mouth"]
 
 @onready var _slot_nodes: Dictionary = {
 	"tail": $Tail,
-	"legs": $Legs,
-	"arms": $Arms,
+	"back_legs": $BackLegs,
+	"front_legs": $FrontLegs,
 	"body": $Body,
 	"head": $Head,
 	"eyes": $Eyes,

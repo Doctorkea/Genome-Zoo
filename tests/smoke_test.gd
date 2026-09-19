@@ -31,7 +31,7 @@ func _test_grid_service() -> void:
 
 
 func _test_placeholder_art() -> void:
-	for slot in ["body", "head", "eyes", "mouth", "arms", "legs", "tail"]:
+	for slot in ["body", "head", "eyes", "mouth", "front_legs", "back_legs", "tail"]:
 		var opts := PlaceholderArt.get_shape_options(slot)
 		assert(opts.size() == 3, "%s should have 3 options, got %d" % [slot, opts.size()])
 	assert(PlaceholderArt.get_palette_options().size() == 3, "should have 3 palettes")

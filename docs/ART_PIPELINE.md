@@ -104,7 +104,7 @@ parts actually stack (Body → Limbs → Neck → Head → Eyes is a reasonable 
   this is the same convention as most 2D zoo/farm sims (side-view characters read as recognizable animals;
   top-down animal silhouettes usually just look like blobs). The rig faces **right** by default; the game
   mirrors the whole creature horizontally when it walks left, so only draw the right-facing version of
-  each part.
+  each part. Eyes are a **single eye**, not a pair — it's a profile view, not front-facing.
 - The project's base resolution is **640×360** (see [Engine version](#engine-version-godot-47) below), scaled
   up by integer multiples. A full creature should read clearly around 100–160px wide on screen. Suggested
   per-slot canvas sizes for the side-on rig (positions set in `scenes/Creature.tscn`):
@@ -113,10 +113,10 @@ parts actually stack (Body → Limbs → Neck → Head → Eyes is a reasonable 
   | --- | --- | --- |
   | Body | 96×56 | horizontal torso, the anchor everything else is positioned around |
   | Head | 48×48 | front of body, raised |
-  | Eyes | 16×12 | see open question below on 1 vs. 2 eyes |
+  | Eyes | 16×16 | single eye |
   | Mouth | 20×12 | front-bottom of head / snout |
-  | Arms (front legs) | 20×32 | front-bottom of body |
-  | Legs (back legs) | 20×32 | back-bottom of body |
+  | Front Legs | 20×32 | front-bottom of body |
+  | Back Legs | 20×32 | back-bottom of body |
   | Tail | 36×24 | back of body |
 
   If you'd rather work at a larger canvas for comfort, use a **clean integer multiple** of the target (e.g.

@@ -6,7 +6,7 @@ extends CanvasLayer
 ## patterns this follows (Containers, CanvasLayer, signals over polling).
 
 const MUTATE_COST: int = 5
-const SHAPE_SLOTS: Array[String] = ["body", "head", "eyes", "mouth", "arms", "legs", "tail"]
+const SHAPE_SLOTS: Array[String] = ["body", "head", "eyes", "mouth", "front_legs", "back_legs", "tail"]
 
 var _selected_animal: Animal = null
 var _build_mode: BuildMode = null
