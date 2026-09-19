@@ -84,57 +84,63 @@ art/
     palettes/          # {skin_name}.png — 1px-tall color strips, e.g. scales.png
 ```
 
-`Creature.tscn` node tree:
+`Creature.tscn` node tree (side-on, facing right). Every part sprite sits at the **origin** —
+textures are pre-posed on a shared 100×100 canvas, so no per-slot offsets:
 
 ```
 Creature (Node2D, script: creature_visuals.gd)
-├── Body    (Sprite2D)
-├── Neck    (Sprite2D)
-├── Head    (Sprite2D)
-├── Limbs   (Sprite2D)
-└── Eyes    (Sprite2D)
+├── Tail
+├── BackLegs
+├── FrontLegs
+├── Body
+├── Head
+└── Eyes
 ```
 
-Draw order = child order in the scene tree (later children draw on top), so order these to match how the
-parts actually stack (Body → Limbs → Neck → Head → Eyes is a reasonable default; adjust once real art exists).
+Draw order = child order in the scene tree (later children draw on top). Mouth/snout is drawn as
+part of the **Head** sprite — there is no separate mouth slot.
 
-## Art checklist for your artist
+## Artist brief — copy/paste this
 
-- **Creatures are side-on** (profile view), not top-down, even though the zoo/pen grid itself is top-down —
-  this is the same convention as most 2D zoo/farm sims (side-view characters read as recognizable animals;
-  top-down animal silhouettes usually just look like blobs). The rig faces **right** by default; the game
-  mirrors the whole creature horizontally when it walks left, so only draw the right-facing version of
-  each part. Eyes are a **single eye**, not a pair — it's a profile view, not front-facing.
-- **Floor tiles are 100×100** — one grid cell equals one floor tile, and this is the project's scale
-  reference (`GridService.CELL_SIZE = 100`). A Small pen is 4×3 tiles (400×300), a Large pen is 6×5
-  (600×500). Draw everything relative to a 100px tile.
-- The project's base resolution is **1280×720** (see [Engine version](#engine-version-godot-47) below), so
-  roughly 12×7 tiles are visible before panning/zooming. A full creature should read clearly around
-  120–200px wide on screen — a bit over one tile. Suggested per-slot canvas sizes for the side-on rig
-  (positions set in `scenes/Creature.tscn`, which is displayed at 2× in-game):
+### File format
+- **PNG**, RGBA, **transparent background** (no flat fill behind the limb/body)
+- Filter: **Nearest** (no blur)
+- Facing: **right** only (game mirrors for left)
 
-  | Slot | Canvas | Notes |
-  | --- | --- | --- |
-  | Body | 96×56 | horizontal torso, the anchor everything else is positioned around |
-  | Head | 48×48 | front of body, raised |
-  | Eyes | 16×16 | single eye |
-  | Mouth | 20×12 | front-bottom of head / snout |
-  | Front Legs | 20×32 | front-bottom of body |
-  | Back Legs | 20×32 | back-bottom of body |
-  | Tail | 36×24 | back of body |
+### Colour
+- Draw parts in **grayscale** (light = highlight, dark = shadow). Do **not** paint final fur/scale colours
+  into each PNG.
+- At runtime the game applies **one colour to the whole creature** — every part (body, head, eyes, legs,
+  tail) gets the same entity colour. Different animals can have different colours; parts within one animal
+  always match.
 
-  If you'd rather work at a larger canvas for comfort, use a **clean integer multiple** of the target (e.g.
-  draw the body at 384×224 and export at exactly ÷4) rather than an arbitrary size — a non-integer downscale
-  blurs/aliases nearest-filtered pixel art and defeats the point of this pipeline.
-- Fixed canvas size per slot (same size for every option within that slot, so pivots stay aligned — sizes
-  can differ *between* slots, per the table above).
-- One shared reference/pose guide to draw every shape option on top of, so pivots line up.
-- Shape art (`art/creatures/parts/`) is **grayscale only** — no color. Use luminance for shading (darker =
-  shadow, lighter = highlight); the palette shader adds all color at runtime.
-- Palette textures (`art/creatures/palettes/`) are tiny — a handful of pixels wide, 1 pixel tall, each pixel
-  a color stop from dark to light.
-- Import settings on every texture: Filter → **Nearest** (Project Settings → Rendering → Textures →
-  Canvas Textures → Default Texture Filter, plus per-file overrides as needed) to keep pixel art crisp.
+### Canvas (all parts — same size)
+| | |
+| --- | --- |
+| **Export size** | **100 × 100 px** for every part |
+| Why | Matches one grass tile (`100×100`). Game stacks all parts on the same frame. |
+
+If you work larger: draw at **200×200** or **400×400**, export at exactly ÷2 or ÷4.
+
+### What to draw (6 slots × optional variants)
+
+Snout / mouth lives on the **Head** layer. Suggested content boxes inside the 100×100 frame
+(from top-left; leave everything else transparent):
+
+| Part | File name example | Canvas | Draw inside (x, y, w, h) | Content box size |
+| --- | --- | --- | --- | --- |
+| Body | `body_round.png` | 100×100 | (28, 34, 48, 32) | **48 × 32** |
+| Head (+ snout) | `head_horned.png` | 100×100 | (62, 18, 34, 32) | **34 × 32** |
+| Eyes (single) | `eyes_big.png` | 100×100 | (78, 24, 12, 12) | **12 × 12** |
+| Front Legs | `front_legs_stubby.png` | 100×100 | (54, 62, 18, 30) | **18 × 30** |
+| Back Legs | `back_legs_stubby.png` | 100×100 | (30, 62, 18, 30) | **18 × 30** |
+| Tail | `tail_short.png` | 100×100 | (4, 40, 28, 22) | **28 × 22** |
+
+**Important:** always export the full **100×100** PNG (with transparent padding). Do not crop to the
+content box — cropping breaks alignment when parts are stacked.
+
+### Floor / pens (for scale)
+Grass tiles are **100×100**. One assembled creature ≈ one tile on the floor.
 
 ## Roadmap
 

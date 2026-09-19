@@ -3,12 +3,12 @@ class_name CreatureVisuals
 
 ## Runtime trait renderer for a single creature.
 ##
-## Shape traits are swapped by assigning a new Texture2D to each slot's
-## Sprite2D. Skin/color is applied to every part at once via a shared
-## palette-swap ShaderMaterial. Placeholder textures come from the
-## PlaceholderArt autoload. See docs/ART_PIPELINE.md for the full rationale.
+## Every part texture is the same canvas size (100×100 = one grass tile) with
+## the silhouette already posed in-place. Sprites all sit at the origin and
+## stack by draw order — no per-slot offsets. Skin/color uses a shared
+## palette-swap ShaderMaterial. See docs/ART_PIPELINE.md.
 
-const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head", "eyes", "mouth"]
+const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head", "eyes"]
 
 @onready var _slot_nodes: Dictionary = {
 	"tail": $Tail,
@@ -17,7 +17,6 @@ const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head",
 	"body": $Body,
 	"head": $Head,
 	"eyes": $Eyes,
-	"mouth": $Mouth,
 }
 
 var _options: Dictionary = {} # slot (String) -> Array[Texture2D]

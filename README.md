@@ -18,6 +18,31 @@ repel visitors and unlock new skills.
   (layered swappable parts + a shared palette-swap shader for skin/coat).
 - [`docs/references.md`](docs/references.md) — research sources behind the art pipeline decisions.
 
+## Agent skills
+
+Installed under `.cursor/skills/` so later chats pick them up automatically:
+
+- `frontend-design` — official Anthropic GUI/visual-design skill
+- `theme-factory` — official Anthropic theme/palette skill
+- `godot-gui` — Godot 4.7 Control/Container/Theme rules for this project's HUD
+- From [alexmeckes/godot-claude-skills](https://github.com/alexmeckes/godot-claude-skills) (MIT):
+  - `godot-code-gen` — GDScript best practices, type hints, signals, state machines
+  - `godot-scene-design` — `.tscn` hierarchies, collision layers, level layout
+  - `godot-shader` — 2D/3D shader authoring patterns
+  - `godot-live-edit` — lightweight live-editor guidance
+  - `godot-interactive` — inspect/edit/run/debug loop (pairs with godot-mcp)
+
+## Godot MCP
+
+Installed from `godot-mcp-0.2.0.zip` at `C:\Users\Docto\godot-mcp` and registered in Cursor's
+`~/.cursor/mcp.json` as `godot-mcp`, pointed at this project.
+
+- File tools (scenes/scripts/shaders/UI) work anytime Cursor can launch the MCP.
+- Live editor / runtime tools need Godot open with the **Godot AI Bridge** plugin enabled
+  (`addons/godot_ai_bridge` — already in this repo; enabled in `project.godot`).
+- After changing MCP config, restart Cursor (or reload MCP servers) so the tools show up.
+- Companion skills are already under `.cursor/skills/` (`godot-interactive`, etc.).
+
 ## Project layout
 
 ```

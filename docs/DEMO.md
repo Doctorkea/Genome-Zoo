@@ -30,12 +30,13 @@ If the editor was already open while these files were added, use **Project → R
   footprint; animals physically collide with them via `move_and_slide()`, not just a soft bounds check.
 - **Animals** — placed inside a pen, wander to random points within it on a randomized timer, click to
   select. `scripts/animal.gd`.
-- **Click-to-inspect GUI** — clicking an animal shows a stats panel with a **live thumbnail** (a second
-  `Camera2D` inside a `SubViewport` that shares the main world's `World2D` — it's rendering the actual
-  animal in the world, not a copy) plus its name and currently-equipped parts.
-- **Creature creation demo** — 7 shape slots (Body, Head, Eyes, Mouth, Front Legs, Back Legs, Tail), 3 options
-  each, plus a Color slot (3 palettes) — the full trait-swap + palette-swap pipeline from
-  [`ART_PIPELINE.md`](./ART_PIPELINE.md), all working end to end.
+- **Click-to-inspect GUI** — clicking an animal shows a stats panel (top-right, Container-anchored to the
+  1280×720 viewport) with a **live thumbnail** (a second `Camera2D` inside a `SubViewport` that shares the
+  main world's `World2D`) plus its name and currently-equipped parts. Empty HUD space uses
+  `MOUSE_FILTER_IGNORE` so clicks still reach animals.
+- **Creature creation demo** — 6 shape slots (Body, Head, Eyes, Front Legs, Back Legs, Tail), 3 options
+  each, plus a Color slot (one colour applied to the whole creature). Every part is a uniform **100×100**
+  transparent PNG canvas (one grass tile); snout is part of the Head sprite.
 - **DNA Lab minigame principle** — a placeholder mutagen-point counter ticks up over time (+1 every 3s,
   starting at 15); each "Mutate" costs 5 points and reveals that slot's options to pick from. No real
   visitor economy feeds it yet — see [`GAME_DESIGN.md`](./GAME_DESIGN.md) for where that plugs in later.

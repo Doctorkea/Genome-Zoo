@@ -1,14 +1,25 @@
 extends Node
 
-## Procedurally generates placeholder pixel-art-style textures at runtime:
-## grayscale shape parts (for the trait-swap + palette-swap pipeline) and
-## color palettes. Zero binary asset files — replace slot by slot with real
-## art later; nothing else about the pipeline needs to change.
+## Procedurally generates placeholder creature part textures.
 ##
-## See docs/ART_PIPELINE.md for the shape/palette pipeline this feeds into.
-## Autoloaded as "PlaceholderArt".
+## EVERY shape option for EVERY slot is drawn on the same CANVAS_SIZE×CANVAS_SIZE
+## frame (100×100 — one grass tile). Parts are already posed in-place on that
+## shared guide, so the Creature rig stacks them all at the origin and they line
+## up. Replace with real art of the same canvas size later; nothing else changes.
+##
+## See docs/ART_PIPELINE.md. Autoloaded as "PlaceholderArt".
 
+const CANVAS_SIZE: int = 100 # matches GridService.CELL_SIZE / one grass tile
 const LIGHT_DIR: Vector2 = Vector2(-0.6, -0.8)
+
+## Shared pose regions inside the 100×100 guide (side-on, facing right).
+## Artist: draw each part only in its region; leave the rest transparent.
+const REGION_BODY := Rect2(28, 34, 48, 32)
+const REGION_HEAD := Rect2(62, 18, 34, 32) # includes snout — no separate mouth slot
+const REGION_EYES := Rect2(78, 24, 12, 12)
+const REGION_FRONT_LEGS := Rect2(54, 62, 18, 30)
+const REGION_BACK_LEGS := Rect2(30, 62, 18, 30)
+const REGION_TAIL := Rect2(4, 40, 28, 22)
 
 const PALETTE_BASE_COLORS: Array[Color] = [
 	Color(0.55, 0.36, 0.20), # warm, fur-ish brown
@@ -18,6 +29,10 @@ const PALETTE_BASE_COLORS: Array[Color] = [
 
 var _shape_cache: Dictionary = {} # slot (String) -> Array[Texture2D]
 var _palette_cache: Array[Texture2D] = []
+
+
+func get_canvas_size() -> int:
+	return CANVAS_SIZE
 
 
 func get_shape_options(slot: String) -> Array[Texture2D]:
@@ -41,8 +56,6 @@ func _generate_slot(slot: String) -> Array[Texture2D]:
 			return _make_head_options()
 		"eyes":
 			return _make_eyes_options()
-		"mouth":
-			return _make_mouth_options()
 		"front_legs":
 			return _make_front_legs_options()
 		"back_legs":
@@ -54,131 +67,124 @@ func _generate_slot(slot: String) -> Array[Texture2D]:
 			return []
 
 
+func _blank() -> Image:
+	return Image.create(CANVAS_SIZE, CANVAS_SIZE, false, Image.FORMAT_RGBA8)
+
+
+func _tex(img: Image) -> ImageTexture:
+	return ImageTexture.create_from_image(img)
+
+
 func _make_body_options() -> Array[Texture2D]:
-	var img0 := _new_image(40, 40)
-	_fill_circle(img0, 20, 20, 18)
+	var r := REGION_BODY
+	var cx := r.position.x + r.size.x * 0.5
+	var cy := r.position.y + r.size.y * 0.5
 
-	var img1 := _new_image(44, 32)
-	_fill_ellipse(img1, 22, 16, 20, 13)
+	var img0 := _blank()
+	_fill_ellipse(img0, cx, cy, r.size.x * 0.48, r.size.y * 0.48)
 
-	var img2 := _new_image(36, 36)
-	_fill_rect(img2, 4, 4, 32, 32)
+	var img1 := _blank()
+	_fill_ellipse(img1, cx, cy, r.size.x * 0.5, r.size.y * 0.38)
 
-	var options: Array[Texture2D] = [_to_texture(img0), _to_texture(img1), _to_texture(img2)]
-	return options
+	var img2 := _blank()
+	_fill_rect(img2, r.position.x + 4, r.position.y + 4, r.end.x - 4, r.end.y - 4)
+
+	return [_tex(img0), _tex(img1), _tex(img2)]
 
 
 func _make_head_options() -> Array[Texture2D]:
-	var img0 := _new_image(26, 26)
-	_fill_circle(img0, 13, 13, 11)
+	var r := REGION_HEAD
+	var cx := r.position.x + r.size.x * 0.5
+	var cy := r.position.y + r.size.y * 0.55
 
-	var img1 := _new_image(28, 30)
-	_fill_circle(img1, 14, 18, 10)
-	_fill_triangle(img1, Vector2(6, 10), Vector2(10, 1), Vector2(13, 9))
-	_fill_triangle(img1, Vector2(22, 10), Vector2(18, 1), Vector2(15, 9))
+	var img0 := _blank()
+	_fill_circle(img0, cx, cy, mini(r.size.x, r.size.y) * 0.42)
 
-	var img2 := _new_image(32, 22)
-	_fill_ellipse(img2, 16, 11, 14, 9)
+	var img1 := _blank()
+	_fill_circle(img1, cx, cy + 2, mini(r.size.x, r.size.y) * 0.38)
+	_fill_triangle(img1, Vector2(cx - 8, cy - 4), Vector2(cx - 4, cy - 16), Vector2(cx - 1, cy - 4))
+	_fill_triangle(img1, Vector2(cx + 8, cy - 4), Vector2(cx + 4, cy - 16), Vector2(cx + 1, cy - 4))
 
-	var options: Array[Texture2D] = [_to_texture(img0), _to_texture(img1), _to_texture(img2)]
-	return options
+	var img2 := _blank()
+	_fill_ellipse(img2, cx, cy, r.size.x * 0.48, r.size.y * 0.36)
+
+	return [_tex(img0), _tex(img1), _tex(img2)]
 
 
 func _make_eyes_options() -> Array[Texture2D]:
-	# Single eye — this is a side-on profile view, not a front-facing view.
-	var img0 := _new_image(16, 16)
-	_fill_circle(img0, 8, 8, 5)
+	# Single eye — profile view. Drawn inside REGION_EYES on the shared canvas.
+	var r := REGION_EYES
+	var cx := r.position.x + r.size.x * 0.5
+	var cy := r.position.y + r.size.y * 0.5
 
-	var img1 := _new_image(16, 16)
-	_fill_circle(img1, 8, 8, 7)
+	var img0 := _blank()
+	_fill_circle(img0, cx, cy, 4)
 
-	var img2 := _new_image(16, 16)
-	_fill_ellipse(img2, 8, 8, 6, 2)
+	var img1 := _blank()
+	_fill_circle(img1, cx, cy, 5.5)
 
-	var options: Array[Texture2D] = [_to_texture(img0), _to_texture(img1), _to_texture(img2)]
-	return options
+	var img2 := _blank()
+	_fill_ellipse(img2, cx, cy, 5, 2)
 
-
-func _make_mouth_options() -> Array[Texture2D]:
-	var img0 := _new_image(18, 10)
-	_fill_ellipse(img0, 9, 5, 6, 3)
-
-	var img1 := _new_image(24, 10)
-	_fill_ellipse(img1, 12, 5, 11, 4)
-
-	var img2 := _new_image(20, 14)
-	_fill_ellipse(img2, 10, 5, 7, 3)
-	_fill_triangle(img2, Vector2(5, 7), Vector2(7, 13), Vector2(9, 7))
-	_fill_triangle(img2, Vector2(15, 7), Vector2(13, 13), Vector2(11, 7))
-
-	var options: Array[Texture2D] = [_to_texture(img0), _to_texture(img1), _to_texture(img2)]
-	return options
+	return [_tex(img0), _tex(img1), _tex(img2)]
 
 
 func _make_front_legs_options() -> Array[Texture2D]:
-	var img0 := _new_image(44, 18)
-	_fill_rect(img0, 0, 4, 10, 14)
-	_fill_rect(img0, 34, 4, 44, 14)
+	var r := REGION_FRONT_LEGS
+	var mid_x := r.position.x + r.size.x * 0.5
 
-	var img1 := _new_image(52, 20)
-	_fill_rect(img1, 0, 2, 9, 18)
-	_fill_rect(img1, 43, 2, 52, 18)
+	var img0 := _blank()
+	_fill_rect(img0, mid_x - 4, r.position.y, mid_x + 4, r.end.y)
 
-	var img2 := _new_image(32, 14)
-	_fill_rect(img2, 2, 4, 8, 10)
-	_fill_rect(img2, 24, 4, 30, 10)
+	var img1 := _blank()
+	_fill_rect(img1, mid_x - 3, r.position.y, mid_x + 3, r.end.y)
 
-	var options: Array[Texture2D] = [_to_texture(img0), _to_texture(img1), _to_texture(img2)]
-	return options
+	var img2 := _blank()
+	_fill_rect(img2, mid_x - 6, r.position.y + 4, mid_x - 2, r.end.y)
+	_fill_rect(img2, mid_x + 2, r.position.y + 4, mid_x + 6, r.end.y)
+
+	return [_tex(img0), _tex(img1), _tex(img2)]
 
 
 func _make_back_legs_options() -> Array[Texture2D]:
-	var img0 := _new_image(36, 18)
-	_fill_rect(img0, 4, 0, 15, 18)
-	_fill_rect(img0, 21, 0, 32, 18)
+	var r := REGION_BACK_LEGS
+	var mid_x := r.position.x + r.size.x * 0.5
 
-	var img1 := _new_image(32, 28)
-	_fill_rect(img1, 5, 0, 13, 28)
-	_fill_rect(img1, 19, 0, 27, 28)
+	var img0 := _blank()
+	_fill_rect(img0, mid_x - 4, r.position.y, mid_x + 4, r.end.y)
 
-	var img2 := _new_image(44, 16)
-	_fill_rect(img2, 2, 0, 9, 16)
-	_fill_rect(img2, 13, 0, 20, 16)
-	_fill_rect(img2, 24, 0, 31, 16)
-	_fill_rect(img2, 35, 0, 42, 16)
+	var img1 := _blank()
+	_fill_rect(img1, mid_x - 3, r.position.y, mid_x + 3, r.end.y)
 
-	var options: Array[Texture2D] = [_to_texture(img0), _to_texture(img1), _to_texture(img2)]
-	return options
+	var img2 := _blank()
+	_fill_rect(img2, mid_x - 7, r.position.y + 2, mid_x - 3, r.end.y)
+	_fill_rect(img2, mid_x + 3, r.position.y + 2, mid_x + 7, r.end.y)
+
+	return [_tex(img0), _tex(img1), _tex(img2)]
 
 
 func _make_tail_options() -> Array[Texture2D]:
-	var img0 := _new_image(18, 16)
-	_fill_triangle(img0, Vector2(0, 8), Vector2(18, 2), Vector2(18, 14))
+	var r := REGION_TAIL
+	var tip := Vector2(r.position.x + 2, r.position.y + r.size.y * 0.5)
+	var base_top := Vector2(r.end.x - 2, r.position.y + 4)
+	var base_bot := Vector2(r.end.x - 2, r.end.y - 4)
 
-	var img1 := _new_image(30, 12)
-	_fill_triangle(img1, Vector2(0, 6), Vector2(30, 1), Vector2(30, 11))
+	var img0 := _blank()
+	_fill_triangle(img0, tip, base_top, base_bot)
 
-	var img2 := _new_image(20, 20)
-	_fill_ellipse(img2, 10, 10, 9, 9)
+	var img1 := _blank()
+	_fill_triangle(img1, tip + Vector2(0, -2), base_top + Vector2(0, -2), base_bot + Vector2(0, 2))
 
-	var options: Array[Texture2D] = [_to_texture(img0), _to_texture(img1), _to_texture(img2)]
-	return options
+	var img2 := _blank()
+	_fill_ellipse(img2, r.position.x + r.size.x * 0.4, r.position.y + r.size.y * 0.5, 10, 9)
+
+	return [_tex(img0), _tex(img1), _tex(img2)]
 
 
 # ---------------------------------------------------------------------------
 # Drawing primitives
 # ---------------------------------------------------------------------------
 
-func _new_image(w: int, h: int) -> Image:
-	return Image.create(w, h, false, Image.FORMAT_RGBA8)
-
-
-func _to_texture(img: Image) -> ImageTexture:
-	return ImageTexture.create_from_image(img)
-
-
-## Fake "light from upper-left" shading. `offset_norm` is roughly in [-1, 1]
-## relative to the shape's own extents.
 func _luminance(offset_norm: Vector2) -> float:
 	var d := offset_norm.dot(LIGHT_DIR.normalized())
 	return clampf(0.55 + 0.4 * d, 0.12, 0.95)
@@ -194,7 +200,7 @@ func _fill_circle(img: Image, cx: float, cy: float, r: float) -> void:
 			var dx: float = (x + 0.5) - cx
 			var dy: float = (y + 0.5) - cy
 			if dx * dx + dy * dy <= r * r:
-				var l := _luminance(Vector2(dx, dy) / r)
+				var l := _luminance(Vector2(dx, dy) / maxf(r, 0.001))
 				img.set_pixel(x, y, Color(l, l, l, 1.0))
 
 
@@ -205,8 +211,8 @@ func _fill_ellipse(img: Image, cx: float, cy: float, rx: float, ry: float) -> vo
 	var y1 := int(ceil(cy + ry))
 	for y in range(maxi(0, y0), mini(img.get_height(), y1 + 1)):
 		for x in range(maxi(0, x0), mini(img.get_width(), x1 + 1)):
-			var dx: float = ((x + 0.5) - cx) / rx
-			var dy: float = ((y + 0.5) - cy) / ry
+			var dx: float = ((x + 0.5) - cx) / maxf(rx, 0.001)
+			var dy: float = ((y + 0.5) - cy) / maxf(ry, 0.001)
 			if dx * dx + dy * dy <= 1.0:
 				var l := _luminance(Vector2(dx, dy))
 				img.set_pixel(x, y, Color(l, l, l, 1.0))
@@ -257,7 +263,7 @@ func _edge_sign(p1: Vector2, p2: Vector2, p3: Vector2) -> float:
 
 func _make_gradient_palette(base: Color) -> ImageTexture:
 	var width := 8
-	var img := _new_image(width, 1)
+	var img := Image.create(width, 1, false, Image.FORMAT_RGBA8)
 	for x in range(width):
 		var t: float = float(x) / float(width - 1)
 		var c: Color
@@ -266,4 +272,4 @@ func _make_gradient_palette(base: Color) -> ImageTexture:
 		else:
 			c = base.lerp(Color.WHITE, (t - 0.5) * 1.2)
 		img.set_pixel(x, 0, c)
-	return _to_texture(img)
+	return ImageTexture.create_from_image(img)

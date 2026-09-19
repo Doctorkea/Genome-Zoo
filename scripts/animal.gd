@@ -4,7 +4,7 @@ class_name Animal
 ## A placed creature: wanders inside its pen, collides with the pen's solid
 ## fences, and reports itself + its stats when clicked.
 
-const SPEED: float = 40.0
+const SPEED: float = 110.0 # ~one 100px tile per second so wander reads at this scale
 const MIN_PAUSE: float = 0.6
 const MAX_PAUSE: float = 2.2
 
