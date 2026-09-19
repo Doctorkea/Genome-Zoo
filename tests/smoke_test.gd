@@ -31,11 +31,18 @@ func _test_grid_service() -> void:
 
 
 func _test_placeholder_art() -> void:
-	for slot in ["body", "head", "eyes", "mouth", "front_legs", "back_legs", "tail"]:
+	var canvas := PlaceholderArt.get_canvas_size()
+	assert(canvas == 100, "canvas should match one grass tile (100), got %d" % canvas)
+	assert(canvas == GridService.CELL_SIZE, "canvas must equal GridService.CELL_SIZE")
+	for slot in ["body", "head", "eyes", "front_legs", "back_legs", "tail"]:
 		var opts := PlaceholderArt.get_shape_options(slot)
 		assert(opts.size() == 3, "%s should have 3 options, got %d" % [slot, opts.size()])
+		for i in range(opts.size()):
+			var tex: Texture2D = opts[i]
+			assert(tex.get_width() == canvas and tex.get_height() == canvas,
+				"%s option %d is %dx%d, expected %dx%d" % [slot, i, tex.get_width(), tex.get_height(), canvas, canvas])
 	assert(PlaceholderArt.get_palette_options().size() == 3, "should have 3 palettes")
-	print("PlaceholderArt OK")
+	print("PlaceholderArt OK — all parts %dx%d" % [canvas, canvas])
 
 
 func _test_pen() -> Pen:
@@ -59,7 +66,7 @@ func _test_animal(pen: Pen) -> Animal:
 	pen.register_animal(animal)
 	var stats: Dictionary = animal.get_stats()
 	assert(stats.get("name") == "Test Critter", "animal name not set")
-	assert((stats.get("parts") as Array).size() == 7, "expected 7 parts, got %s" % [stats.get("parts")])
+	assert((stats.get("parts") as Array).size() == 6, "expected 6 parts, got %s" % [stats.get("parts")])
 	print("Animal OK — stats=%s" % [stats])
 	return animal
 
@@ -90,12 +97,13 @@ func _test_mutagen_service() -> void:
 
 
 func _test_hud(animal: Animal) -> void:
-	var hud := CanvasLayer.new()
-	hud.set_script(load("res://scripts/hud.gd"))
+	var hud_scene: PackedScene = load("res://scenes/ui/HUD.tscn")
+	var hud := hud_scene.instantiate() as Control
 	add_child(hud)
 	var build_mode := Node2D.new()
 	build_mode.set_script(load("res://scripts/build_mode.gd"))
 	add_child(build_mode)
 	hud.set_build_mode(build_mode)
 	Events.animal_selected.emit(animal)
+	assert(hud.get_node("%StatsPanel").visible, "stats panel should show after select")
 	print("HUD OK")

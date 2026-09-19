@@ -1,30 +1,33 @@
-extends CanvasLayer
+extends Control
 
 ## Game HUD: mode toolbar, click-to-inspect stats panel with a live
-## thumbnail, and the DNA Lab minigame panel. Built entirely in code —
-## see docs/DEMO.md for controls, docs/ui_research.md for the Godot GUI
-## patterns this follows (Containers, CanvasLayer, signals over polling).
+## thumbnail, and the DNA Lab minigame panel.
+##
+## Scene-authored under CanvasLayer on Main (Control root + zoo_theme).
+## Full-rect wrappers use MOUSE_FILTER_IGNORE so world clicks still reach
+## animals. See .cursor/skills/godot-gui/SKILL.md.
 
 const MUTATE_COST: int = 5
-const SHAPE_SLOTS: Array[String] = ["body", "head", "eyes", "mouth", "front_legs", "back_legs", "tail"]
+const SHAPE_SLOTS: Array[String] = ["body", "head", "eyes", "front_legs", "back_legs", "tail"]
+
+@onready var _points_label: Label = %MutagenLabel
+@onready var _stats_panel: PanelContainer = %StatsPanel
+@onready var _stats_name_label: Label = %StatsName
+@onready var _stats_parts_label: Label = %StatsParts
+@onready var _thumb_viewport: SubViewport = %ThumbViewport
+@onready var _thumb_camera: Camera2D = %ThumbCamera
+@onready var _lab_panel: PanelContainer = %LabPanel
+@onready var _lab_rows: VBoxContainer = %LabRows
 
 var _selected_animal: Animal = null
 var _build_mode: BuildMode = null
 
-var _points_label: Label
-var _stats_panel: PanelContainer
-var _stats_name_label: Label
-var _stats_parts_label: Label
-var _thumb_viewport: SubViewport
-var _thumb_camera: Camera2D
-var _lab_panel: PanelContainer
-
 
 func _ready() -> void:
-	layer = 10
-	_build_toolbar()
-	_build_stats_panel()
-	_build_lab_panel()
+	_thumb_viewport.world_2d = get_tree().root.world_2d
+	# Children are already in the tree when the Control root runs _ready.
+	_thumb_camera.make_current()
+	_build_lab_rows()
 	Events.animal_selected.connect(_on_animal_selected)
 	Events.mutagen_points_changed.connect(_on_points_changed)
 
@@ -33,84 +36,37 @@ func set_build_mode(build_mode: BuildMode) -> void:
 	_build_mode = build_mode
 
 
-# ---------------------------------------------------------------------------
-# Toolbar
-# ---------------------------------------------------------------------------
-
-func _build_toolbar() -> void:
-	var bar := HBoxContainer.new()
-	bar.position = Vector2(12, 12)
-	add_child(bar)
-
-	bar.add_child(_make_mode_button("Place Small Pen", BuildMode.Mode.PLACE_PEN_SMALL))
-	bar.add_child(_make_mode_button("Place Large Pen", BuildMode.Mode.PLACE_PEN_LARGE))
-	bar.add_child(_make_mode_button("Place Animal", BuildMode.Mode.PLACE_ANIMAL))
-	bar.add_child(_make_mode_button("Cancel", BuildMode.Mode.NONE))
-
-	bar.add_child(VSeparator.new())
-
-	_points_label = Label.new()
-	_points_label.text = "Mutagen: 0"
-	bar.add_child(_points_label)
+func _build_lab_rows() -> void:
+	for child in _lab_rows.get_children():
+		child.queue_free()
+	for slot in SHAPE_SLOTS:
+		_lab_rows.add_child(_build_lab_row(slot))
+	_lab_rows.add_child(_build_color_row())
 
 
-func _make_mode_button(label: String, mode: int) -> Button:
-	var btn := Button.new()
-	btn.text = label
-	btn.pressed.connect(func(): _on_mode_button_pressed(mode))
-	return btn
+func _on_place_small_pen() -> void:
+	_set_mode(BuildMode.Mode.PLACE_PEN_SMALL)
 
 
-func _on_mode_button_pressed(mode: int) -> void:
+func _on_place_large_pen() -> void:
+	_set_mode(BuildMode.Mode.PLACE_PEN_LARGE)
+
+
+func _on_place_animal() -> void:
+	_set_mode(BuildMode.Mode.PLACE_ANIMAL)
+
+
+func _on_cancel() -> void:
+	_set_mode(BuildMode.Mode.NONE)
+
+
+func _set_mode(mode: int) -> void:
 	if _build_mode != null:
 		_build_mode.set_mode(mode)
 
 
 func _on_points_changed(points: int) -> void:
 	_points_label.text = "Mutagen: %d" % points
-
-
-# ---------------------------------------------------------------------------
-# Stats / thumbnail panel
-# ---------------------------------------------------------------------------
-
-func _build_stats_panel() -> void:
-	_stats_panel = PanelContainer.new()
-	_stats_panel.position = Vector2(460, 12)
-	_stats_panel.visible = false
-	add_child(_stats_panel)
-
-	var vbox := VBoxContainer.new()
-	_stats_panel.add_child(vbox)
-
-	var thumb_container := SubViewportContainer.new()
-	thumb_container.custom_minimum_size = Vector2(96, 96)
-	thumb_container.stretch = true
-	vbox.add_child(thumb_container)
-
-	_thumb_viewport = SubViewport.new()
-	_thumb_viewport.size = Vector2i(96, 96)
-	_thumb_viewport.transparent_bg = true
-	_thumb_viewport.world_2d = get_tree().root.world_2d
-	thumb_container.add_child(_thumb_viewport)
-
-	_thumb_camera = Camera2D.new()
-	_thumb_camera.zoom = Vector2(1.6, 1.6)
-	_thumb_viewport.add_child(_thumb_camera)
-	_thumb_camera.make_current()
-
-	_stats_name_label = Label.new()
-	vbox.add_child(_stats_name_label)
-
-	_stats_parts_label = Label.new()
-	_stats_parts_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_stats_parts_label.custom_minimum_size = Vector2(180, 0)
-	vbox.add_child(_stats_parts_label)
-
-	var mutate_btn := Button.new()
-	mutate_btn.text = "Edit DNA"
-	mutate_btn.pressed.connect(_on_mutate_pressed)
-	vbox.add_child(mutate_btn)
 
 
 func _on_animal_selected(animal: Node) -> void:
@@ -127,40 +83,12 @@ func _on_animal_selected(animal: Node) -> void:
 	_thumb_camera.global_position = typed.global_position
 
 
-# ---------------------------------------------------------------------------
-# DNA Lab (minigame)
-# ---------------------------------------------------------------------------
-
-func _build_lab_panel() -> void:
-	_lab_panel = PanelContainer.new()
-	_lab_panel.position = Vector2(180, 100)
-	_lab_panel.visible = false
-	add_child(_lab_panel)
-
-	var vbox := VBoxContainer.new()
-	_lab_panel.add_child(vbox)
-
-	var title := Label.new()
-	title.text = "DNA Lab"
-	vbox.add_child(title)
-
-	for slot in SHAPE_SLOTS:
-		vbox.add_child(_build_lab_row(slot))
-
-	vbox.add_child(_build_color_row())
-
-	var close_btn := Button.new()
-	close_btn.text = "Close"
-	close_btn.pressed.connect(func(): _lab_panel.visible = false)
-	vbox.add_child(close_btn)
-
-
 func _build_lab_row(slot: String) -> Control:
 	var row := HBoxContainer.new()
 
 	var label := Label.new()
 	label.text = slot.capitalize()
-	label.custom_minimum_size = Vector2(70, 0)
+	label.custom_minimum_size = Vector2(96, 0)
 	row.add_child(label)
 
 	var options_box := HBoxContainer.new()
@@ -196,7 +124,7 @@ func _on_option_picked(slot: String, index: int, options_box: Control) -> void:
 	_selected_animal.visuals.set_part_shape(slot, index)
 	Events.creature_mutated.emit(_selected_animal, slot)
 	_clear_children(options_box)
-	_on_animal_selected(_selected_animal) # refresh the stats panel text
+	_on_animal_selected(_selected_animal)
 
 
 func _build_color_row() -> Control:
@@ -204,7 +132,7 @@ func _build_color_row() -> Control:
 
 	var label := Label.new()
 	label.text = "Color"
-	label.custom_minimum_size = Vector2(70, 0)
+	label.custom_minimum_size = Vector2(96, 0)
 	row.add_child(label)
 
 	var options_box := HBoxContainer.new()
@@ -245,6 +173,10 @@ func _on_mutate_pressed() -> void:
 	if _selected_animal == null:
 		return
 	_lab_panel.visible = true
+
+
+func _on_close_lab() -> void:
+	_lab_panel.visible = false
 
 
 func _clear_children(node: Node) -> void:

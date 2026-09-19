@@ -1,0 +1,158 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://art/ui/zoo_theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="2_script"]
+
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Margins" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="Column" type="VBoxContainer" parent="Margins"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TopBar" type="HBoxContainer" parent="Margins/Column"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="ToolbarPanel" type="PanelContainer" parent="Margins/Column/TopBar"]
+layout_mode = 2
+
+[node name="Toolbar" type="HBoxContainer" parent="Margins/Column/TopBar/ToolbarPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PlaceSmallPen" type="Button" parent="Margins/Column/TopBar/ToolbarPanel/Toolbar"]
+layout_mode = 2
+text = "Place Small Pen"
+
+[node name="PlaceLargePen" type="Button" parent="Margins/Column/TopBar/ToolbarPanel/Toolbar"]
+layout_mode = 2
+text = "Place Large Pen"
+
+[node name="PlaceAnimal" type="Button" parent="Margins/Column/TopBar/ToolbarPanel/Toolbar"]
+layout_mode = 2
+text = "Place Animal"
+
+[node name="Cancel" type="Button" parent="Margins/Column/TopBar/ToolbarPanel/Toolbar"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="ToolSep" type="VSeparator" parent="Margins/Column/TopBar/ToolbarPanel/Toolbar"]
+layout_mode = 2
+
+[node name="MutagenLabel" type="Label" parent="Margins/Column/TopBar/ToolbarPanel/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.45, 1)
+theme_override_font_sizes/font_size = 18
+text = "Mutagen: 0"
+vertical_alignment = 1
+
+[node name="TopSpacer" type="Control" parent="Margins/Column/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="StatsPanel" type="PanelContainer" parent="Margins/Column/TopBar"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="StatsVBox" type="VBoxContainer" parent="Margins/Column/TopBar/StatsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ThumbContainer" type="SubViewportContainer" parent="Margins/Column/TopBar/StatsPanel/StatsVBox"]
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+stretch = true
+
+[node name="ThumbViewport" type="SubViewport" parent="Margins/Column/TopBar/StatsPanel/StatsVBox/ThumbContainer"]
+unique_name_in_owner = true
+handle_input_locally = false
+size = Vector2i(128, 128)
+transparent_bg = true
+
+[node name="ThumbCamera" type="Camera2D" parent="Margins/Column/TopBar/StatsPanel/StatsVBox/ThumbContainer/ThumbViewport"]
+unique_name_in_owner = true
+zoom = Vector2(1, 1)
+
+[node name="StatsName" type="Label" parent="Margins/Column/TopBar/StatsPanel/StatsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Unnamed"
+
+[node name="StatsParts" type="Label" parent="Margins/Column/TopBar/StatsPanel/StatsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.76, 0.65, 1)
+text = ""
+autowrap_mode = 3
+
+[node name="EditDNA" type="Button" parent="Margins/Column/TopBar/StatsPanel/StatsVBox"]
+layout_mode = 2
+text = "Edit DNA"
+
+[node name="BodySpacer" type="Control" parent="Margins/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="LabCenter" type="CenterContainer" parent="Margins/Column"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="LabPanel" type="PanelContainer" parent="Margins/Column/LabCenter"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="LabVBox" type="VBoxContainer" parent="Margins/Column/LabCenter/LabPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="LabTitle" type="Label" parent="Margins/Column/LabCenter/LabPanel/LabVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "DNA Lab"
+horizontal_alignment = 1
+
+[node name="LabRows" type="VBoxContainer" parent="Margins/Column/LabCenter/LabPanel/LabVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CloseLab" type="Button" parent="Margins/Column/LabCenter/LabPanel/LabVBox"]
+layout_mode = 2
+text = "Close"
+
+[connection signal="pressed" from="Margins/Column/TopBar/ToolbarPanel/Toolbar/PlaceSmallPen" to="." method="_on_place_small_pen"]
+[connection signal="pressed" from="Margins/Column/TopBar/ToolbarPanel/Toolbar/PlaceLargePen" to="." method="_on_place_large_pen"]
+[connection signal="pressed" from="Margins/Column/TopBar/ToolbarPanel/Toolbar/PlaceAnimal" to="." method="_on_place_animal"]
+[connection signal="pressed" from="Margins/Column/TopBar/ToolbarPanel/Toolbar/Cancel" to="." method="_on_cancel"]
+[connection signal="pressed" from="Margins/Column/TopBar/StatsPanel/StatsVBox/EditDNA" to="." method="_on_mutate_pressed"]
+[connection signal="pressed" from="Margins/Column/LabCenter/LabPanel/LabVBox/CloseLab" to="." method="_on_close_lab"]

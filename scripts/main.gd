@@ -8,7 +8,7 @@ const MIN_ZOOM: float = 0.5
 const MAX_ZOOM: float = 2.5
 
 @onready var _build_mode: BuildMode = $BuildMode
-@onready var _hud: CanvasLayer = $HUD
+@onready var _hud: Control = $HUDLayer/HUD
 @onready var _camera: Camera2D = $Camera2D
 
 var _panning: bool = false
