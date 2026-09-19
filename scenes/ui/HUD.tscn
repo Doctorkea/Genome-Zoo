@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Theme" path="res://art/ui/zoo_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/dna_strand.gd" id="3_strand"]
 
 [sub_resource type="StyleBoxFlat" id="paper_panel"]
 content_margin_left = 14.0
@@ -75,28 +76,39 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="MutagenChip" type="PanelContainer" parent="Safe/Column/TopRow"]
+[node name="QuestButton" type="Button" parent="Safe/Column/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Quests"
+
+[node name="ShopButton" type="Button" parent="Safe/Column/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Vial shop"
+
+[node name="WalletChip" type="PanelContainer" parent="Safe/Column/TopRow"]
 layout_mode = 2
 
-[node name="MutagenRow" type="HBoxContainer" parent="Safe/Column/TopRow/MutagenChip"]
+[node name="WalletRow" type="HBoxContainer" parent="Safe/Column/TopRow/WalletChip"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 
-[node name="MutagenCaption" type="Label" parent="Safe/Column/TopRow/MutagenChip/MutagenRow"]
+[node name="WalletCaption" type="Label" parent="Safe/Column/TopRow/WalletChip/WalletRow"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
-text = "Mutagen"
+text = "Cash"
 vertical_alignment = 1
 
-[node name="MutagenLabel" type="Label" parent="Safe/Column/TopRow/MutagenChip/MutagenRow"]
+[node name="WalletLabel" type="Label" parent="Safe/Column/TopRow/WalletChip/WalletRow"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SodiumLabel"
 theme_override_font_sizes/font_size = 26
-text = "0"
+text = "$80"
 vertical_alignment = 1
 
 [node name="Body" type="HBoxContainer" parent="Safe/Column"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
@@ -111,20 +123,30 @@ mouse_filter = 2
 [node name="StatsPanel" type="PanelContainer" parent="Safe/Column/Body"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(260, 0)
+clip_contents = true
+custom_minimum_size = Vector2(272, 0)
 layout_mode = 2
-size_flags_vertical = 0
+size_flags_horizontal = 0
+size_flags_vertical = 3
 theme_type_variation = &"ExhibitCard"
 theme_override_styles/panel = SubResource("paper_panel")
 
-[node name="StatsVBox" type="VBoxContainer" parent="Safe/Column/Body/StatsPanel"]
+[node name="CardScroll" type="ScrollContainer" parent="Safe/Column/Body/StatsPanel"]
+unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StatsVBox" type="VBoxContainer" parent="Safe/Column/Body/StatsPanel/CardScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="CardHeader" type="HBoxContainer" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
+[node name="CardHeader" type="HBoxContainer" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 layout_mode = 2
 
-[node name="ExhibitEyebrow" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox/CardHeader"]
+[node name="ExhibitEyebrow" type="Label" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/CardHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PaperMuted"
@@ -132,26 +154,26 @@ theme_override_colors/font_color = Color(0.42, 0.36, 0.26, 1)
 theme_override_font_sizes/font_size = 12
 text = "Exhibit card"
 
-[node name="Deselect" type="Button" parent="Safe/Column/Body/StatsPanel/StatsVBox/CardHeader"]
+[node name="Deselect" type="Button" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/CardHeader"]
 layout_mode = 2
 text = "Close"
 
-[node name="ThumbContainer" type="SubViewportContainer" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
+[node name="ThumbContainer" type="SubViewportContainer" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 custom_minimum_size = Vector2(232, 120)
 layout_mode = 2
 stretch = true
 
-[node name="ThumbViewport" type="SubViewport" parent="Safe/Column/Body/StatsPanel/StatsVBox/ThumbContainer"]
+[node name="ThumbViewport" type="SubViewport" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/ThumbContainer"]
 unique_name_in_owner = true
 transparent_bg = true
 handle_input_locally = false
 size = Vector2i(232, 120)
 
-[node name="ThumbCamera" type="Camera2D" parent="Safe/Column/Body/StatsPanel/StatsVBox/ThumbContainer/ThumbViewport"]
+[node name="ThumbCamera" type="Camera2D" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/ThumbContainer/ThumbViewport"]
 unique_name_in_owner = true
 zoom = Vector2(1.2, 1.2)
 
-[node name="StatsName" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
+[node name="StatsName" type="Label" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PaperLabel"
@@ -159,7 +181,7 @@ theme_override_colors/font_color = Color(0.11, 0.09, 0.063, 1)
 theme_override_font_sizes/font_size = 22
 text = "Unnamed"
 
-[node name="StatsArchetype" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
+[node name="StatsArchetype" type="Label" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
@@ -167,169 +189,301 @@ theme_override_colors/font_color = Color(0.42, 0.36, 0.26, 1)
 theme_override_font_sizes/font_size = 16
 text = "—"
 
-[node name="FamiliesRow" type="HBoxContainer" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="FamiliesCaption" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox/FamiliesRow"]
-custom_minimum_size = Vector2(92, 0)
-layout_mode = 2
-theme_type_variation = &"PaperLabel"
-theme_override_font_sizes/font_size = 13
-text = "Families"
-
-[node name="FamiliesBar" type="ProgressBar" parent="Safe/Column/Body/StatsPanel/StatsVBox/FamiliesRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 14)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-min_value = -8.0
-max_value = 8.0
-show_percentage = false
-
-[node name="FamiliesValue" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox/FamiliesRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(28, 0)
-layout_mode = 2
-theme_type_variation = &"PaperLabel"
-horizontal_alignment = 2
-text = "0"
-
-[node name="ThrillRow" type="HBoxContainer" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="ThrillCaption" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox/ThrillRow"]
-custom_minimum_size = Vector2(92, 0)
-layout_mode = 2
-theme_type_variation = &"PaperLabel"
-theme_override_font_sizes/font_size = 13
-text = "Thrill-Seekers"
-
-[node name="ThrillBar" type="ProgressBar" parent="Safe/Column/Body/StatsPanel/StatsVBox/ThrillRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 14)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-min_value = -8.0
-max_value = 8.0
-show_percentage = false
-
-[node name="ThrillValue" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox/ThrillRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(28, 0)
-layout_mode = 2
-theme_type_variation = &"PaperLabel"
-horizontal_alignment = 2
-text = "0"
-
-[node name="StatsTags" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 0)
-layout_mode = 2
-theme_type_variation = &"PaperMuted"
-theme_override_font_sizes/font_size = 13
-text = ""
-autowrap_mode = 3
-
-[node name="StatsParts" type="Label" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 0)
-layout_mode = 2
-theme_type_variation = &"PaperMuted"
-theme_override_font_sizes/font_size = 12
-text = ""
-autowrap_mode = 3
-
-[node name="EditDNA" type="Button" parent="Safe/Column/Body/StatsPanel/StatsVBox"]
-layout_mode = 2
-text = "Open DNA Lab"
-
-[node name="BottomRow" type="HBoxContainer" parent="Safe/Column"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 12
-
-[node name="ToolbarPanel" type="PanelContainer" parent="Safe/Column/BottomRow"]
-layout_mode = 2
-
-[node name="ToolGroups" type="HBoxContainer" parent="Safe/Column/BottomRow/ToolbarPanel"]
-layout_mode = 2
-theme_override_constants/separation = 16
-
-[node name="PensGroup" type="VBoxContainer" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="PensCaption" type="Label" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/PensGroup"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 12
-text = "Pens"
-
-[node name="PensButtons" type="HBoxContainer" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/PensGroup"]
+[node name="AudienceBox" type="VBoxContainer" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="PlaceSmallPen" type="Button" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/PensGroup/PensButtons"]
+[node name="AudienceToggle" type="Button" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/AudienceBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 32)
 layout_mode = 2
-toggle_mode = true
-text = "Small"
+theme_type_variation = &"PaperChoice"
+flat = true
+alignment = 0
+text = "Audience  ▾"
 
-[node name="PlaceLargePen" type="Button" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/PensGroup/PensButtons"]
+[node name="AudienceList" type="VBoxContainer" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/AudienceBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 32)
+visible = false
 layout_mode = 2
-toggle_mode = true
-text = "Large"
+theme_override_constants/separation = 6
 
-[node name="AnimalsGroup" type="VBoxContainer" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups"]
+[node name="LooksBox" type="VBoxContainer" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
 
-[node name="AnimalsCaption" type="Label" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/AnimalsGroup"]
+[node name="LooksToggle" type="Button" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/LooksBox"]
+unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"PaperChoice"
+flat = true
+alignment = 0
+text = "Looks  ▾"
+
+[node name="LooksLead" type="VBoxContainer" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/LooksBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LooksList" type="VBoxContainer" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/LooksBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StatsParts" type="Label" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
 theme_override_font_sizes/font_size = 12
-text = "Animals"
+text = ""
+autowrap_mode = 3
 
-[node name="PlaceAnimal" type="Button" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/AnimalsGroup"]
+[node name="EditDNA" type="Button" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 32)
 layout_mode = 2
-toggle_mode = true
-text = "Place animal"
+text = "Open DNA Lab"
 
-[node name="CancelGroup" type="VBoxContainer" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="CancelCaption" type="Label" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/CancelGroup"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 12
-text = " "
-
-[node name="Cancel" type="Button" parent="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/CancelGroup"]
+[node name="DeleteAnimal" type="Button" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 32)
 layout_mode = 2
-text = "Cancel"
+text = "Delete animal"
 
-[node name="HintPlaque" type="PanelContainer" parent="Safe/Column/BottomRow"]
+[node name="PenPanel" type="PanelContainer" parent="Safe/Column/Body"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"ExhibitCard"
+theme_override_styles/panel = SubResource("paper_panel")
+
+[node name="PenVBox" type="VBoxContainer" parent="Safe/Column/Body/PenPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PenHeader" type="HBoxContainer" parent="Safe/Column/Body/PenPanel/PenVBox"]
+layout_mode = 2
+
+[node name="PenEyebrow" type="Label" parent="Safe/Column/Body/PenPanel/PenVBox/PenHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 4
+theme_type_variation = &"PaperMuted"
+theme_override_font_sizes/font_size = 12
+text = "Paddock"
 
-[node name="HintLabel" type="Label" parent="Safe/Column/BottomRow/HintPlaque"]
+[node name="ClosePen" type="Button" parent="Safe/Column/Body/PenPanel/PenVBox/PenHeader"]
+layout_mode = 2
+text = "Close"
+
+[node name="PenTitle" type="Label" parent="Safe/Column/Body/PenPanel/PenVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.937, 0.894, 0.769, 0.9)
-theme_override_font_sizes/font_size = 15
-text = "Place a pen, then drop an animal in it."
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 22
+text = "Pen"
+
+[node name="PenDetail" type="Label" parent="Safe/Column/Body/PenPanel/PenVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+text = ""
 autowrap_mode = 3
-vertical_alignment = 1
+
+[node name="DeletePen" type="Button" parent="Safe/Column/Body/PenPanel/PenVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Delete pen"
+
+[node name="GuestPanel" type="PanelContainer" parent="Safe/Column/Body"]
+unique_name_in_owner = true
+visible = false
+clip_contents = true
+custom_minimum_size = Vector2(272, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 3
+theme_type_variation = &"ExhibitCard"
+theme_override_styles/panel = SubResource("paper_panel")
+
+[node name="GuestScroll" type="ScrollContainer" parent="Safe/Column/Body/GuestPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="GuestVBox" type="VBoxContainer" parent="Safe/Column/Body/GuestPanel/GuestScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="GuestHeader" type="HBoxContainer" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox"]
+layout_mode = 2
+
+[node name="GuestEyebrow" type="Label" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperMuted"
+theme_override_colors/font_color = Color(0.42, 0.36, 0.26, 1)
+theme_override_font_sizes/font_size = 12
+text = "Guest card"
+
+[node name="CloseGuest" type="Button" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestHeader"]
+layout_mode = 2
+text = "Close"
+
+[node name="GuestThumbWrap" type="SubViewportContainer" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox"]
+custom_minimum_size = Vector2(232, 140)
+layout_mode = 2
+stretch = true
+
+[node name="GuestThumbViewport" type="SubViewport" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestThumbWrap"]
+unique_name_in_owner = true
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(232, 140)
+
+[node name="GuestThumbCamera" type="Camera2D" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestThumbWrap/GuestThumbViewport"]
+unique_name_in_owner = true
+zoom = Vector2(1.1, 1.1)
+
+[node name="GuestName" type="Label" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperLabel"
+theme_override_colors/font_color = Color(0.11, 0.09, 0.063, 1)
+theme_override_font_sizes/font_size = 22
+text = "Guest"
+
+[node name="GuestKind" type="Label" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+theme_override_colors/font_color = Color(0.42, 0.36, 0.26, 1)
+theme_override_font_sizes/font_size = 16
+text = "—"
+autowrap_mode = 3
+
+[node name="GuestLikesBox" type="VBoxContainer" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GuestLikesHeader" type="Label" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestLikesBox"]
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+theme_override_font_sizes/font_size = 12
+text = "Likes"
+
+[node name="GuestLikes" type="VBoxContainer" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestLikesBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GuestDislikesBox" type="VBoxContainer" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GuestDislikesHeader" type="Label" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestDislikesBox"]
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+theme_override_font_sizes/font_size = 12
+text = "Dislikes"
+
+[node name="GuestDislikes" type="VBoxContainer" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestDislikesBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GuestThoughtsBox" type="VBoxContainer" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="GuestThoughtsHeader" type="Label" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestThoughtsBox"]
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+theme_override_font_sizes/font_size = 12
+text = "Thoughts"
+
+[node name="GuestThought" type="Label" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestThoughtsBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+theme_type_variation = &"PaperLabel"
+theme_override_colors/font_color = Color(0.11, 0.09, 0.063, 1)
+theme_override_font_sizes/font_size = 16
+text = ""
+autowrap_mode = 3
+
+[node name="HailGuest" type="Button" parent="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Send home"
+
+[node name="Dock" type="VBoxContainer" parent="Safe/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="CatalogRibbon" type="PanelContainer" parent="Safe/Column/Dock"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="CatalogPad" type="MarginContainer" parent="Safe/Column/Dock/CatalogRibbon"]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 6
+
+[node name="CatalogScroll" type="ScrollContainer" parent="Safe/Column/Dock/CatalogRibbon/CatalogPad"]
+custom_minimum_size = Vector2(0, 104)
+layout_mode = 2
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 0
+
+[node name="CatalogRow" type="HBoxContainer" parent="Safe/Column/Dock/CatalogRibbon/CatalogPad/CatalogScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CategoryBar" type="PanelContainer" parent="Safe/Column/Dock"]
+layout_mode = 2
+
+[node name="CategoryRow" type="HBoxContainer" parent="Safe/Column/Dock/CategoryBar"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CatPens" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+toggle_mode = true
+text = "Pens"
+
+[node name="CatAnimals" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 36)
+layout_mode = 2
+toggle_mode = true
+text = "Animals"
+
+[node name="DockSpacer" type="Control" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="LabScrim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.04, 0.02, 0.55)
 
 [node name="LabCenter" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -343,7 +497,7 @@ mouse_filter = 2
 [node name="LabPanel" type="PanelContainer" parent="LabCenter"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(520, 220)
+custom_minimum_size = Vector2(1040, 560)
 layout_mode = 2
 theme_type_variation = &"ExhibitCard"
 theme_override_styles/panel = SubResource("paper_panel")
@@ -354,48 +508,265 @@ theme_override_constants/separation = 10
 
 [node name="LabHeader" type="HBoxContainer" parent="LabCenter/LabPanel/LabVBox"]
 layout_mode = 2
+theme_override_constants/separation = 8
 
 [node name="LabTitle" type="Label" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
 layout_mode = 2
-size_flags_horizontal = 3
 theme_type_variation = &"PaperLabel"
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 26
 text = "DNA Lab"
 
 [node name="LabSubject" type="Label" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"PaperMuted"
 text = ""
+
+[node name="OpenShopFromLab" type="Button" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
+layout_mode = 2
+text = "Vial shop"
 
 [node name="CloseLab" type="Button" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
 layout_mode = 2
 text = "Close"
 
-[node name="LabHint" type="Label" parent="LabCenter/LabPanel/LabVBox"]
-unique_name_in_owner = true
+[node name="LabSplit" type="HBoxContainer" parent="LabCenter/LabPanel/LabVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="LabLeft" type="VBoxContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="PartCaption" type="Label" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
-text = "Pick a body slot. Drafting costs 5 mutagen and shows three options."
-autowrap_mode = 3
+text = "Which part?"
 
-[node name="LabSlots" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox"]
+[node name="LabSlots" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 
-[node name="LabRows" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox"]
+[node name="StrandWrap" type="CenterContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DnaStrand" type="Control" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft/StrandWrap"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 340)
+layout_mode = 2
+script = ExtResource("3_strand")
+
+[node name="LabHint" type="Label" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+text = "Pick a body part, then drag a vial onto the empty base."
+autowrap_mode = 3
+
+[node name="VialRow" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
-alignment = 1
+theme_override_constants/v_separation = 6
 
-[connection signal="pressed" from="Safe/Column/Body/StatsPanel/StatsVBox/CardHeader/Deselect" to="." method="_on_deselect"]
-[connection signal="pressed" from="Safe/Column/Body/StatsPanel/StatsVBox/EditDNA" to="." method="_on_mutate_pressed"]
-[connection signal="pressed" from="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/PensGroup/PensButtons/PlaceSmallPen" to="." method="_on_place_small_pen"]
-[connection signal="pressed" from="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/PensGroup/PensButtons/PlaceLargePen" to="." method="_on_place_large_pen"]
-[connection signal="pressed" from="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/AnimalsGroup/PlaceAnimal" to="." method="_on_place_animal"]
-[connection signal="pressed" from="Safe/Column/BottomRow/ToolbarPanel/ToolGroups/CancelGroup/Cancel" to="." method="_on_cancel"]
+[node name="VialHint" type="Label" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperMuted"
+text = "Drag a serum onto the empty ATGC rung. One base always stays open."
+autowrap_mode = 3
+
+[node name="LabCardHost" type="VBoxContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(272, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ShopScrim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.04, 0.02, 0.45)
+
+[node name="ShopCenter" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ShopPanel" type="PanelContainer" parent="ShopCenter"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(460, 360)
+layout_mode = 2
+theme_type_variation = &"ExhibitCard"
+theme_override_styles/panel = SubResource("paper_panel")
+
+[node name="ShopVBox" type="VBoxContainer" parent="ShopCenter/ShopPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ShopHeader" type="HBoxContainer" parent="ShopCenter/ShopPanel/ShopVBox"]
+layout_mode = 2
+
+[node name="ShopTitle" type="Label" parent="ShopCenter/ShopPanel/ShopVBox/ShopHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 22
+text = "Vial shop"
+
+[node name="CloseShop" type="Button" parent="ShopCenter/ShopPanel/ShopVBox/ShopHeader"]
+layout_mode = 2
+text = "Close"
+
+[node name="ShopCopy" type="Label" parent="ShopCenter/ShopPanel/ShopVBox"]
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+text = "Unlocked serums only. Buy a charge, then drop it in the DNA Lab."
+autowrap_mode = 3
+
+[node name="ShopStock" type="Label" parent="ShopCenter/ShopPanel/ShopVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperLabel"
+text = "On the bench: Cute serum ×1"
+
+[node name="ShopScroll" type="ScrollContainer" parent="ShopCenter/ShopPanel/ShopVBox"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ShopList" type="VBoxContainer" parent="ShopCenter/ShopPanel/ShopVBox/ShopScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="ShopHint" type="Label" parent="ShopCenter/ShopPanel/ShopVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+text = ""
+autowrap_mode = 3
+
+[node name="QuestScrim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.04, 0.02, 0.45)
+
+[node name="QuestCenter" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="QuestPanel" type="PanelContainer" parent="QuestCenter"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(460, 280)
+layout_mode = 2
+theme_type_variation = &"ExhibitCard"
+theme_override_styles/panel = SubResource("paper_panel")
+
+[node name="QuestVBox" type="VBoxContainer" parent="QuestCenter/QuestPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="QuestHeader" type="HBoxContainer" parent="QuestCenter/QuestPanel/QuestVBox"]
+layout_mode = 2
+
+[node name="QuestTitle" type="Label" parent="QuestCenter/QuestPanel/QuestVBox/QuestHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 22
+text = "Quests"
+
+[node name="CloseQuests" type="Button" parent="QuestCenter/QuestPanel/QuestVBox/QuestHeader"]
+layout_mode = 2
+text = "Close"
+
+[node name="QuestCopy" type="Label" parent="QuestCenter/QuestPanel/QuestVBox"]
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+text = "One job at a time. Finish it, claim the reward, the next one shows up."
+autowrap_mode = 3
+
+[node name="QuestName" type="Label" parent="QuestCenter/QuestPanel/QuestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 20
+text = "Fence it in"
+autowrap_mode = 3
+
+[node name="QuestBrief" type="Label" parent="QuestCenter/QuestPanel/QuestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+text = "Place a pen on the grass."
+autowrap_mode = 3
+
+[node name="QuestProgress" type="Label" parent="QuestCenter/QuestPanel/QuestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperLabel"
+text = "Pens: 0 / 1"
+
+[node name="QuestReward" type="Label" parent="QuestCenter/QuestPanel/QuestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 16
+text = "Reward: $15"
+autowrap_mode = 3
+
+[node name="ClaimQuest" type="Button" parent="QuestCenter/QuestPanel/QuestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Claim reward"
+
+[connection signal="pressed" from="Safe/Column/TopRow/QuestButton" to="." method="_on_open_quests"]
+[connection signal="pressed" from="Safe/Column/TopRow/ShopButton" to="." method="_on_open_shop"]
+[connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/CardHeader/Deselect" to="." method="_on_deselect"]
+[connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/AudienceBox/AudienceToggle" to="." method="_on_toggle_audience"]
+[connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/LooksBox/LooksToggle" to="." method="_on_toggle_looks"]
+[connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/EditDNA" to="." method="_on_mutate_pressed"]
+[connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/DeleteAnimal" to="." method="_on_delete_animal"]
+[connection signal="pressed" from="Safe/Column/Body/PenPanel/PenVBox/PenHeader/ClosePen" to="." method="_on_close_pen"]
+[connection signal="pressed" from="Safe/Column/Body/PenPanel/PenVBox/DeletePen" to="." method="_on_delete_pen"]
+[connection signal="pressed" from="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/GuestHeader/CloseGuest" to="." method="_on_close_guest"]
+[connection signal="pressed" from="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/HailGuest" to="." method="_on_hail_guest"]
+[connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPens" to="." method="_on_cat_pens"]
+[connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatAnimals" to="." method="_on_cat_animals"]
+[connection signal="vial_dropped" from="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft/StrandWrap/DnaStrand" to="." method="_on_vial_dropped"]
+[connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/OpenShopFromLab" to="." method="_on_open_shop"]
 [connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/CloseLab" to="." method="_on_close_lab"]
+[connection signal="pressed" from="ShopCenter/ShopPanel/ShopVBox/ShopHeader/CloseShop" to="." method="_on_close_shop"]
+[connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/QuestHeader/CloseQuests" to="." method="_on_close_quests"]
+[connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/ClaimQuest" to="." method="_on_claim_quest"]

@@ -8,7 +8,7 @@ class_name CreatureVisuals
 ## stack by draw order — no per-slot offsets. Skin/color uses a shared
 ## palette-swap ShaderMaterial. See docs/ART_PIPELINE.md.
 
-const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head", "eyes"]
+const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head"]
 
 @onready var _slot_nodes: Dictionary = {
 	"tail": $Tail,
@@ -16,7 +16,6 @@ const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head",
 	"front_legs": $FrontLegs,
 	"body": $Body,
 	"head": $Head,
-	"eyes": $Eyes,
 }
 
 var _options: Dictionary = {} # slot (String) -> Array[Texture2D]
@@ -39,7 +38,7 @@ func _ready() -> void:
 		var sprite: Sprite2D = _slot_nodes[slot]
 		sprite.material = _skin_material
 		if not _options[slot].is_empty():
-			sprite.texture = _options[slot][0]
+			_apply_slot_texture(sprite, _options[slot][0])
 
 	set_skin(0)
 
@@ -70,13 +69,27 @@ func set_part_shape(slot: String, option_index: int) -> void:
 	if sprite == null:
 		push_warning("CreatureVisuals: unknown slot '%s'" % slot)
 		return
-	sprite.texture = options[index]
+	_apply_slot_texture(sprite, options[index])
 	sprite.visible = true
 	_current_index[slot] = index
 
 
+## Map any square part texture onto one grass cell. High-res Fresco PNGs
+## keep their pixels and are scaled down; 100×100 pixel art stays 1:1.
+func _apply_slot_texture(sprite: Sprite2D, tex: Texture2D) -> void:
+	sprite.texture = tex
+	var display := float(PlaceholderArt.get_canvas_size())
+	var width := maxf(float(tex.get_width()), 1.0)
+	var height := maxf(float(tex.get_height()), 1.0)
+	sprite.scale = Vector2(display / width, display / height)
+	if width > display or height > display:
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	else:
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
 ## Hide a slot without changing its option index. Used by the Jimothy demo so
-## the procedural eyes/tail don't sit on top of the real part art.
+## the procedural tail doesn't sit on top of the real part art.
 func set_slot_visible(slot: String, slot_visible: bool) -> void:
 	var sprite: Sprite2D = _slot_nodes.get(slot)
 	if sprite == null:
@@ -88,6 +101,15 @@ func set_slot_visible(slot: String, slot_visible: bool) -> void:
 func is_slot_visible(slot: String) -> bool:
 	var sprite: Sprite2D = _slot_nodes.get(slot)
 	return sprite != null and sprite.visible
+
+
+func apply_loadout(parts: Dictionary, color_index: int, hidden: Array = []) -> void:
+	for slot in SLOTS:
+		if parts.has(slot):
+			set_part_shape(slot, int(parts[slot]))
+	set_skin(color_index)
+	for slot in hidden:
+		set_slot_visible(str(slot), false)
 
 
 ## Recolor every part at once by picking a palette (skin/coat) index.

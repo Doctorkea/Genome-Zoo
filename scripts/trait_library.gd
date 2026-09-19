@@ -6,12 +6,21 @@ extends Node
 ## matches the palette list. See docs/GAME_DESIGN.md.
 
 const SHAPE_SLOTS: Array[String] = [
-	"body", "head", "eyes", "front_legs", "back_legs", "tail"
+	"body", "head", "front_legs", "back_legs", "tail"
 ]
 const COLOR_SLOT: String = "color"
 
 const TAGS: Array[String] = [
 	"Cute", "Elegant", "Majestic", "Weird", "Scary", "Bulky", "Gross", "Silly"
+]
+
+## Tag pairs that fight in one paddock. Planet Zoo treats incompatible mixes as a
+## welfare hit, not a bonus; Zoo Tycoon guests also sour when predator/prey share.
+const OPPOSING_TAGS: Array = [
+	["Cute", "Scary"],
+	["Cute", "Gross"],
+	["Elegant", "Gross"],
+	["Silly", "Scary"],
 ]
 
 ## Dominant-tag → skill archetype. Cute / Gross / Silly never win this
@@ -29,53 +38,204 @@ const ARCHETYPE_PRIORITY: Array[String] = [
 	"Majestic", "Scary", "Elegant", "Weird", "Bulky"
 ]
 
-const FAMILIES_LOVES: Array[String] = ["Cute", "Elegant", "Majestic"]
-const FAMILIES_HATES: Array[String] = ["Scary", "Gross"]
-const THRILL_LOVES: Array[String] = ["Scary", "Weird", "Majestic"]
-const THRILL_HATES: Array[String] = ["Cute"]
+## Scary this high makes Children cry. Arrival gates (low/high zoo rating)
+## and side effects (merchandise, hype) are data for later systems.
+const CHILD_CRY_SCARY: int = 3
+
+const VISITORS: Array[Dictionary] = [
+	{
+		"id": "children",
+		"name": "Children",
+		"loves": ["Cute", "Silly"],
+		"hates": ["Scary"],
+		"arrives": "always",
+		"effect": "cry",
+	},
+	{
+		"id": "parents",
+		"name": "Parents",
+		"loves": [],
+		"hates": [],
+		"arrives": "always",
+		"effect": "",
+	},
+	{
+		"id": "tourists",
+		"name": "Tourists",
+		"loves": ["Majestic"],
+		"hates": [],
+		"arrives": "always",
+		"effect": "merchandise",
+	},
+	{
+		"id": "goths",
+		"name": "Goths",
+		"loves": ["Scary", "Gross", "Weird"],
+		"hates": ["Cute"],
+		"arrives": "low_rating",
+		"effect": "",
+	},
+	{
+		"id": "creators",
+		"name": "Content Creators",
+		"loves": ["Weird", "Majestic", "Silly"],
+		"hates": ["Gross"],
+		"arrives": "always",
+		"effect": "hype",
+	},
+	{
+		"id": "thrill",
+		"name": "Thrill-Seekers",
+		"loves": ["Scary"],
+		"hates": ["Cute"],
+		"arrives": "always",
+		"effect": "premium",
+	},
+	{
+		"id": "scientists",
+		"name": "Scientists",
+		"loves": [],
+		"hates": [],
+		"arrives": "high_rating",
+		"effect": "uniqueness",
+	},
+]
 
 ## slot -> Array of {id, name, tags}
 const OPTIONS: Dictionary = {
 	"body": [
-		{"id": "jimothy", "name": "Jimothy Body", "tags": ["Cute", "Bulky"]},
-		{"id": "round", "name": "Round Body", "tags": ["Cute", "Bulky"]},
-		{"id": "spiky", "name": "Spiky Body", "tags": ["Scary", "Majestic"]},
+		{"id": "jimothy", "name": "Jimothy Body", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "round", "name": "Round Body", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "spiky", "name": "Spiky Body", "tags": ["Scary", "Majestic"], "rarity": 2},
+		{"id": "chimory", "name": "Chimory Body", "tags": ["Weird", "Bulky"], "rarity": 2},
+		{"id": "jimmothy", "name": "Jimmothy Body", "tags": ["Cute", "Bulky"], "rarity": 1},
 	],
 	"head": [
-		{"id": "jimothy", "name": "Jimothy Head", "tags": ["Cute"]},
-		{"id": "horned", "name": "Horned Head", "tags": ["Scary", "Majestic"]},
-		{"id": "bulbous", "name": "Bulbous Head", "tags": ["Weird", "Gross"]},
-	],
-	"eyes": [
-		{"id": "big", "name": "Big Round Eyes", "tags": ["Cute", "Silly"]},
-		{"id": "beady", "name": "Beady Eyes", "tags": ["Scary"]},
-		{"id": "compound", "name": "Compound Eyes", "tags": ["Weird", "Gross"]},
+		{"id": "jimothy", "name": "Jimothy Head", "tags": ["Cute"], "rarity": 0},
+		{"id": "horned", "name": "Horned Head", "tags": ["Scary", "Majestic"], "rarity": 1},
+		{"id": "bulbous", "name": "Bulbous Head", "tags": ["Weird", "Gross"], "rarity": 1},
+		{"id": "gorilla", "name": "Gorilla Head", "tags": ["Bulky", "Cute"], "rarity": 2},
+		{"id": "jimmothy", "name": "Horse Head", "tags": ["Majestic", "Elegant"], "rarity": 1},
+		{"id": "cockatoo", "name": "Cockatoo Head", "tags": ["Majestic", "Silly"], "rarity": 1},
+		{"id": "turtle", "name": "Turtle Head", "tags": ["Bulky", "Cute"], "rarity": 1},
+		{"id": "lizard", "name": "Lizard Head", "tags": ["Weird", "Elegant"], "rarity": 1},
+		{"id": "frog", "name": "Frog Head", "tags": ["Weird", "Silly"], "rarity": 1},
+		{"id": "hamster", "name": "Hamster Head", "tags": ["Cute", "Silly"], "rarity": 0},
+		{"id": "duck", "name": "Duck Head", "tags": ["Silly", "Cute"], "rarity": 0},
+		{"id": "lion", "name": "Lion Head", "tags": ["Majestic", "Scary"], "rarity": 2},
 	],
 	"front_legs": [
-		{"id": "jimothy", "name": "Jimothy Arm", "tags": ["Cute", "Bulky"]},
-		{"id": "slender", "name": "Slender Front Legs", "tags": ["Elegant", "Silly"]},
-		{"id": "many", "name": "Many Front Legs", "tags": ["Weird", "Gross"]},
+		{"id": "jimothy", "name": "Jimothy Arm", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "slender", "name": "Slender Front Legs", "tags": ["Elegant", "Silly"], "rarity": 1},
+		{"id": "many", "name": "Many Front Legs", "tags": ["Weird", "Gross"], "rarity": 1},
+		{"id": "chimory", "name": "Frog Arms", "tags": ["Weird", "Silly"], "rarity": 2},
+		{"id": "jimmothy", "name": "Horse Arm", "tags": ["Elegant", "Cute"], "rarity": 1},
 	],
 	"back_legs": [
-		{"id": "jimothy", "name": "Jimothy Leg", "tags": ["Cute", "Bulky"]},
-		{"id": "slender", "name": "Slender Back Legs", "tags": ["Elegant", "Silly"]},
-		{"id": "many", "name": "Many Back Legs", "tags": ["Weird", "Gross"]},
+		{"id": "jimothy", "name": "Jimothy Leg", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "slender", "name": "Slender Back Legs", "tags": ["Elegant", "Silly"], "rarity": 1},
+		{"id": "many", "name": "Many Back Legs", "tags": ["Weird", "Gross"], "rarity": 1},
+		{"id": "chimory", "name": "Sheep Legs", "tags": ["Cute", "Bulky"], "rarity": 2},
+		{"id": "jimmothy", "name": "Clawed Leg", "tags": ["Weird", "Scary"], "rarity": 1},
 	],
 	"tail": [
-		{"id": "short", "name": "Short Tail", "tags": ["Cute", "Bulky"]},
-		{"id": "long", "name": "Long Tail", "tags": ["Elegant", "Weird"]},
-		{"id": "forked", "name": "Forked Tail", "tags": ["Weird", "Gross"]},
+		{"id": "short", "name": "Short Tail", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "long", "name": "Long Tail", "tags": ["Elegant", "Weird"], "rarity": 1},
+		{"id": "forked", "name": "Forked Tail", "tags": ["Weird", "Gross"], "rarity": 1},
+		{"id": "chimory", "name": "Scorpion Tail", "tags": ["Scary", "Weird"], "rarity": 2},
+		{"id": "jimmothy", "name": "Curly Tail", "tags": ["Cute", "Silly"], "rarity": 1},
 	],
 	"color": [
-		{"id": "fur", "name": "Soft Fur", "tags": ["Cute"]},
-		{"id": "scales", "name": "Iridescent Scales", "tags": ["Majestic", "Elegant"]},
-		{"id": "slime", "name": "Oozing Slime", "tags": ["Gross", "Weird"]},
+		{"id": "fur", "name": "Soft Fur", "tags": ["Cute"], "rarity": 0},
+		{"id": "scales", "name": "Iridescent Scales", "tags": ["Majestic", "Elegant"], "rarity": 1},
+		{"id": "slime", "name": "Oozing Slime", "tags": ["Gross", "Weird"], "rarity": 2},
 	],
 }
 
 
+## Flat placeholder colours so a circle on the grass reads as a visitor type.
+func visitor_spec(visitor_id: String) -> Dictionary:
+	for spec in VISITORS:
+		if str(spec.get("id", "")) == visitor_id:
+			return spec
+	return {}
+
+
+func visitor_display_name(visitor_id: String) -> String:
+	var spec := visitor_spec(visitor_id)
+	if spec.is_empty():
+		return visitor_id.capitalize()
+	return str(spec.get("name", visitor_id.capitalize()))
+
+
+func visitor_approval(visitor_id: String, counts: Dictionary) -> int:
+	return int(_score_visitors(counts).get(visitor_id, 0))
+
+
+func visitor_color(visitor_id: String) -> Color:
+	match visitor_id:
+		"children":
+			return Color(1.0, 0.82, 0.18)
+		"parents":
+			return Color(0.28, 0.52, 0.86)
+		"tourists":
+			return Color(0.95, 0.45, 0.25)
+		"goths":
+			return Color(0.28, 0.18, 0.38)
+		"creators":
+			return Color(0.85, 0.30, 0.65)
+		"thrill":
+			return Color(0.85, 0.15, 0.16)
+		"scientists":
+			return Color(0.30, 0.75, 0.45)
+		_:
+			return Color(0.72, 0.72, 0.72)
+
+
+func visitor_sprite_paths(visitor_id: String) -> PackedStringArray:
+	match visitor_id:
+		"children":
+			return PackedStringArray([
+				"res://art/visitors/child_boy.png",
+				"res://art/visitors/child_girl.png",
+			])
+		"parents":
+			return PackedStringArray([
+				"res://art/visitors/parent_mum.png",
+				"res://art/visitors/parent_dad.png",
+			])
+		_:
+			return PackedStringArray(["res://art/visitors/patron.png"])
+
+
+func random_visitor_id() -> String:
+	if randf() < 0.76:
+		return "parents" if randf() < 0.5 else "children"
+	return random_solo_id()
+
+
+func random_solo_id() -> String:
+	var others: PackedStringArray = PackedStringArray([
+		"tourists", "goths", "creators", "thrill", "scientists"
+	])
+	return others[randi() % others.size()]
+
+
+func family_member_kinds() -> PackedStringArray:
+	var kinds := PackedStringArray()
+	kinds.append("parents")
+	if randf() < 0.72:
+		kinds.append("parents")
+	kinds.append("children")
+	if randf() < 0.58:
+		kinds.append("children")
+	return kinds
+
+
 func slot_display_name(slot: String) -> String:
 	match slot:
+		"body":
+			return "Torso"
 		"front_legs":
 			return "Front Legs"
 		"back_legs":
@@ -84,6 +244,73 @@ func slot_display_name(slot: String) -> String:
 			return "Color"
 		_:
 			return slot.capitalize()
+
+
+## Picks a different option index for `slot` than `current_index`.
+## Returns `current_index` only when the slot has fewer than two options.
+func pick_other_index(slot: String, current_index: int) -> int:
+	var count := get_option_count(slot)
+	if count <= 1:
+		return current_index
+	var wrapped := current_index % count
+	var roll: int = randi() % (count - 1)
+	if roll >= wrapped:
+		roll += 1
+	return roll
+
+
+func option_rarity(slot: String, index: int) -> int:
+	return int(get_option(slot, index).get("rarity", 0))
+
+
+func option_has_tag(slot: String, index: int, tag: String) -> bool:
+	var tags: Array = get_option(slot, index).get("tags", [])
+	return tags.has(tag)
+
+
+func option_index_for_id(slot: String, option_id: String) -> int:
+	var list: Array = OPTIONS.get(slot, [])
+	for i in range(list.size()):
+		if str(list[i].get("id", "")) == option_id:
+			return i
+	return -1
+
+
+func indices_with_tag(slot: String, tag: String, rarity_min: int = 0) -> Array[int]:
+	var found: Array[int] = []
+	var count := get_option_count(slot)
+	for i in range(count):
+		if option_rarity(slot, i) < rarity_min:
+			continue
+		if option_has_tag(slot, i, tag):
+			found.append(i)
+	return found
+
+
+## Different option that carries `tag` and meets `rarity_min`. Returns
+## `current_index` when the slot has no other matching form.
+func pick_other_with_tag(slot: String, current_index: int, tag: String, rarity_min: int = 0) -> int:
+	var matches := indices_with_tag(slot, tag, rarity_min)
+	var others: Array[int] = []
+	for index in matches:
+		if index != current_index:
+			others.append(index)
+	if others.is_empty():
+		return current_index
+	if not option_has_tag(slot, current_index, tag):
+		return others[randi() % others.size()]
+	return others[randi() % others.size()]
+
+
+func pick_other_from_ids(slot: String, current_index: int, option_ids: Array) -> int:
+	var others: Array[int] = []
+	for option_id in option_ids:
+		var index := option_index_for_id(slot, str(option_id))
+		if index >= 0 and index != current_index:
+			others.append(index)
+	if others.is_empty():
+		return current_index
+	return others[randi() % others.size()]
 
 
 func get_option_count(slot: String) -> int:
@@ -121,15 +348,11 @@ func score_loadout(slot_indices: Dictionary, color_index: int) -> Dictionary:
 		_add_option_tags(counts, slot, index)
 	_add_option_tags(counts, COLOR_SLOT, color_index)
 
-	var families := _approval(counts, FAMILIES_LOVES, FAMILIES_HATES)
-	var thrill := _approval(counts, THRILL_LOVES, THRILL_HATES)
 	var archetype := _dominant_archetype(counts)
-
 	return {
 		"tags": counts,
 		"archetype": archetype,
-		"families": families,
-		"thrill": thrill,
+		"visitors": _score_visitors(counts),
 	}
 
 
@@ -138,14 +361,123 @@ func format_tags(counts: Dictionary) -> String:
 	for tag in TAGS:
 		var n: int = int(counts.get(tag, 0))
 		if n > 0:
-			parts.append("%s %d" % [tag, n])
+			parts.append("%s ×%d" % [tag, n])
 	if parts.is_empty():
-		return "No tags"
+		return "No traits yet"
+	return "  ".join(parts)
+
+
+func tag_distance(a: Dictionary, b: Dictionary) -> float:
+	var dist: float = 0.0
+	for tag in TAGS:
+		dist += absf(float(a.get(tag, 0)) - float(b.get(tag, 0)))
+	return dist
+
+
+## 0 = same look, 1 = a fighting mix. Distance is soft; opposing tags (cute vs
+## gross/scary) weigh more, matching Planet Zoo's compatible-mix bonus vs clash.
+func tag_clash(a: Dictionary, b: Dictionary) -> float:
+	var dist: float = clampf(tag_distance(a, b) / 20.0, 0.0, 1.0)
+	var oppose: float = 0.0
+	for pair in OPPOSING_TAGS:
+		var left: String = str(pair[0])
+		var right: String = str(pair[1])
+		oppose += minf(float(a.get(left, 0)), float(b.get(right, 0)))
+		oppose += minf(float(a.get(right, 0)), float(b.get(left, 0)))
+	var oppose_n: float = clampf(oppose / 10.0, 0.0, 1.0)
+	return clampf(dist * 0.65 + oppose_n * 0.35, 0.0, 1.0)
+
+
+## Every visitor type, in roster order, with a reason even when they shrug.
+func audience_notes(counts: Dictionary) -> Array[Dictionary]:
+	var notes: Array[Dictionary] = []
+	var scores: Dictionary = _score_visitors(counts)
+	for spec in VISITORS:
+		var id: String = str(spec.get("id", ""))
+		var score: int = int(scores.get(id, 0))
+		notes.append({
+			"id": id,
+			"name": str(spec.get("name", id)),
+			"score": score,
+			"reason": _visitor_reason(spec, counts, score),
+		})
+	return notes
+
+
+## Groups visitors who actually have an opinion, with a short reason
+## built from the tags they love or hate. Neutrals are omitted.
+func crowd_notes(counts: Dictionary) -> Dictionary:
+	var likes: Array[Dictionary] = []
+	var dislikes: Array[Dictionary] = []
+	for note in audience_notes(counts):
+		var score: int = int(note.get("score", 0))
+		if score > 0:
+			likes.append(note)
+		elif score < 0:
+			dislikes.append(note)
+	return {"likes": likes, "dislikes": dislikes}
+
+
+## Highest-count look. Ties pick the name that comes first alphabetically.
+func prominent_look(counts: Dictionary) -> Dictionary:
+	var best_name := ""
+	var best_amount := 0
+	for tag in TAGS:
+		var amount: int = int(counts.get(tag, 0))
+		if amount <= 0:
+			continue
+		if amount > best_amount or (amount == best_amount and (best_name.is_empty() or tag < best_name)):
+			best_name = tag
+			best_amount = amount
+	if best_name.is_empty():
+		return {}
+	return {"name": best_name, "amount": best_amount}
+
+
+## Looks the creature actually has, in tag-list order.
+func present_looks(counts: Dictionary) -> Array[Dictionary]:
+	var looks: Array[Dictionary] = []
+	for tag in TAGS:
+		var amount: int = int(counts.get(tag, 0))
+		if amount > 0:
+			looks.append({"name": tag, "amount": amount})
+	return looks
+
+
+func format_approval(visitors: Dictionary) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	for spec in VISITORS:
+		var id: String = str(spec.get("id", ""))
+		var score: int = int(visitors.get(id, 0))
+		if score == 0:
+			continue
+		parts.append("%s %s" % [spec.get("name", id), _signed(score)])
+	if parts.is_empty():
+		return "No strong opinions yet"
 	return ", ".join(parts)
 
 
-func format_approval(families: int, thrill: int) -> String:
-	return "Families %s  ·  Thrill-Seekers %s" % [_signed(families), _signed(thrill)]
+func _score_visitors(counts: Dictionary) -> Dictionary:
+	var scores: Dictionary = {}
+	for spec in VISITORS:
+		var id: String = str(spec.get("id", ""))
+		if id == "scientists":
+			scores[id] = _uniqueness_score(counts)
+		elif id == "parents":
+			scores[id] = 0
+		else:
+			var loves: Array = spec.get("loves", [])
+			var hates: Array = spec.get("hates", [])
+			scores[id] = _approval(counts, loves, hates)
+	return scores
+
+
+func _uniqueness_score(counts: Dictionary) -> int:
+	var kinds := 0
+	for tag in TAGS:
+		if int(counts.get(tag, 0)) > 0:
+			kinds += 1
+	return kinds - 3
 
 
 func _empty_counts() -> Dictionary:
@@ -162,7 +494,67 @@ func _add_option_tags(counts: Dictionary, slot: String, index: int) -> void:
 		counts[tag] = int(counts.get(tag, 0)) + 1
 
 
-func _approval(counts: Dictionary, loves: Array[String], hates: Array[String]) -> int:
+func _visitor_reason(spec: Dictionary, counts: Dictionary, score: int) -> String:
+	var id: String = str(spec.get("id", ""))
+	if id == "parents":
+		return "along for the ride"
+	if id == "scientists":
+		if score > 0:
+			return "the mix of traits"
+		if score < 0:
+			return "too ordinary"
+		return "nothing unusual yet"
+	var loved := _present_tags(counts, spec.get("loves", []))
+	var hated := _present_tags(counts, spec.get("hates", []))
+	if score > 0:
+		if not loved.is_empty() and not hated.is_empty():
+			return "%s, despite the %s" % [loved, hated]
+		return loved if not loved.is_empty() else "what it is"
+	if score < 0:
+		if not hated.is_empty() and not loved.is_empty():
+			return "%s outweighs the %s" % [hated, loved]
+		if not hated.is_empty():
+			return "too %s" % hated
+		return "not their thing"
+	var wants := _join_and(_tag_words(spec.get("loves", [])))
+	if wants.is_empty():
+		return "no strong opinion"
+	return "waiting for %s" % wants
+
+
+func _present_tags(counts: Dictionary, wanted: Array) -> String:
+	var hits: PackedStringArray = PackedStringArray()
+	for tag in wanted:
+		if int(counts.get(tag, 0)) > 0:
+			hits.append(str(tag).to_lower())
+	return _join_and(hits)
+
+
+func _tag_words(wanted: Array) -> PackedStringArray:
+	var words: PackedStringArray = PackedStringArray()
+	for tag in wanted:
+		words.append(str(tag).to_lower())
+	return words
+
+
+func _join_and(words: PackedStringArray) -> String:
+	if words.is_empty():
+		return ""
+	if words.size() == 1:
+		return words[0]
+	if words.size() == 2:
+		return "%s and %s" % [words[0], words[1]]
+	var head := PackedStringArray()
+	for i in range(words.size() - 1):
+		head.append(words[i])
+	return "%s, and %s" % [", ".join(head), words[words.size() - 1]]
+
+
+func _stronger_opinion(a: Dictionary, b: Dictionary) -> bool:
+	return absi(int(a.get("score", 0))) > absi(int(b.get("score", 0)))
+
+
+func _approval(counts: Dictionary, loves: Array, hates: Array) -> int:
 	var score := 0
 	for tag in loves:
 		score += int(counts.get(tag, 0))

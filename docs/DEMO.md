@@ -14,11 +14,19 @@ If the editor was already open while these files were added, use **Project → R
 | --- | --- |
 | Pan camera | Right-click drag |
 | Zoom camera | Scroll wheel |
-| Place a pen | Bottom dock → Pens → Small / Large, then left-click a green (valid) cell |
-| Place an animal | Bottom dock → Place animal, then left-click inside a placed pen |
+| Place a pen | Bottom dock → Pens → pick Small / Large, then left-click a green cell. Costs cash. |
+| Place an animal | Bottom dock → Animals → pick a base species, then left-click inside a pen. Costs cash. |
+| Close a menu | Click anywhere outside it |
 | Inspect an animal | Left-click it — an exhibit card opens on the right |
-| Edit an animal's DNA | Exhibit card → Open DNA Lab, then pick a slot to draft three options |
-| Cancel current tool | Bottom dock → Cancel, or click the active tool again |
+| Inspect a guest | Left-click them — a guest card opens on the right. A family shares one card |
+| Send guests home | Right-click a guest, or Guest card → Send home. The whole family leaves |
+| Delete an animal | Exhibit card → Delete animal |
+| Inspect a pen | Left-click empty grass inside a pen (no tool selected) — a paddock card opens |
+| Delete a pen | Paddock card → Delete pen. Animals inside are deleted too. No refund. |
+| Edit an animal's DNA | Exhibit card → Open DNA Lab, pick a body part, drag a serum onto the empty ATGC rung |
+| Check the job | Top bar → Quests. One request at a time, with the reward listed |
+| Claim a quest | Quests → Claim reward (pays cash and/or unlocks a serum) |
+| Buy a DNA vial | Top bar / lab → Vial shop, pay cash ($) for an unlocked serum |
 
 ## What's implemented
 
@@ -30,25 +38,30 @@ If the editor was already open while these files were added, use **Project → R
   footprint; animals physically collide with them via `move_and_slide()`, not just a soft bounds check.
 - **Animals** — placed inside a pen, wander to random points within it on a randomized timer, click to
   select. `scripts/animal.gd`.
-- **HUD** — tycoon layout: thin top plaque + mutagen counter, **bottom build dock** (Pens / Animals),
-  right-side **exhibit card** on select (live thumbnail, archetype, visitor meters, tags). DNA Lab is a
-  paper workbench: pick a slot, spend 5 mutagen, choose one of three named options. Empty HUD space uses
-  `MOUSE_FILTER_IGNORE` so clicks still reach animals.
+- **HUD** — tycoon layout: thin top plaque, **cash ($)** counter, **bottom catalog dock**
+  (Pens / Animals ribbons with priced tiles, Cities: Skylines / Prison Architect style), right-side **exhibit card**
+  on select (live thumbnail, archetype, who comes / who stays away and why, trait mix). Left-click a
+  guest for the same style of card (who they are, what they are, likes / dislikes, and a thought
+  about the zoo); families inspect
+  as one group and the thumbnail camera follows the whole party.
+  DNA Lab is a two-pane workbench: ATGC strand on the left, exhibit card on the right. Pick a body part,
+  then drag a tag serum onto the empty base. Empty HUD space uses `MOUSE_FILTER_IGNORE` so clicks
+  still reach animals.
 - **Trait tags + scoring** — every part option carries 1–2 tags (`scripts/trait_library.gd`). Tag totals
   pick a skill archetype (Nimble / Tanky / Predator / Novelty / Showpiece) and two visitor-approval
   scores. Mutating a slot rescores immediately.
-- **Creature creation demo** — 6 shape slots (Body, Head, Eyes, Front Legs, Back Legs, Tail), 3 options
-  each, plus a Color slot (one colour applied to the whole creature). Every part is a uniform **100×100**
-  transparent PNG canvas (one grass tile); snout is part of the Head sprite.
-- **DNA Lab minigame principle** — mutagen ticks up over time (+1 every 3s, starting at 15) and sits in
-  the top-right counter. Each slot draft costs 5 and reveals that slot's named 3-option cards. Slot
-  buttons disable when you can't afford a draft. No real visitor economy feeds the points yet — see
-  [`GAME_DESIGN.md`](./GAME_DESIGN.md) for where that plugs in later.
-- **Floor grid** — 16×10 `TileMapLayer` of the artist's 100×100 grass tiles (plain grass plus scattered flower variants) so pens sit on real floor art.
-- **Filler art** — every shape and color is generated procedurally at runtime in
-  `scripts/placeholder_art.gd` (grayscale shapes + palette-swap shader, per `ART_PIPELINE.md`). Zero binary
-  asset files. Replace slot-by-slot with real art later by swapping what `PlaceholderArt` returns for that
-  slot — nothing else in the pipeline changes.
+- **Creature creation demo** — 5 shape slots (Body, Head, Front Legs, Back Legs, Tail). Head has
+  12 options (artist set plus placeholders); other shape slots have 5. Plus a Color slot (one colour
+  applied to the whole creature). Every part is a uniform **100×100**
+  transparent PNG canvas (one grass cell); snout and eyes are part of the Head sprite.
+- **DNA Lab + quests** — Cute serum starts unlocked with one free charge. Quests ask for real
+  park progress (a fully Majestic Showpiece, a second enclosure) and pay cash plus the next serum.
+- **Floor grid** — 16×10 cells of flat HSB 71/98/85 grass, with the artist's tuft sprites scattered on top.
+- **Filler art** — leftover shape options are generated procedurally in
+  `scripts/placeholder_art.gd` (grayscale + palette-swap, per `ART_PIPELINE.md`). Jimothy, Chimory, and
+  Jimmothy override those slots with square PNGs in `art/creatures/parts/`. Chimory ($55) uses all five
+  artist parts: body, gorilla head, frog arms, sheep legs, scorpion tail. Jimmothy ($20) uses all five
+  artist parts: blob body, horse head, horse arm, clawed back leg, curly tail.
 
 ## What's deliberately not in this demo
 
@@ -58,7 +71,7 @@ Per the plan we agreed on before building:
 - No save/load — everything resets when you stop running the scene.
 - Only 2 pen prefabs (Small/Large) — not the full pen catalog.
 - No animal-vs-animal collision — they can visually overlap each other (only pen fences block movement).
-- No rotation or move/demolish — placement is one-shot and permanent for this proof of concept.
+- No rotation or move — delete an animal from its exhibit card, or a pen (and everyone inside) from its paddock card. No refund.
 
 ## Known rough edges to expect
 
@@ -70,7 +83,7 @@ Per the plan we agreed on before building:
 ## Headless smoke test
 
 `tests/smoke_test.gd` + `tests/smoke_test.tscn` exercise every core system (grid math, pen sizing, animal
-placement, creature mutation, build mode, the mutagen economy, and the full HUD build including the
+placement, creature mutation, build mode, the cash economy, and the full HUD build including the
 SubViewport thumbnail) without needing real mouse/window input. Useful for catching script errors fast
 after a change, without waiting on a manual playtest. Run it from a terminal:
 

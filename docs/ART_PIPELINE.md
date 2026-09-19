@@ -15,14 +15,14 @@ modular 2D characters, plus one addition that saves your artist a huge amount of
 
 ### 1. Shape traits → swappable, fully-drawn parts (paper doll)
 
-Head, Neck, Body, Limbs, and Eyes are **not** blank templates with a texture overlaid — each option (Round
+Head, Body, Legs, and Tail are **not** blank templates with a texture overlaid — each option (Round
 Head, Horned Head, Bulbous Head, ...) is a small, fully-drawn sprite that the artist draws **once**. At
 runtime you don't overlay anything onto a shape; you just swap which texture a given `Sprite2D` node is
-showing.
+showing. Eyes are painted onto the Head — there is no separate Eyes layer.
 
 - One `Node2D` root per creature ("rig").
-- One child `Sprite2D` per trait **slot** (`Head`, `Neck`, `Body`, `Limbs`, `Eyes`), positioned at a fixed
-  offset from the root that never changes.
+- One child `Sprite2D` per trait **slot** (`Tail`, `BackLegs`, `FrontLegs`, `Body`, `Head`), all at the
+  origin. Changing a trait swaps that slot's texture.
 - Changing a trait = calling `sprite.texture = new_texture` on that slot's `Sprite2D`. Nothing moves,
   nothing is re-laid-out.
 - Every option for a given slot must share the same canvas size and pivot point, so any Head option lines
@@ -93,60 +93,67 @@ Creature (Node2D, script: creature_visuals.gd)
 ├── BackLegs
 ├── FrontLegs
 ├── Body
-├── Head
-└── Eyes
+└── Head
 ```
 
-Draw order = child order in the scene tree (later children draw on top). Mouth/snout is drawn as
-part of the **Head** sprite — there is no separate mouth slot.
+Draw order = child order in the scene tree (later children draw on top). Mouth/snout and eyes are
+drawn as part of the **Head** sprite — there is no separate mouth or eyes slot.
 
 ## Artist brief — copy/paste this
 
 ### File format
 - **PNG**, RGBA, **transparent background** (no flat fill behind the limb/body)
-- Filter: **Nearest** (no blur)
+- Never export **JPEG / JPG**. JPEG smears line art and is why Fresco drawings look pixelated after export.
 - Facing: **right** only (game mirrors for left)
+- Front legs: **one** side-view arm. Do not draw a pair.
 
 ### Colour
 - Draw parts in **grayscale** (light = highlight, dark = shadow). Do **not** paint final fur/scale colours
   into each PNG.
-- At runtime the game applies **one colour to the whole creature** — every part (body, head, eyes, legs,
+- At runtime the game applies **one colour to the whole creature** — every part (body, head, legs,
   tail) gets the same entity colour. Different animals can have different colours; parts within one animal
   always match.
 
-### Canvas (all parts — same size)
+### Canvas (all parts — same square frame)
 | | |
 | --- | --- |
-| **Export size** | **100 × 100 px** for every part |
-| Why | Matches one grass tile (`100×100`). Game stacks all parts on the same frame. |
+| **Fresco document** | **400 × 400 px** (or 800 × 800). Create the file at this pixel size. |
+| **Export size** | Same as the document — **do not downsample** on export |
+| Why | The game maps the whole square onto one 100×100 grass cell. Exporting at 100×100 throws away the Fresco detail. |
 
-If you work larger: draw at **200×200** or **400×400**, export at exactly ÷2 or ÷4.
+Adobe Fresco:
+1. New file → **400 × 400 pixels** (check the unit is **px**, not cm/in).
+2. Draw a **filled** silhouette, not an empty outline.
+3. **Export → PNG**, transparency on, scale **1x** (full document pixels).
+4. Keep the empty padding. Do not crop to the limb.
 
-### What to draw (6 slots × optional variants)
+Drop the PNG on top of the matching file in `art/creatures/parts/` (`body_chimory.png`, `head_chimory.png`, `front_legs_chimory.png`, `back_legs_chimory.png`, `tail_chimory.png`, or the `*_jimmothy.png` set).
 
-Snout / mouth lives on the **Head** layer. Suggested content boxes inside the 100×100 frame
-(from top-left; leave everything else transparent):
+### What to draw (5 slots × optional variants)
 
-| Part | File name example | Canvas | Draw inside (x, y, w, h) | Content box size |
-| --- | --- | --- | --- | --- |
-| Body | `body_round.png` | 100×100 | (28, 34, 48, 32) | **48 × 32** |
-| Head (+ snout) | `head_horned.png` | 100×100 | (62, 18, 34, 32) | **34 × 32** |
-| Eyes (single) | `eyes_big.png` | 100×100 | (78, 24, 12, 12) | **12 × 12** |
-| Front Legs | `front_legs_stubby.png` | 100×100 | (54, 62, 18, 30) | **18 × 30** |
-| Back Legs | `back_legs_stubby.png` | 100×100 | (30, 62, 18, 30) | **18 × 30** |
-| Tail | `tail_short.png` | 100×100 | (4, 40, 28, 22) | **28 × 22** |
+Snout / mouth and eyes live on the **Head** layer. Suggested content boxes as a fraction of the
+square frame (from top-left; leave everything else transparent):
 
-**Important:** always export the full **100×100** PNG (with transparent padding). Do not crop to the
+| Part | File name example | Draw inside (x, y, w, h) at 100px | Same box at 400px |
+| --- | --- | --- | --- |
+| Body | `body_round.png` | (28, 34, 48, 32) | (112, 136, 192, 128) |
+| Head (+ snout + eyes) | `head_horned.png` | (62, 18, 34, 32) | (248, 72, 136, 128) |
+| Front Legs | `front_legs_stubby.png` | (54, 62, 18, 30) | (216, 248, 72, 120) |
+| Back Legs | `back_legs_stubby.png` | (18, 57, 25, 41) | (72, 228, 100, 164) |
+| Tail | `tail_short.png` | (4, 40, 28, 22) | (16, 160, 112, 88) |
+
+**Important:** always export the full square PNG (with transparent padding). Do not crop to the
 content box — cropping breaks alignment when parts are stacked.
 
 ### Floor / pens (for scale)
-Grass tiles are **100×100**. One assembled creature ≈ one tile on the floor.
+The floor fill is a flat grass color (HSB 71 / 98 / 85). One assembled creature ≈ one 100×100 grid cell.
 
 Live floor art lives in `art/tiles/grass/`:
-- `grass_1.png` … `grass_5.png` — plain grass variants
-- `grass_flowers_1.png` … `grass_flowers_4.png` — grass with flowers
+- `tuft_1.png` … `tuft_3.png` — irregular grass clumps with flowers, transparent background
 
-`scripts/floor_grid.gd` builds a `TileMapLayer` from those PNGs. Keep new floor tiles at exactly **100×100**, nearest-neighbor, no atlas packing required.
+`scripts/floor_grid.gd` fills the 16×10 grid with that color, then scatters the tufts. Keep tufts on a transparent PNG, nearest-neighbor.
+
+Pen walls use `art/tiles/pen/` brick tiles (100×100 source, drawn at half size so the fence is 50px thick).
 
 ## Roadmap
 

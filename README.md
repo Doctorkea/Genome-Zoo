@@ -17,6 +17,7 @@ repel visitors and unlock new skills.
 - [`docs/ART_PIPELINE.md`](docs/ART_PIPELINE.md) — how creature trait art actually gets rendered in Godot
   (layered swappable parts + a shared palette-swap shader for skin/coat).
 - [`docs/references.md`](docs/references.md) — research sources behind the art pipeline decisions.
+- [`docs/godot-context/INDEX.md`](docs/godot-context/INDEX.md) — fetched Godot 4.7 manuals, forum notes, skill/MCP status, and a current implementation snapshot.
 
 ## Agent skills
 
@@ -34,14 +35,17 @@ Installed under `.cursor/skills/` so later chats pick them up automatically:
 
 ## Godot MCP
 
-Installed from `godot-mcp-0.2.0.zip` at `C:\Users\Docto\godot-mcp` and registered in Cursor's
-`~/.cursor/mcp.json` as `godot-mcp`, pointed at this project.
+Vendored from [alexmeckes/godot-mcp](https://github.com/alexmeckes/godot-mcp) at `tools/godot-mcp`.
+Project Cursor config is `.cursor/mcp.json` (bridge port **6550**). First clone on a new machine:
+`cd tools/godot-mcp && npm install --omit=dev`.
 
-- File tools (scenes/scripts/shaders/UI) work anytime Cursor can launch the MCP.
-- Live editor / runtime tools need Godot open with the **Godot AI Bridge** plugin enabled
-  (`addons/godot_ai_bridge` — already in this repo; enabled in `project.godot`).
-- After changing MCP config, restart Cursor (or reload MCP servers) so the tools show up.
-- Companion skills are already under `.cursor/skills/` (`godot-interactive`, etc.).
+The AI Bridge addon is already in this repo (`addons/godot_ai_bridge`, enabled in `project.godot`).
+Godot must be open with this project so the plugin can listen on `127.0.0.1:6550`.
+
+- Live editor / runtime tools: `godot_connect` then `godot_editor_*` / `godot_runtime_*`.
+- After changing MCP config, reload MCP servers (or restart Cursor) and enable `godot-mcp` if Cursor asks.
+- Companion skills are under `.cursor/skills/` (`godot-interactive`, etc.).
+- Full notes: [`docs/godot-context/skills-and-mcp.md`](docs/godot-context/skills-and-mcp.md).
 
 ## Project layout
 

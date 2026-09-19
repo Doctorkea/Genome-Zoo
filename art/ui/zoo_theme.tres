@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=12 format=3]
+[gd_resource type="Theme" load_steps=14 format=3]
 
 [ext_resource type="FontFile" path="res://art/ui/fonts/Acme-Regular.ttf" id="1_font"]
 
@@ -127,6 +127,24 @@ border_width_top = 0
 border_width_right = 0
 border_width_bottom = 0
 
+[sub_resource type="StyleBoxFlat" id="paper_choice"]
+content_margin_left = 0.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 3.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.42, 0.36, 0.26, 0.45)
+
+[sub_resource type="StyleBoxFlat" id="paper_choice_hover"]
+content_margin_left = 0.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 3.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.247, 0.478, 0.29, 0.85)
+
 [resource]
 default_font = ExtResource("1_font")
 default_font_size = 15
@@ -164,3 +182,15 @@ InkButton/base_type = "Button"
 InkButton/colors/font_color = Color(0.11, 0.09, 0.063, 1)
 InkButton/colors/font_hover_color = Color(0.11, 0.09, 0.063, 1)
 InkButton/colors/font_pressed_color = Color(0.11, 0.09, 0.063, 1)
+PaperChoice/base_type = "Button"
+PaperChoice/colors/font_color = Color(0.247, 0.478, 0.29, 1)
+PaperChoice/colors/font_focus_color = Color(0.188, 0.38, 0.22, 1)
+PaperChoice/colors/font_hover_color = Color(0.188, 0.38, 0.22, 1)
+PaperChoice/colors/font_hover_pressed_color = Color(0.188, 0.38, 0.22, 1)
+PaperChoice/colors/font_pressed_color = Color(0.188, 0.38, 0.22, 1)
+PaperChoice/font_sizes/font_size = 16
+PaperChoice/styles/disabled = SubResource("paper_choice")
+PaperChoice/styles/focus = SubResource("focus_empty")
+PaperChoice/styles/hover = SubResource("paper_choice_hover")
+PaperChoice/styles/normal = SubResource("paper_choice")
+PaperChoice/styles/pressed = SubResource("paper_choice")

@@ -12,24 +12,26 @@ config_version=5
 
 config/name="Evolution Zoo"
 run/main_scene="res://scenes/Main.tscn"
-config/features=PackedStringArray("4.7", "GL Compatibility")
+config/features=PackedStringArray("4.6", "GL Compatibility")
 
 [autoload]
 
 Events="*res://scripts/events.gd"
 GridService="*res://scripts/grid_service.gd"
 PlaceholderArt="*res://scripts/placeholder_art.gd"
-MutagenService="*res://scripts/mutagen_service.gd"
+WalletService="*res://scripts/wallet_service.gd"
 TraitLibrary="*res://scripts/trait_library.gd"
+GeneTree="*res://scripts/gene_tree.gd"
+QuestBoard="*res://scripts/quest_board.gd"
 GodotAIBridgeRuntime="*res://addons/godot_ai_bridge/runtime_bridge.gd"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=720
 window/stretch/mode="viewport"
-window/stretch/aspect="keep"
-window/stretch/scale_mode="fractional"
 
 [editor_plugins]
 
@@ -38,7 +40,7 @@ enabled=PackedStringArray("res://addons/godot_ai_bridge/plugin.cfg")
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
-2d/snap/snap_2d_transforms_to_pixel=true
-2d/snap/snap_2d_vertices_to_pixel=true
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true

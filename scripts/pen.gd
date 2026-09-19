@@ -1,22 +1,26 @@
 extends Node2D
 class_name Pen
 
-## A placeable zoo enclosure. Footprint is set in grid cells; solid fence
-## walls are generated at runtime so one scene covers every pen size
-## (a Prison-Architect-style rectangular prefab). World grass tiles show
-## through the interior — see docs/ART_PIPELINE.md.
+## A placeable zoo enclosure. Footprint is set in grid cells; brick wall
+## tiles and solid fence collision are generated at runtime so one scene
+## covers every pen size. World grass shows through the interior.
 
-const WALL_THICKNESS: float = 10.0
-const WALL_COLOR: Color = Color(0.42, 0.30, 0.20) # placeholder fence brown
-
+const BRICK_SCALE: float = 0.5
 const FENCE_LAYER: int = 4 # bit for "fences" — animals set collision_mask to this
+
+const TEX_FLAT: Texture2D = preload("res://art/tiles/pen/brick_flat.png")
+const TEX_UP: Texture2D = preload("res://art/tiles/pen/brick_up.png")
+const TEX_TOP_CORNER: Texture2D = preload("res://art/tiles/pen/brick_top_corner.png")
+const TEX_BOTTOM_CORNER: Texture2D = preload("res://art/tiles/pen/brick_bottom_corner.png")
 
 @export var footprint_cells: Vector2i = Vector2i(4, 3)
 
+var origin_cell: Vector2i = Vector2i.ZERO
 var animals: Array[Node] = []
 
 
 func _ready() -> void:
+	add_to_group("pens")
 	_build_walls()
 
 
@@ -27,12 +31,149 @@ func get_size_pixels() -> Vector2:
 	)
 
 
+func wall_thickness() -> float:
+	return float(GridService.CELL_SIZE) * BRICK_SCALE
+
+
+func animal_capacity() -> int:
+	return 5 if footprint_cells.x >= 6 else 2
+
+
+func occupant_count() -> int:
+	return living_animals().size()
+
+
+func can_accept_animal() -> bool:
+	return occupant_count() < animal_capacity()
+
+
+func living_animals() -> Array[Animal]:
+	var found: Array[Animal] = []
+	for occupant in animals:
+		var animal := occupant as Animal
+		if animal != null and is_instance_valid(animal) and not animal.is_queued_for_deletion():
+			found.append(animal)
+	return found
+
+
+func has_animal_perk(perk_id: String) -> bool:
+	for animal in living_animals():
+		if animal.has_perk(perk_id):
+			return true
+	return false
+
+
+## How well the herd reads as one exhibit. RCT-style: a 25% cut at worst, with a
+## dead zone so close looks (or a matching herd) stay at full value.
+const COMPATIBLE_CLASH: float = 0.22
+const MIN_ENJOYMENT: float = 0.78
+
+
+func enjoyment_factor() -> float:
+	var clash: float = trait_clash()
+	if clash <= COMPATIBLE_CLASH:
+		return 1.0
+	var t: float = clampf((clash - COMPATIBLE_CLASH) / (1.0 - COMPATIBLE_CLASH), 0.0, 1.0)
+	return lerpf(1.0, MIN_ENJOYMENT, t * t)
+
+
+## Sparse pens are a tad less exciting (Planet Zoo appeal / social-group size).
+func occupancy_factor() -> float:
+	var cap: int = maxi(1, animal_capacity())
+	var n: int = occupant_count()
+	if n <= 0:
+		return 0.0
+	var fill: float = clampf(float(n) / float(cap), 0.0, 1.0)
+	return lerpf(0.88, 1.0, sqrt(fill))
+
+
+func trait_clash() -> float:
+	var herd: Array[Animal] = living_animals()
+	if herd.size() < 2:
+		return 0.0
+	var total: float = 0.0
+	var pairs: int = 0
+	for i in range(herd.size()):
+		var tags_a: Dictionary = herd[i].get_stats().get("tags", {})
+		for j in range(i + 1, herd.size()):
+			total += TraitLibrary.tag_clash(tags_a, herd[j].get_stats().get("tags", {}))
+			pairs += 1
+	if pairs <= 0:
+		return 0.0
+	return clampf(total / float(pairs), 0.0, 1.0)
+
+
 ## Local-space bounds animals should wander within — inset a little from the
 ## walls so they don't spend all their time bumping into fences.
 func get_interior_bounds() -> Rect2:
 	var size := get_size_pixels()
-	var margin := WALL_THICKNESS + 6.0
+	var margin := wall_thickness() + 6.0
 	return Rect2(Vector2(margin, margin), size - Vector2(margin, margin) * 2.0)
+
+
+## Tighter than the grass interior so a 40px animal body stays off the bricks.
+func get_wander_bounds() -> Rect2:
+	var inner := get_interior_bounds()
+	var pad: float = 52.0
+	var rect := inner.grow(-pad)
+	if rect.size.x < 32.0 or rect.size.y < 32.0:
+		var size := Vector2(maxf(32.0, inner.size.x * 0.35), maxf(32.0, inner.size.y * 0.35))
+		return Rect2(inner.position + (inner.size - size) * 0.5, size)
+	return rect
+
+
+func world_rect() -> Rect2:
+	return Rect2(global_position, get_size_pixels())
+
+
+func exhibit_signature() -> String:
+	var bits: PackedStringArray = PackedStringArray()
+	for occupant in animals:
+		var animal := occupant as Animal
+		if animal == null or not is_instance_valid(animal):
+			continue
+		bits.append(animal.exhibit_id())
+	bits.sort()
+	return " ".join(bits)
+
+
+func frontage_point() -> Vector2:
+	var spots: Array[Vector2] = viewing_points()
+	if not spots.is_empty():
+		return spots[0]
+	var size := get_size_pixels()
+	return Vector2(global_position.x + size.x * 0.5, global_position.y + size.y + 24.0)
+
+
+## Grass just outside the fence so guests can press up and look in.
+func viewing_points() -> Array[Vector2]:
+	var rect := world_rect()
+	var gap: float = 22.0
+	var raw: Array[Vector2] = []
+	for t in [0.22, 0.5, 0.78]:
+		raw.append(Vector2(rect.position.x + rect.size.x * t, rect.end.y + gap))
+		raw.append(Vector2(rect.position.x + rect.size.x * t, rect.position.y - gap))
+		raw.append(Vector2(rect.position.x - gap, rect.position.y + rect.size.y * t))
+		raw.append(Vector2(rect.end.x + gap, rect.position.y + rect.size.y * t))
+	var spots: Array[Vector2] = []
+	for point in raw:
+		if _is_viewing_spot(point):
+			spots.append(point)
+	return spots
+
+
+func _is_viewing_spot(point: Vector2) -> bool:
+	var map := GridService.map_size()
+	if point.x < 8.0 or point.x > map.x - 8.0 or point.y < 8.0:
+		return false
+	if point.y > GridService.parking_rect().end.y - 2.0:
+		return false
+	if GridService.road_rect().has_point(point):
+		return false
+	var cell := GridService.world_to_cell(point)
+	if GridService.is_area_in_world(cell, Vector2i.ONE) and GridService.is_cell_occupied(cell):
+		return false
+	return GridService.grass_rect().has_point(point) or GridService.parking_rect().has_point(point)
 
 
 func register_animal(animal: Node) -> void:
@@ -46,17 +187,50 @@ func unregister_animal(animal: Node) -> void:
 
 func _build_walls() -> void:
 	var size := get_size_pixels()
-	_add_wall(Vector2(0, 0), Vector2(size.x, WALL_THICKNESS)) # top
-	_add_wall(Vector2(0, size.y - WALL_THICKNESS), Vector2(size.x, WALL_THICKNESS)) # bottom
-	_add_wall(Vector2(0, 0), Vector2(WALL_THICKNESS, size.y)) # left
-	_add_wall(Vector2(size.x - WALL_THICKNESS, 0), Vector2(WALL_THICKNESS, size.y)) # right
+	var thick := wall_thickness()
+	_add_collision(Vector2(0, 0), Vector2(size.x, thick))
+	_add_collision(Vector2(0, size.y - thick), Vector2(size.x, thick))
+	_add_collision(Vector2(0, 0), Vector2(thick, size.y))
+	_add_collision(Vector2(size.x - thick, 0), Vector2(thick, size.y))
+	_lay_bricks()
 
 
-func _add_wall(local_pos: Vector2, wall_size: Vector2) -> void:
-	var visual := _make_rect_polygon(wall_size, WALL_COLOR)
-	visual.position = local_pos
-	add_child(visual)
+func _lay_bricks() -> void:
+	var step := wall_thickness()
+	var cols: int = int(round(get_size_pixels().x / step))
+	var rows: int = int(round(get_size_pixels().y / step))
+	_add_brick(TEX_TOP_CORNER, 0, 0)
+	_add_brick(TEX_TOP_CORNER, cols - 1, 0, true, false)
+	_add_brick(TEX_BOTTOM_CORNER, 0, rows - 1, true, false)
+	_add_brick(TEX_BOTTOM_CORNER, cols - 1, rows - 1)
+	for x in range(1, cols - 1):
+		_add_brick(TEX_FLAT, x, 0)
+		_add_brick(TEX_FLAT, x, rows - 1)
+	for y in range(1, rows - 1):
+		_add_brick(TEX_UP, 0, y)
+		_add_brick(TEX_UP, cols - 1, y, true, false)
 
+
+func _add_brick(
+	texture: Texture2D,
+	cell_x: int,
+	cell_y: int,
+	flip_h: bool = false,
+	flip_v: bool = false
+) -> void:
+	var step := wall_thickness()
+	var sprite := Sprite2D.new()
+	sprite.texture = texture
+	sprite.centered = false
+	sprite.flip_h = flip_h
+	sprite.flip_v = flip_v
+	sprite.scale = Vector2(BRICK_SCALE, BRICK_SCALE)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.position = Vector2(cell_x, cell_y) * step
+	add_child(sprite)
+
+
+func _add_collision(local_pos: Vector2, wall_size: Vector2) -> void:
 	var body := StaticBody2D.new()
 	body.position = local_pos + wall_size / 2.0
 	body.collision_layer = FENCE_LAYER
@@ -69,12 +243,3 @@ func _add_wall(local_pos: Vector2, wall_size: Vector2) -> void:
 	body.add_child(shape)
 
 	add_child(body)
-
-
-func _make_rect_polygon(size: Vector2, color: Color) -> Polygon2D:
-	var poly := Polygon2D.new()
-	poly.polygon = PackedVector2Array([
-		Vector2(0, 0), Vector2(size.x, 0), Vector2(size.x, size.y), Vector2(0, size.y)
-	])
-	poly.color = color
-	return poly

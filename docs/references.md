@@ -2,6 +2,8 @@
 
 Sources used to put together `ART_PIPELINE.md`.
 
+For the full fetched Godot 4.7 / forum / skill pack used by later chats, see [`godot-context/INDEX.md`](./godot-context/INDEX.md).
+
 ## Layered "paper doll" sprite parts
 
 - [How to layer sprites ("dress up a character") in 2D — Godot Forum](https://forum.godotengine.org/t/how-to-layer-sprites-dress-up-a-character-in-2d/11898)
@@ -23,4 +25,27 @@ Sources used to put together `ART_PIPELINE.md`.
 - [Godot 4.7 release announcement](https://godotengine.org/releases/4.7/)
 - [Godot 4.7 changelog](https://github.com/godotengine/godot/blob/4.7-stable/CHANGELOG.md)
 - [Upgrading from Godot 4.6 to Godot 4.7 (migration guide)](https://docs.godotengine.org/en/stable/tutorials/migrating/upgrading_to_godot_4.7.html)
-- [Multiple resolutions — pixel-art stretch/scale settings](https://docs.godotengine.org/en/stable/tutorials/rendering/multiple_resolutions.html)
+- [Multiple resolutions — pixel-art stretch/scale settings](https://docs.godotengine.org/en/4.7/tutorials/rendering/multiple_resolutions.html)
+
+## HUD, picking, pixel-art (fetched 2026-09-19)
+
+- [Using Containers](https://docs.godotengine.org/en/4.7/tutorials/ui/gui_containers.html)
+- [GUI skinning](https://docs.godotengine.org/en/4.7/tutorials/ui/gui_skinning.html)
+- [Control (mouse_filter)](https://docs.godotengine.org/en/4.7/classes/class_control.html)
+- [Viewport.physics_object_picking](https://docs.godotengine.org/en/4.7/classes/class_viewport.html)
+- [CharacterBody2D (4.7)](https://docs.godotengine.org/en/4.7/classes/class_characterbody2d.html)
+- [Using CharacterBody2D](https://docs.godotengine.org/en/4.7/tutorials/physics/using_character_body_2d.html)
+- [Your first 2D shader](https://docs.godotengine.org/en/4.7/tutorials/shaders/your_first_shader/your_first_2d_shader.html)
+- [2D sprite animation](https://docs.godotengine.org/en/4.7/tutorials/2d/2d_sprite_animation.html)
+- [SubViewport](https://docs.godotengine.org/en/4.7/classes/class_subviewport.html)
+- [UI elements block Area2D mouse detection](https://forum.godotengine.org/t/ui-elements-block-area2ds-mouse-detection/78150)
+- [SubViewportContainer blocks mouse input](https://forum.godotengine.org/t/subviewportcontainer-blocks-mouse-input/98499)
+- [Control Pass vs Ignore into SubViewport](https://forum.godotengine.org/t/confused-on-propagation-and-filtering-of-input-events-through-controls-to-subviewport/135181)
+- [Area2D picking inside a SubViewport](https://forum.godotengine.org/t/area2d-not-detecting-input-event-whilst-in-subviewport/98287)
+- [Pixels flickering when changing camera zoom](https://forum.godotengine.org/t/pixels-flickering-when-changing-camera-zoom/76194)
+- [How to make pixel art not look weird](https://forum.godotengine.org/t/how-to-make-the-pixel-not-weird-for-pixel-game/42308)
+
+## Agent skills / MCP
+
+- [alexmeckes/godot-claude-skills](https://github.com/alexmeckes/godot-claude-skills)
+- [alexmeckes/godot-mcp](https://github.com/alexmeckes/godot-mcp)

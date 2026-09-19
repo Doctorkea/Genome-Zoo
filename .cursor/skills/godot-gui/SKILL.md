@@ -13,7 +13,7 @@ Official patterns from [Using Containers](https://docs.godotengine.org/en/stable
 2. **Layout with nested Containers**, not hardcoded `position` / `size`. Hardcoded pixels break when the viewport is 1280×720 (100px tiles) or the window resizes.
 3. **Full-rect overlays must not steal world clicks.** Set `mouse_filter = MOUSE_FILTER_IGNORE` on spacer/full-rect wrappers. Only interactive Controls (`Button`, `PanelContainer` the player clicks) use `STOP`. GUI input is processed before physics picking — a leftover full-screen Panel is why `Area2D.input_event` silently dies.
 4. **Theme, don't per-node style.** Put colors/fonts/`StyleBox`es on a `Theme` resource (or one `theme` on the HUD root). Theme cascades to children. Use `add_theme_*_override` only for exceptions.
-5. **Update UI from signals**, not `_process` polling. This project already has `Events.animal_selected` and `Events.mutagen_points_changed`.
+5. **Update UI from signals**, not `_process` polling. This project already has `Events.animal_selected` and `Events.money_changed`.
 
 ## Layout recipe (HUD / panels)
 

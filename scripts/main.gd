@@ -4,7 +4,8 @@ extends Node2D
 ## Right-drag to pan, scroll wheel to zoom. See docs/DEMO.md.
 
 ## Integer zoom so floor tiles stay on pixel boundaries.
-const ZOOM_LEVELS: Array[float] = [0.5, 1.0, 2.0]
+## 0.5 is omitted — that view is wider than the 16×10 world.
+const ZOOM_LEVELS: Array[float] = [1.0, 2.0]
 
 @onready var _build_mode: BuildMode = $BuildMode
 @onready var _hud: Control = $HUDLayer/HUD
@@ -20,10 +21,12 @@ func _ready() -> void:
 	get_viewport().physics_object_picking = true
 	_fit_window_to_hud()
 	_camera.make_current()
+	GridService.apply_camera_limits(_camera)
 	_hud.set_build_mode(_build_mode)
-	var exhibit: Animal = _build_mode.spawn_starter_exhibit()
-	_camera.position = exhibit.global_position.round()
 	_camera.zoom = Vector2(2.0, 2.0)
+	var view: Vector2 = get_viewport().get_visible_rect().size / _camera.zoom
+	var map := GridService.map_size()
+	_camera.position = _clamped_camera_position(Vector2(map.x * 0.5, map.y - view.y * 0.36))
 
 
 func _fit_window_to_hud() -> void:
@@ -49,7 +52,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _panning:
 		var motion := event as InputEventMouseMotion
 		var delta: Vector2 = (motion.position - _pan_start_mouse) / _camera.zoom
-		_camera.position = (_pan_start_cam - delta).round()
+		_camera.position = _clamped_camera_position(_pan_start_cam - delta)
 
 
 func _zoom_camera(direction: int) -> void:
@@ -64,3 +67,9 @@ func _zoom_camera(direction: int) -> void:
 	index = clampi(index + direction, 0, ZOOM_LEVELS.size() - 1)
 	var new_zoom: float = ZOOM_LEVELS[index]
 	_camera.zoom = Vector2(new_zoom, new_zoom)
+	_camera.position = _clamped_camera_position(_camera.position)
+
+
+func _clamped_camera_position(desired: Vector2) -> Vector2:
+	var view: Vector2 = get_viewport().get_visible_rect().size / _camera.zoom
+	return GridService.clamp_camera_center(desired, view)

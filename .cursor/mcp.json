@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "godot-mcp": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/tools/godot-mcp/dist/index.js",
+        "--project",
+        "${workspaceFolder}",
+        "--port",
+        "6550"
+      ]
+    }
+  }
+}

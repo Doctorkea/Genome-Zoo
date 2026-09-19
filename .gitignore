@@ -22,3 +22,6 @@ Thumbs.db
 
 # Transient debug output from headless test runs
 godot_run.log
+
+# Vendored godot-mcp runtime deps (source + dist are committed)
+tools/godot-mcp/node_modules/

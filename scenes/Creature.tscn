@@ -19,6 +19,3 @@ centered = true
 
 [node name="Head" type="Sprite2D" parent="."]
 centered = true
-
-[node name="Eyes" type="Sprite2D" parent="."]
-centered = true
