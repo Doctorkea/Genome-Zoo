@@ -63,12 +63,6 @@ const REGION_FRONT_LEGS := Rect2(54, 62, 18, 30)
 const REGION_BACK_LEGS := Rect2(18, 57, 25, 41)
 const REGION_TAIL := Rect2(4, 40, 28, 22)
 
-const PALETTE_BASE_COLORS: Array[Color] = [
-	Color(0.55, 0.36, 0.20), # warm, fur-ish brown
-	Color(0.20, 0.55, 0.50), # cool, scales-ish teal
-	Color(0.55, 0.30, 0.55), # slime/weird-ish violet
-]
-
 var _shape_cache: Dictionary = {} # slot (String) -> Array[Texture2D]
 var _palette_cache: Array[Texture2D] = []
 
@@ -85,8 +79,9 @@ func get_shape_options(slot: String) -> Array[Texture2D]:
 
 func get_palette_options() -> Array[Texture2D]:
 	if _palette_cache.is_empty():
-		for base in PALETTE_BASE_COLORS:
-			_palette_cache.append(_make_gradient_palette(base))
+		var coats: Array = TraitLibrary.OPTIONS.get("color", [])
+		for option in coats:
+			_palette_cache.append(_make_gradient_palette(TraitLibrary.coat_base_color(option)))
 	return _palette_cache
 
 
@@ -103,8 +98,50 @@ func _load_slot(slot: String) -> Array[Texture2D]:
 			continue
 		var tex := load(path) as Texture2D
 		if tex != null:
-			textures.append(tex)
+			textures.append(_normalize_part(tex))
 	return textures
+
+
+func _normalize_part(tex: Texture2D) -> Texture2D:
+	var img := tex.get_image()
+	if img == null:
+		return tex
+	img = img.duplicate()
+	if img.is_compressed():
+		img.decompress()
+	var width: int = img.get_width()
+	var height: int = img.get_height()
+	const INK_CUT: float = 0.30
+	var sum: float = 0.0
+	var count: int = 0
+	for y in range(height):
+		for x in range(width):
+			var pixel: Color = img.get_pixel(x, y)
+			if pixel.a < 0.08:
+				continue
+			var lum: float = pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114
+			if lum < INK_CUT:
+				continue
+			sum += lum
+			count += 1
+	if count < 8:
+		return tex
+	var mean: float = sum / float(count)
+	var target: float = 0.74
+	var contrast: float = 0.55
+	for y in range(height):
+		for x in range(width):
+			var pixel: Color = img.get_pixel(x, y)
+			if pixel.a < 0.04:
+				continue
+			var lum: float = pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114
+			var mapped: float
+			if lum < INK_CUT:
+				mapped = clampf(lum * 0.72, 0.02, 0.22)
+			else:
+				mapped = clampf((lum - mean) * contrast + target, 0.34, 0.94)
+			img.set_pixel(x, y, Color(mapped, mapped, mapped, pixel.a))
+	return ImageTexture.create_from_image(img)
 
 
 func _make_gradient_palette(base: Color) -> ImageTexture:
@@ -114,8 +151,8 @@ func _make_gradient_palette(base: Color) -> ImageTexture:
 		var t: float = float(x) / float(width - 1)
 		var c: Color
 		if t < 0.5:
-			c = base.lerp(Color.BLACK, (0.5 - t) * 0.7)
+			c = base.lerp(Color(0.12, 0.09, 0.07), (0.5 - t) * 0.55)
 		else:
-			c = base.lerp(Color.WHITE, (t - 0.5) * 1.2)
+			c = base.lerp(Color(0.96, 0.93, 0.88), (t - 0.5) * 0.9)
 		img.set_pixel(x, 0, c)
 	return ImageTexture.create_from_image(img)

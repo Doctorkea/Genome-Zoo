@@ -4,6 +4,8 @@ extends Node
 ## Autoloaded as "GridService".
 
 const CELL_SIZE: int = 100 # one grid cell == one 100x100 floor tile (the art scale reference)
+## Path stamps are much smaller than pens so a walkway reads as cobbles, not slabs.
+const PATH_CELL_SIZE: int = 25
 const WORLD_COLS: int = 16
 const WORLD_ROWS: int = 10
 ## Prison Architect-style frontage below the grass. Pens cannot be built here.
@@ -11,6 +13,7 @@ const PARKING_HEIGHT: int = 96
 const ROAD_HEIGHT: int = 148
 
 var _occupied_cells: Dictionary = {} # Vector2i -> Node (the Pen occupying that cell)
+var _path_cells: Dictionary = {} # path-grid Vector2i -> true
 
 
 func world_size() -> Vector2:
@@ -69,6 +72,26 @@ func cell_to_world(cell: Vector2i) -> Vector2:
 	return Vector2(cell.x * CELL_SIZE, cell.y * CELL_SIZE)
 
 
+func world_to_path_cell(world_pos: Vector2) -> Vector2i:
+	return Vector2i(int(floor(world_pos.x / PATH_CELL_SIZE)), int(floor(world_pos.y / PATH_CELL_SIZE)))
+
+
+func path_cell_to_world(cell: Vector2i) -> Vector2:
+	return Vector2(cell.x * PATH_CELL_SIZE, cell.y * PATH_CELL_SIZE)
+
+
+func path_cell_center(cell: Vector2i) -> Vector2:
+	return path_cell_to_world(cell) + Vector2(PATH_CELL_SIZE, PATH_CELL_SIZE) * 0.5
+
+
+func is_path_cell_in_world(cell: Vector2i) -> bool:
+	var origin := path_cell_to_world(cell)
+	var grass := world_size()
+	return origin.x >= 0.0 and origin.y >= 0.0 \
+		and origin.x + float(PATH_CELL_SIZE) <= grass.x + 0.01 \
+		and origin.y + float(PATH_CELL_SIZE) <= grass.y + 0.01
+
+
 func is_area_in_world(origin_cell: Vector2i, size_cells: Vector2i) -> bool:
 	return origin_cell.x >= 0 and origin_cell.y >= 0 \
 		and origin_cell.x + size_cells.x <= WORLD_COLS \
@@ -79,6 +102,96 @@ func is_area_in_world(origin_cell: Vector2i, size_cells: Vector2i) -> bool:
 ## `origin_cell` is currently unoccupied.
 func is_cell_occupied(cell: Vector2i) -> bool:
 	return _occupied_cells.has(cell)
+
+
+func has_path_cell(cell: Vector2i) -> bool:
+	return _path_cells.has(cell)
+
+
+## True when any small path stamp sits inside this 100×100 grass cell.
+func has_path(grass_cell: Vector2i) -> bool:
+	var origin := cell_to_world(grass_cell)
+	var start := world_to_path_cell(origin + Vector2(0.5, 0.5))
+	var end := world_to_path_cell(origin + Vector2(CELL_SIZE - 0.5, CELL_SIZE - 0.5))
+	for x in range(start.x, end.x + 1):
+		for y in range(start.y, end.y + 1):
+			if _path_cells.has(Vector2i(x, y)):
+				return true
+	return false
+
+
+func has_any_path() -> bool:
+	return not _path_cells.is_empty()
+
+
+func is_path_placeable(cell: Vector2i) -> bool:
+	if not is_path_cell_in_world(cell) or has_path_cell(cell):
+		return false
+	var grass := world_to_cell(path_cell_center(cell))
+	return is_area_in_world(grass, Vector2i.ONE) and not is_cell_occupied(grass)
+
+
+func add_path(cell: Vector2i) -> void:
+	if is_path_placeable(cell):
+		_path_cells[cell] = true
+
+
+func remove_path(cell: Vector2i) -> void:
+	_path_cells.erase(cell)
+
+
+func clear_paths() -> void:
+	_path_cells.clear()
+
+
+func take_paths_in_area(origin_cell: Vector2i, size_cells: Vector2i) -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+	var origin := cell_to_world(origin_cell)
+	var size := Vector2(size_cells.x * CELL_SIZE, size_cells.y * CELL_SIZE)
+	var start := world_to_path_cell(origin + Vector2(0.5, 0.5))
+	var end := world_to_path_cell(origin + size - Vector2(0.5, 0.5))
+	for x in range(start.x, end.x + 1):
+		for y in range(start.y, end.y + 1):
+			var cell := Vector2i(x, y)
+			if _path_cells.has(cell):
+				_path_cells.erase(cell)
+				found.append(cell)
+	return found
+
+
+func cell_center(cell: Vector2i) -> Vector2:
+	return cell_to_world(cell) + Vector2(CELL_SIZE, CELL_SIZE) * 0.5
+
+
+## Grass plus the parking strip, excluding road and pen footprints.
+func is_guest_walkable(point: Vector2) -> bool:
+	if road_rect().has_point(point):
+		return false
+	var map := map_size()
+	if point.x < 8.0 or point.x > map.x - 8.0 or point.y < 8.0:
+		return false
+	if point.y > parking_rect().end.y - 2.0:
+		return false
+	var cell := world_to_cell(point)
+	if is_area_in_world(cell, Vector2i.ONE) and is_cell_occupied(cell):
+		return false
+	return grass_rect().has_point(point) or parking_rect().has_point(point)
+
+
+func is_guest_cell_walkable(cell: Vector2i) -> bool:
+	return is_guest_walkable(cell_center(cell))
+
+
+func guest_line_clear(from: Vector2, to: Vector2, step: float = 24.0) -> bool:
+	var span: float = from.distance_to(to)
+	if span <= 1.0:
+		return is_guest_walkable(to)
+	var n: int = maxi(1, int(ceil(span / step)))
+	for i in range(1, n + 1):
+		var t: float = float(i) / float(n)
+		if not is_guest_walkable(from.lerp(to, t)):
+			return false
+	return true
 
 
 func is_area_free(origin_cell: Vector2i, size_cells: Vector2i) -> bool:
@@ -96,6 +209,7 @@ func is_area_placeable(origin_cell: Vector2i, size_cells: Vector2i) -> bool:
 
 ## Marks every cell in the `size_cells` rectangle as occupied by `by`.
 func occupy_area(origin_cell: Vector2i, size_cells: Vector2i, by: Node) -> void:
+	take_paths_in_area(origin_cell, size_cells)
 	for x in range(size_cells.x):
 		for y in range(size_cells.y):
 			_occupied_cells[origin_cell + Vector2i(x, y)] = by

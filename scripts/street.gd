@@ -11,15 +11,7 @@ const STALL_COUNT: int = 6
 const STALL_GAP: float = 28.0
 const MAX_VISITORS: int = 16
 
-const CAR_COLORS: Array[Color] = [
-	Color(0.78, 0.20, 0.18),
-	Color(0.93, 0.93, 0.90),
-	Color(0.16, 0.16, 0.18),
-	Color(0.20, 0.38, 0.72),
-	Color(0.22, 0.55, 0.32),
-	Color(0.90, 0.62, 0.16),
-]
-
+var is_open: bool = false
 var _bays: Array[Dictionary] = []
 var _hail_queue: Array[Visitor] = []
 var _pickup_claimed: Dictionary = {} # bay index -> true while a pickup car is coming
@@ -30,9 +22,47 @@ var _next_family_id: int = 1
 
 
 func _ready() -> void:
+	add_to_group("street")
 	z_index = 0
 	_layout_stalls()
 	queue_redraw()
+
+
+func has_exhibit() -> bool:
+	for pen in _all_pens():
+		if pen.occupant_count() >= 1:
+			return true
+	return false
+
+
+func open_block_reason() -> String:
+	if has_exhibit():
+		return ""
+	return "Need a pen with at least one animal."
+
+
+func set_open(want: bool) -> bool:
+	if want:
+		var reason := open_block_reason()
+		if not reason.is_empty():
+			return false
+		if is_open:
+			return true
+		is_open = true
+		Events.zoo_hours_changed.emit(true)
+		return true
+	if not is_open:
+		return true
+	is_open = false
+	send_guests_home()
+	Events.zoo_hours_changed.emit(false)
+	return true
+
+
+func send_guests_home() -> void:
+	for guest in _visitors():
+		if guest.is_leader() and not guest.is_leaving():
+			guest.hail()
 
 
 func bay_count() -> int:
@@ -85,7 +115,7 @@ func wander_point(visitor: Visitor = null) -> Vector2:
 		var pen: Pen = pool[randi() % pool.size()]
 		var spots: Array[Vector2] = pen.viewing_points()
 		if not spots.is_empty():
-			return spots[randi() % spots.size()]
+			return _prefer_clear_spot(visitor, spots)
 		var look := _frontage_or_empty(pen)
 		if look != Vector2.INF:
 			return look
@@ -160,6 +190,8 @@ func drop_visitor(car: Car) -> void:
 		spawn_family(start)
 	else:
 		_make_guest(TraitLibrary.random_solo_id(), start)
+	if not is_open:
+		send_guests_home()
 
 
 func spawn_family(start: Vector2) -> Visitor:
@@ -266,6 +298,8 @@ func spawn_traffic(dir: int) -> Car:
 
 
 func spawn_dropoff() -> Car:
+	if not is_open:
+		return null
 	var index := _free_bay_index()
 	if index < 0 or visitor_count() > visitor_cap() - 4:
 		return null
@@ -284,6 +318,8 @@ func spawn_pickup() -> Car:
 
 
 func _process(delta: float) -> void:
+	if is_open and not has_exhibit():
+		set_open(false)
 	_assign_waiting_bays()
 	_traffic_timer -= delta
 	_east_timer -= delta
@@ -316,7 +352,7 @@ func _spawn_kerb_car(role: int, bay_index: int) -> Car:
 func _make_car(role: int, dir: int, start: Vector2, bay_index: int, stall_center: Vector2) -> Car:
 	var car := CAR_SCENE.instantiate() as Car
 	add_child(car)
-	car.setup(self, role, dir, start, CAR_COLORS[randi() % CAR_COLORS.size()])
+	car.setup(self, role, dir, start, Car.random_body_color())
 	if bay_index >= 0:
 		car.assign_stall(bay_index, stall_center)
 	return car
@@ -387,10 +423,26 @@ func _assign_waiting_bays() -> void:
 		guest.go_to((_bays[index]["rect"] as Rect2).get_center())
 
 
+func _prefer_clear_spot(visitor: Visitor, spots: Array[Vector2]) -> Vector2:
+	if visitor == null:
+		return spots[randi() % spots.size()]
+	var path_spots: Array[Vector2] = []
+	if GridService.has_any_path():
+		for spot in spots:
+			if GridService.has_path(GridService.world_to_cell(spot)):
+				path_spots.append(spot)
+	var pool: Array[Vector2] = path_spots if not path_spots.is_empty() else spots
+	var open: Array[Vector2] = []
+	for spot in pool:
+		if GridService.guest_line_clear(visitor.position, spot):
+			open.append(spot)
+	if not open.is_empty():
+		return open[randi() % open.size()]
+	return pool[randi() % pool.size()]
+
+
 func _is_park_walkable(point: Vector2) -> bool:
-	if GridService.road_rect().has_point(point):
-		return false
-	return GridService.grass_rect().has_point(point) or GridService.parking_rect().has_point(point)
+	return GridService.is_guest_walkable(point)
 
 
 func _frontage_or_empty(pen: Pen) -> Vector2:

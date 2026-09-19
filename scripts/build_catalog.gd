@@ -6,6 +6,7 @@ class_name BuildCatalog
 
 const CAT_PENS: String = "pens"
 const CAT_ANIMALS: String = "animals"
+const CAT_PATHS: String = "paths"
 
 const ITEMS: Array[Dictionary] = [
 	{
@@ -35,39 +36,6 @@ const ITEMS: Array[Dictionary] = [
 		"cost": 30,
 		"parts": {"body": 0, "head": 0, "front_legs": 0, "back_legs": 0, "tail": 0},
 		"color": 0,
-		"hide": ["tail"],
-	},
-	{
-		"id": "horse",
-		"category": CAT_ANIMALS,
-		"kind": "animal",
-		"name": "Horse",
-		"blurb": "Long-legged paddock runner",
-		"cost": 45,
-		"parts": {"body": 0, "head": 0, "front_legs": 1, "back_legs": 1, "tail": 1},
-		"color": 0,
-		"hide": [],
-	},
-	{
-		"id": "spikeback",
-		"category": CAT_ANIMALS,
-		"kind": "animal",
-		"name": "Spikeback",
-		"blurb": "Horned show-stopper",
-		"cost": 50,
-		"parts": {"body": 2, "head": 1, "front_legs": 0, "back_legs": 0, "tail": 0},
-		"color": 1,
-		"hide": [],
-	},
-	{
-		"id": "gloop",
-		"category": CAT_ANIMALS,
-		"kind": "animal",
-		"name": "Gloop",
-		"blurb": "Weird crowd-gawker",
-		"cost": 40,
-		"parts": {"body": 1, "head": 2, "front_legs": 2, "back_legs": 2, "tail": 2},
-		"color": 2,
 		"hide": [],
 	},
 	{
@@ -77,7 +45,7 @@ const ITEMS: Array[Dictionary] = [
 		"name": "Chimory",
 		"blurb": "Gorilla, frog, sheep, stinger",
 		"cost": 55,
-		"parts": {"body": 3, "head": 3, "front_legs": 3, "back_legs": 3, "tail": 3},
+		"parts": {"body": 0, "head": 1, "front_legs": 5, "back_legs": 0, "tail": 6},
 		"color": 0,
 		"hide": [],
 	},
@@ -88,9 +56,17 @@ const ITEMS: Array[Dictionary] = [
 		"name": "Jimmothy",
 		"blurb": "Horse face, curly tail",
 		"cost": 20,
-		"parts": {"body": 4, "head": 4, "front_legs": 4, "back_legs": 4, "tail": 4},
+		"parts": {"body": 0, "head": 3, "front_legs": 1, "back_legs": 1, "tail": 7},
 		"color": 0,
 		"hide": [],
+	},
+	{
+		"id": "path_stone",
+		"category": CAT_PATHS,
+		"kind": "path",
+		"name": "Stone path",
+		"blurb": "Tiny cobble stamp",
+		"cost": 1,
 	},
 ]
 

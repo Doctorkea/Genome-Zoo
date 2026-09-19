@@ -23,7 +23,7 @@ func _ready() -> void:
 	_camera.make_current()
 	GridService.apply_camera_limits(_camera)
 	_hud.set_build_mode(_build_mode)
-	_camera.zoom = Vector2(2.0, 2.0)
+	_camera.zoom = Vector2(ZOOM_LEVELS[0], ZOOM_LEVELS[0])
 	var view: Vector2 = get_viewport().get_visible_rect().size / _camera.zoom
 	var map := GridService.map_size()
 	_camera.position = _clamped_camera_position(Vector2(map.x * 0.5, map.y - view.y * 0.36))
@@ -46,13 +46,25 @@ func _unhandled_input(event: InputEvent) -> void:
 			_pan_start_mouse = event.position
 			_pan_start_cam = _camera.position
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			_zoom_camera(-1)
+			if not _gui_blocks_zoom():
+				_zoom_camera(-1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			_zoom_camera(1)
+			if not _gui_blocks_zoom():
+				_zoom_camera(1)
 	elif event is InputEventMouseMotion and _panning:
 		var motion := event as InputEventMouseMotion
 		var delta: Vector2 = (motion.position - _pan_start_mouse) / _camera.zoom
 		_camera.position = _clamped_camera_position(_pan_start_cam - delta)
+
+
+func _gui_blocks_zoom() -> bool:
+	var node: Node = get_viewport().gui_get_hovered_control()
+	while node is Control:
+		var ctrl := node as Control
+		if ctrl.mouse_filter == Control.MOUSE_FILTER_STOP:
+			return true
+		node = node.get_parent()
+	return false
 
 
 func _zoom_camera(direction: int) -> void:

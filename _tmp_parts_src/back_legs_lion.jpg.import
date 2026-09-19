@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://tybsnkshsyi8"
-path="res://.godot/imported/back_legs_chimory.png-f0823c640b1f88a41b786725487a3365.ctex"
+uid="uid://3n1b8bvpqu7b"
+path="res://.godot/imported/back_legs_lion.jpg-88d9bdeb32afaad8142bbbea083958ed.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/creatures/parts/back_legs_chimory.png"
-dest_files=["res://.godot/imported/back_legs_chimory.png-f0823c640b1f88a41b786725487a3365.ctex"]
+source_file="res://_tmp_parts_src/back_legs_lion.jpg"
+dest_files=["res://.godot/imported/back_legs_lion.jpg-88d9bdeb32afaad8142bbbea083958ed.ctex"]
 
 [params]
 

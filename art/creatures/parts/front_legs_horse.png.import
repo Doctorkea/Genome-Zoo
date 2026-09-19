@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c5f8rldmiivqg"
-path="res://.godot/imported/tail_chimory.png-3dd53b4b40bf8d5a7585bfd6fb118f4c.ctex"
+uid="uid://caqajps3f117h"
+path="res://.godot/imported/front_legs_horse.png-6101563a8b2ccc389221fb37efc2edf6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/creatures/parts/tail_chimory.png"
-dest_files=["res://.godot/imported/tail_chimory.png-3dd53b4b40bf8d5a7585bfd6fb118f4c.ctex"]
+source_file="res://art/creatures/parts/front_legs_horse.png"
+dest_files=["res://.godot/imported/front_legs_horse.png-6101563a8b2ccc389221fb37efc2edf6.ctex"]
 
 [params]
 

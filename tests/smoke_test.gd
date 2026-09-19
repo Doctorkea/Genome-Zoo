@@ -13,6 +13,7 @@ func _ready() -> void:
 	_test_floor_tiles()
 	_test_placeholder_art()
 	_test_trait_library()
+	_test_zoo_hours_empty()
 	var pen := _test_pen()
 	var animal := _test_animal(pen)
 	_test_creature_mutation(animal)
@@ -41,19 +42,25 @@ func _test_grid_service() -> void:
 	assert(GridService.parking_rect().position.y == GridService.world_size().y, "parking sits on the grass edge")
 	assert(GridService.road_rect().position.y > GridService.parking_rect().position.y, "road sits below the parking strip")
 	assert(not GridService.is_area_in_world(Vector2i(0, GridService.WORLD_ROWS), Vector2i(2, 1)), "road cells are not buildable")
+	GridService.free_area(Vector2i(0, 0), Vector2i(4, 3), self)
 	print("GridService OK")
 
 
 func _test_build_catalog() -> void:
 	assert(BuildCatalog.items_for(BuildCatalog.CAT_PENS).size() == 2, "should list two pens")
-	assert(BuildCatalog.items_for(BuildCatalog.CAT_ANIMALS).size() == 6, "should list six base animals")
+	assert(BuildCatalog.items_for(BuildCatalog.CAT_ANIMALS).size() == 3, "should list three base animals")
+	assert(BuildCatalog.items_for(BuildCatalog.CAT_PATHS).size() == 1, "should list a path tile")
+	assert(int(BuildCatalog.get_item("path_stone").get("cost", 0)) == 1, "stone path should cost $1")
+	assert(GridService.PATH_CELL_SIZE < GridService.CELL_SIZE / 3, "path stamps should be much smaller than grass cells")
 	assert(BuildCatalog.get_item("chimory").get("name") == "Chimory", "chimory should be a base animal")
 	assert(BuildCatalog.get_item("jimmothy").get("name") == "Jimmothy", "jimmothy should be a base animal")
 	assert(int(BuildCatalog.get_item("jimmothy").get("cost", 0)) == 20, "jimmothy should cost $20")
 	var jimothy: Dictionary = BuildCatalog.get_item("jimothy")
 	assert(jimothy.get("name") == "Jimothy", "jimothy should be in the catalog")
 	assert(int(jimothy.get("cost", 0)) > 0, "jimothy should cost cash")
-	assert(BuildCatalog.get_item("horse").get("name") == "Horse", "horse should be a base animal")
+	assert(BuildCatalog.get_item("horse").is_empty(), "placeholder horse should be gone")
+	assert(BuildCatalog.get_item("gloop").is_empty(), "placeholder gloop should be gone")
+	assert(BuildCatalog.get_item("spikeback").is_empty(), "placeholder spikeback should be gone")
 	print("BuildCatalog OK")
 
 
@@ -124,11 +131,11 @@ func _test_placeholder_art() -> void:
 	assert(canvas == 100, "canvas should match one grass tile (100), got %d" % canvas)
 	assert(canvas == GridService.CELL_SIZE, "canvas must equal GridService.CELL_SIZE")
 	var expected_counts := {
-		"body": 5,
-		"head": 12,
-		"front_legs": 5,
-		"back_legs": 5,
-		"tail": 5,
+		"body": 1,
+		"head": 10,
+		"front_legs": 6,
+		"back_legs": 9,
+		"tail": 8,
 	}
 	for slot in ["body", "head", "front_legs", "back_legs", "tail"]:
 		var opts := PlaceholderArt.get_shape_options(slot)
@@ -140,37 +147,74 @@ func _test_placeholder_art() -> void:
 				"%s option %d must be square, got %dx%d" % [slot, i, tex.get_width(), tex.get_height()])
 			assert(tex.get_width() >= canvas,
 				"%s option %d is %dpx, expected at least %d" % [slot, i, tex.get_width(), canvas])
-	assert(PlaceholderArt.get_palette_options().size() == 3, "should have 3 palettes")
+	assert(PlaceholderArt.get_palette_options().size() == TraitLibrary.get_option_count("color"),
+		"each coat should have a palette")
+	var body_tex: Texture2D = PlaceholderArt.get_shape_options("body")[0]
+	var leg_tex: Texture2D = PlaceholderArt.get_shape_options("front_legs")[0]
+	var body_mean: float = _fill_mean(body_tex)
+	var leg_mean: float = _fill_mean(leg_tex)
+	assert(absf(body_mean - leg_mean) < 0.08,
+		"limb fill should match body brightness, body=%s legs=%s" % [body_mean, leg_mean])
 	for path in [
-		"res://art/creatures/parts/body_jimothy.png",
+		"res://art/creatures/parts/body_jimmothy.png",
 		"res://art/creatures/parts/head_jimothy.png",
-		"res://art/creatures/parts/front_legs_jimothy.png",
-		"res://art/creatures/parts/back_legs_jimothy.png",
-		"res://art/creatures/parts/body_chimory.png",
 		"res://art/creatures/parts/head_gorilla.png",
+		"res://art/creatures/parts/head_lizard.png",
+		"res://art/creatures/parts/head_jimmothy.png",
 		"res://art/creatures/parts/head_cockatoo.png",
 		"res://art/creatures/parts/head_turtle.png",
-		"res://art/creatures/parts/head_lizard.png",
 		"res://art/creatures/parts/head_frog.png",
 		"res://art/creatures/parts/head_hamster.png",
 		"res://art/creatures/parts/head_duck.png",
 		"res://art/creatures/parts/head_lion.png",
+		"res://art/creatures/parts/front_legs_turtle.png",
+		"res://art/creatures/parts/front_legs_horse.png",
+		"res://art/creatures/parts/front_legs_lizard.png",
+		"res://art/creatures/parts/front_legs_lion.png",
+		"res://art/creatures/parts/front_legs_trex.png",
 		"res://art/creatures/parts/front_legs_chimory.png",
-		"res://art/creatures/parts/back_legs_chimory.png",
-		"res://art/creatures/parts/tail_chimory.png",
-		"res://art/creatures/parts/body_jimmothy.png",
-		"res://art/creatures/parts/head_jimmothy.png",
-		"res://art/creatures/parts/front_legs_jimmothy.png",
+		"res://art/creatures/parts/back_legs_sheep.png",
+		"res://art/creatures/parts/back_legs_horse.png",
 		"res://art/creatures/parts/back_legs_jimmothy.png",
+		"res://art/creatures/parts/back_legs_frog.png",
+		"res://art/creatures/parts/back_legs_bird.png",
+		"res://art/creatures/parts/back_legs_elephant.png",
+		"res://art/creatures/parts/back_legs_gorilla.png",
+		"res://art/creatures/parts/back_legs_lion.png",
+		"res://art/creatures/parts/back_legs_turtle.png",
+		"res://art/creatures/parts/tail_pig.png",
+		"res://art/creatures/parts/tail_sheep.png",
+		"res://art/creatures/parts/tail_tentacle.png",
+		"res://art/creatures/parts/tail_fire.png",
+		"res://art/creatures/parts/tail_lion.png",
+		"res://art/creatures/parts/tail_lizard.png",
+		"res://art/creatures/parts/tail_scorpion.png",
 		"res://art/creatures/parts/tail_jimmothy.png",
 	]:
 		var part: Texture2D = load(path)
-		assert(part != null, "missing Jimothy part %s" % path)
+		assert(part != null, "missing artist part %s" % path)
 		assert(part.get_width() == part.get_height(),
 			"%s must be square, got %dx%d" % [path, part.get_width(), part.get_height()])
 		assert(part.get_width() >= canvas,
 			"%s is %dpx, expected at least %d" % [path, part.get_width(), canvas])
 	print("PlaceholderArt OK — all parts %dx%d" % [canvas, canvas])
+
+
+func _test_zoo_hours_empty() -> void:
+	var street_scene: PackedScene = load("res://scenes/Street.tscn")
+	var street: Node = street_scene.instantiate()
+	add_child(street)
+	assert(not bool(street.get("is_open")), "zoo should start closed")
+	assert(not street.has_exhibit(), "an empty park has no exhibit")
+	assert(not street.set_open(true), "opening needs a pen with an animal")
+	assert(not bool(street.get("is_open")), "a failed open should stay closed")
+	assert(street.spawn_dropoff() == null, "closed gates should not take drop-offs")
+	var passer: Node = street.spawn_traffic(1)
+	assert(passer != null, "passing cars still use the road when closed")
+	if passer != null:
+		passer.free()
+	street.free()
+	print("Zoo hours OK — starts closed")
 
 
 func _test_pen() -> Pen:
@@ -245,13 +289,22 @@ func _test_animal(pen: Pen) -> Animal:
 func _test_trait_library() -> void:
 	var head0: Dictionary = TraitLibrary.get_option("head", 0)
 	assert(head0.get("name") == "Jimothy Head", "head 0 should be Jimothy Head")
-	assert(TraitLibrary.get_option_count("body") == 5, "body should have 5 options")
-	assert(TraitLibrary.get_option_count("head") == 12, "head should include the artist head set")
-	assert(TraitLibrary.get_option_count("color") == 3, "color should have 3 palettes")
-	assert(TraitLibrary.get_option("head", 3).get("name") == "Gorilla Head", "gorilla head should be in the pool")
-	assert(TraitLibrary.get_option("head", 4).get("name") == "Horse Head", "jimmothy head should be in the pool")
-	assert(TraitLibrary.get_option("head", 5).get("name") == "Cockatoo Head", "cockatoo head should be in the pool")
-	assert(TraitLibrary.get_option("head", 11).get("name") == "Lion Head", "lion head should be in the pool")
+	assert(TraitLibrary.get_option_count("body") == 1, "body should be the shared Jimmothy torso")
+	assert(TraitLibrary.get_option_count("head") == 10, "head should include the artist head set")
+	assert(TraitLibrary.get_option_count("front_legs") == 6, "front legs should include the artist arm set")
+	assert(TraitLibrary.get_option_count("back_legs") == 9, "back legs should include the artist leg set")
+	assert(TraitLibrary.get_option_count("tail") == 8, "tail should include the artist tail set")
+	assert(TraitLibrary.get_option_count("color") == 11, "coats should cover every serum tag")
+	assert(TraitLibrary.slot_display_name("color") == "Coat", "color slot should display as Coat")
+	for tag in TraitLibrary.TAGS:
+		assert(not TraitLibrary.indices_with_tag("color", tag).is_empty(),
+			"every serum tag needs a coat, missing %s" % tag)
+	assert(TraitLibrary.LAB_SLOTS.has("head") and not TraitLibrary.LAB_SLOTS.has("body"),
+		"DNA Lab should mutate limbs, not the shared torso")
+	assert(TraitLibrary.get_option("head", 1).get("name") == "Gorilla Head", "gorilla head should be in the pool")
+	assert(TraitLibrary.get_option("head", 3).get("name") == "Horse Head", "jimmothy head should be in the pool")
+	assert(TraitLibrary.get_option("head", 4).get("name") == "Cockatoo Head", "cockatoo head should be in the pool")
+	assert(TraitLibrary.get_option("head", 9).get("name") == "Lion Head", "lion head should be in the pool")
 	var seen_colors: Dictionary = {}
 	for visitor in TraitLibrary.VISITORS:
 		var tint: Color = TraitLibrary.visitor_color(str(visitor.get("id", "")))
@@ -328,12 +381,12 @@ func _test_trait_library() -> void:
 		var cute: int = TraitLibrary.pick_other_with_tag("head", 0, "Cute", 0)
 		assert(cute != 0, "cute serum should change a cute head")
 		assert(TraitLibrary.option_has_tag("head", cute, "Cute"), "cute pick must keep the Cute tag")
-	assert(TraitLibrary.option_rarity("body", 2) == 2, "spiky body should be exotic")
-	assert(TraitLibrary.pick_other_from_ids("head", 0, ["lion", "horned"]) != 0,
+	assert(TraitLibrary.option_rarity("head", 9) == 2, "lion head should be exotic")
+	assert(TraitLibrary.pick_other_from_ids("head", 0, ["lion"]) != 0,
 		"exotic pool should swap onto a listed head")
-	assert(TraitLibrary.pick_other_with_tag("color", 0, "Cute", 0) == 0,
-		"fur is the only Cute color, so the serum should fail")
-	assert(int(TraitLibrary.get_option("head", 11).get("rarity", -1)) == 2,
+	assert(TraitLibrary.pick_other_with_tag("color", 0, "Cute", 0) != 0,
+		"cute serum should be able to change the coat")
+	assert(int(TraitLibrary.get_option("head", 9).get("rarity", -1)) == 2,
 		"lion head should be exotic")
 	assert(TraitLibrary.tag_clash(baseline.get("tags", {}), baseline.get("tags", {})) == 0.0,
 		"identical loadouts should not clash")
@@ -344,10 +397,15 @@ func _test_trait_library() -> void:
 
 func _test_creature_mutation(animal: Animal) -> void:
 	var before: Dictionary = animal.get_stats()
-	animal.visuals.set_part_shape("head", 1)
-	assert(animal.visuals.get_current_index("head") == 1, "head mutation didn't apply")
+	animal.visuals.set_part_shape("head", 2)
+	assert(animal.visuals.get_current_index("head") == 2, "head mutation didn't apply")
 	animal.visuals.set_skin(2)
 	assert(animal.visuals.get_current_palette_index() == 2, "skin mutation didn't apply")
+	animal.visuals.set_skin(4)
+	assert(animal.visuals.get_current_palette_index() == 4, "stripe coat should apply")
+	assert(int(animal.visuals.get_node("Body").material.get_shader_parameter("pattern")) == 2,
+		"tiger stripes should set the stripe pattern")
+	animal.visuals.set_skin(2)
 	var after: Dictionary = animal.get_stats()
 	assert(after.get("archetype") != "", "mutated animal should still have an archetype")
 	var before_visitors: Dictionary = before.get("visitors", {})
@@ -367,20 +425,21 @@ func _test_build_mode() -> void:
 	var jimothy: Animal = build_mode.spawn_starter_exhibit()
 	assert(jimothy != null and jimothy.creature_name == "Jimothy", "starter exhibit should spawn Jimothy")
 	assert(jimothy.visuals.get_node_or_null("Eyes") == null, "eyes slot should be gone; eyes live on the head")
-	assert(not jimothy.visuals.get_node("Tail").visible, "Jimothy demo should hide procedural tail")
+	assert(jimothy.visuals.get_node("Tail").visible, "Jimothy should show the starter pig tail")
 	var occupied_origin := jimothy.get_pen().origin_cell
 	var occupied_size := jimothy.get_pen().footprint_cells
 	var first_pen: Pen = jimothy.get_pen()
 	assert(first_pen.animal_capacity() == 2, "small pens should hold 2 animals")
 	assert(first_pen.can_accept_animal(), "starter exhibit still has a free stall")
-	var extra: Animal = (load("res://scenes/Animal.tscn") as PackedScene).instantiate() as Animal
-	first_pen.add_child(extra)
-	extra.set_pen(first_pen)
-	first_pen.register_animal(extra)
+	WalletService.money += 40
+	build_mode.set_item("jimmothy")
+	assert(build_mode.current_mode == BuildMode.Mode.PLACE_ANIMAL, "catalog animal should arm place mode")
+	var inside: Vector2 = first_pen.global_position + first_pen.get_size_pixels() * 0.5
+	assert(build_mode.place_animal_at(inside), "should drop the selected animal in the pen")
+	assert(build_mode.current_item_id == "", "placing an animal should drop the spawn tool")
+	assert(build_mode.current_mode == BuildMode.Mode.NONE, "should not stay in animal-place mode")
 	assert(first_pen.occupant_count() == 2, "small pens should fill at two animals")
 	assert(not first_pen.can_accept_animal(), "a full small pen should refuse a third")
-	first_pen.unregister_animal(extra)
-	extra.queue_free()
 	assert(not GridService.is_area_free(occupied_origin, occupied_size), "starter pad should occupy grass")
 	build_mode.delete_animal(jimothy)
 	assert(jimothy.is_queued_for_deletion(), "delete animal should queue the creature")
@@ -395,6 +454,23 @@ func _test_build_mode() -> void:
 	assert(second.is_queued_for_deletion(), "deleting a pen should also delete animals inside")
 	assert(second_pen.is_queued_for_deletion(), "delete pen should queue the occupied paddock")
 	assert(GridService.is_area_free(occupied_origin, occupied_size), "tearing down an occupied pen should free grass")
+	WalletService.money += 15
+	build_mode.set_item("path_stone")
+	assert(build_mode.current_mode == BuildMode.Mode.PLACE_PATH, "path catalog should arm path mode")
+	assert(build_mode.place_path_at(Vector2i(0, 0)), "should stamp a path on empty grass")
+	assert(GridService.has_path_cell(Vector2i(0, 0)), "path stamps should occupy the small path grid")
+	assert(GridService.has_path(Vector2i(0, 0)), "path cells should be walkable path")
+	assert(build_mode.current_item_id == "path_stone", "path tool should stay selected for painting")
+	assert(not build_mode.place_path_at(Vector2i(0, 0)), "should not stack two paths on one cell")
+	var first_tex: Texture2D = build_mode._path_tiles[Vector2i(0, 0)].texture
+	var saw_other := false
+	for i in range(1, 8):
+		assert(build_mode.place_path_at(Vector2i(i, 0)), "should paint a short path of small stamps")
+		if build_mode._path_tiles[Vector2i(i, 0)].texture != first_tex:
+			saw_other = true
+	assert(BuildMode.PATH_TEXTURES.size() == 4, "path tool should shuffle among the four rock drawings")
+	assert(saw_other, "successive stamps should pick different rock drawings")
+	GridService.clear_paths()
 	print("BuildMode OK")
 
 
@@ -447,6 +523,8 @@ func _test_hud(animal: Animal) -> Control:
 	hud._on_cat_pens()
 	assert(hud.get_node("%CatalogRibbon").visible, "Pens tab should open the catalog ribbon")
 	assert(hud.get_node("%CatalogRow").get_child_count() == 2, "Pens ribbon should show two priced pens")
+	hud._on_cat_paths()
+	assert(hud.get_node("%CatalogRow").get_child_count() == 1, "Paths ribbon should show the stone path")
 	Events.animal_selected.emit(animal)
 	assert(hud.get_node("%StatsPanel").visible, "stats panel should show after select")
 	var archetype_text: String = hud.get_node("%StatsArchetype").text
@@ -473,14 +551,40 @@ func _test_hud(animal: Animal) -> Control:
 	assert(not hud.get_node("%LooksLead").visible, "expanded looks hides the single lead")
 	assert(hud.get_node("%LooksList").get_child_count() > 1, "expanded looks should list every present trait")
 	assert(str(hud.get_node("%WalletLabel").text).begins_with("$"), "wallet chip should show cash")
+	assert(str(hud.get_node("%HoursLabel").text) == "Closed", "hours chip should start Closed")
+	assert(str(hud.get_node("%ZooHoursButton").text) == "Open zoo", "hours button should offer to open")
+	hud._on_toggle_zoo_hours()
+	assert(hud.get_node("%HoursPanel").visible, "opening with no exhibit should show an error popup")
+	assert(str(hud.get_node("%HoursTitle").text) == "Can't open yet", "error popup should say it can't open")
+	assert(str(hud.get_node("%HoursCopy").text).contains("pen"), "error popup should say why")
+	assert(str(hud.get_node("%HoursLabel").text) == "Closed", "open should fail until the street exists")
+	hud._on_dismiss_hours()
+	assert(not hud.get_node("%HoursPanel").visible, "closing the error popup should hide it")
 	hud._on_mutate_pressed()
 	assert(hud.get_node("%LabPanel").visible, "DNA Lab should open from the exhibit card")
+	var lab_slot_names: PackedStringArray = PackedStringArray()
+	for child in hud.get_node("%LabSlots").get_children():
+		if child is Button:
+			lab_slot_names.append((child as Button).text)
+	assert(not lab_slot_names.has("Torso"), "DNA Lab should not offer a torso picker")
+	assert(lab_slot_names.has("Head") and lab_slot_names.has("Coat"),
+		"DNA Lab should still offer head and coat")
 	assert(hud.get_node("%StatsPanel").get_parent() == hud.get_node("%LabCardHost"),
 		"exhibit card should sit on the right of the lab")
 	hud._on_open_quests()
 	assert(hud.get_node("%QuestPanel").visible, "quest overlay should open")
 	assert(str(hud.get_node("%QuestName").text) != "", "quest card should show a title")
 	assert(str(hud.get_node("%QuestReward").text).begins_with("Reward:"), "quest card should show the reward")
+	var badge: TextureRect = hud.get_node("%QuestBadge") as TextureRect
+	assert(badge != null and badge.visible, "Quests button should show a status badge")
+	assert(badge.texture != null, "quest badge should have an icon")
+	if QuestBoard.ready_to_claim:
+		assert(str(badge.get_meta("kind")) == "reward", "claimable quests should show the gold ribbon")
+	else:
+		assert(str(badge.get_meta("kind")) == "quest", "active quests should show the red exclamation")
+	var status_icon: TextureRect = hud.get_node("%QuestStatusIcon") as TextureRect
+	assert(status_icon != null and status_icon.visible, "quest card should repeat the status icon")
+	assert(str(status_icon.get_meta("kind")) == str(badge.get_meta("kind")), "button and card badges should match")
 	hud._on_close_quests()
 	hud._on_open_shop()
 	assert(hud.get_node("%ShopList").get_child_count() > 0, "shop should list unlocked serums")
@@ -502,8 +606,10 @@ func _test_hud(animal: Animal) -> Control:
 		cute_stock = GeneTree.stock_of("cute")
 	hud._on_lab_slot_pressed("color")
 	hud._on_vial_dropped("cute")
-	assert(animal.visuals.get_current_palette_index() == 0, "fur has no other Cute form")
-	assert(GeneTree.stock_of("cute") == cute_stock, "a failed drop should not consume a charge")
+	var coat_after: int = animal.visuals.get_current_palette_index()
+	assert(coat_after != 0, "Cute serum should change the coat")
+	assert(TraitLibrary.option_has_tag("color", coat_after, "Cute"), "Cute serum should land on a Cute coat")
+	assert(GeneTree.stock_of("cute") == cute_stock - 1, "a coat drop should consume a charge")
 	GeneTree.unlock_vial("linger", 1)
 	hud._on_vial_dropped("linger")
 	assert(animal.has_perk(GeneTree.PERK_LINGER), "Linger graft should attach without swapping a part")
@@ -542,6 +648,17 @@ func _test_street(hud: Control = null) -> void:
 	var street_scene: PackedScene = load("res://scenes/Street.tscn")
 	var street: Node = street_scene.instantiate()
 	add_child(street)
+	assert(not bool(street.get("is_open")), "a new street should start closed")
+	assert(street.spawn_dropoff() == null, "closed gates should not take drop-offs")
+	assert(street.has_exhibit(), "earlier tests should leave a stocked pen")
+	if hud != null:
+		hud._on_toggle_zoo_hours()
+		assert(bool(street.get("is_open")), "Open zoo should work once a pen has an animal")
+		assert(not hud.get_node("%HoursPanel").visible, "a successful open should not show the error popup")
+		assert(str(hud.get_node("%ZooHoursButton").text) == "Close zoo", "open gates should offer Close zoo")
+		assert(str(hud.get_node("%HoursLabel").text) == "Open", "hours chip should say Open")
+	else:
+		assert(street.set_open(true), "a stocked pen should let the zoo open")
 	assert(street.bay_count() == 6, "should mark six parallel roadside parks")
 	assert(street.westbound_y() > GridService.parking_rect().end.y, "the near lane stays on the asphalt")
 	assert(street.westbound_y() < street.eastbound_y(), "left-hand traffic uses the lane beside the parks")
@@ -550,8 +667,28 @@ func _test_street(hud: Control = null) -> void:
 		"patrons should be a quarter smaller than the old 68px height")
 	assert(GridService.parking_rect().size.y > Car.SIZE.y + 16.0, "parking strip should fit a car")
 	assert(street.visitor_cap() == GeneTree.visitor_cap(), "street cap should follow gene-tree park perks")
+	GridService.clear_paths()
+	for x in range(1, 7):
+		GridService.add_path(GridService.world_to_path_cell(GridService.cell_center(Vector2i(x, 0))))
+	assert(GridService.has_path(Vector2i(1, 0)), "test path should land on empty grass")
+	var pather: Visitor = street._make_guest("tourists", GridService.cell_center(Vector2i(1, 1)))
+	pather.go_to(GridService.cell_center(Vector2i(6, 1)))
+	var used_path := false
+	for _i in range(900):
+		pather._process(1.0 / 60.0)
+		if GridService.has_path(GridService.world_to_cell(pather.position)):
+			used_path = true
+			break
+	assert(used_path, "guests should follow laid paths instead of cutting across grass")
+	pather.position = Vector2(-400.0, -400.0)
+	pather.crush()
+	GridService.clear_paths()
 	var passer: Node = street.spawn_traffic(1)
 	assert(passer != null and int(passer.get("role")) == 0, "passing cars should spawn on the road")
+	var car_sprite: Sprite2D = passer.get_node_or_null("Sprite2D") as Sprite2D
+	assert(car_sprite != null and car_sprite.texture != null, "cars should use the artist car texture")
+	assert(car_sprite.texture.get_width() > 0, "car texture should have pixels")
+	assert((passer as Car).body_color.a > 0.9, "each car should get a body tint")
 	var dropoff: Node = street.spawn_dropoff()
 	assert(dropoff != null and int(dropoff.get("role")) == 1, "a free bay should take a drop-off car")
 	assert(int(dropoff.get("bay_index")) >= 0, "drop-off cars need a reserved bay")
@@ -643,6 +780,24 @@ func _test_street(hud: Control = null) -> void:
 	for mate in street.family_of(guest):
 		assert(int(mate.pickup_bay) == int(guest.pickup_bay), "the family should share one pickup car")
 		assert(bool(mate._leaving), "the whole family should leave together")
+	var wall_origin := Vector2i(2, 4)
+	GridService.occupy_area(wall_origin, Vector2i(12, 2), street)
+	var walker: Visitor = street._make_guest("tourists", Vector2(700.0, 120.0))
+	var start_y: float = walker.position.y
+	walker.hail()
+	assert(walker._state == Visitor.State.HAIL, "hail should send the guest walking home")
+	for _i in range(1600):
+		walker._process(1.0 / 60.0)
+		if walker._state == Visitor.State.WAIT:
+			break
+		if walker.position.y >= GridService.parking_rect().position.y:
+			break
+	assert(
+		walker.position.y > start_y + 180.0 or walker._state == Visitor.State.WAIT,
+		"leaving guests should walk around pens instead of freezing, stayed at %s" % walker.position
+	)
+	GridService.free_area(wall_origin, Vector2i(12, 2), street)
+	walker.crush()
 	guest.pickup_bay = -1
 	guest._leaving = false
 	guest._state = 1
@@ -658,7 +813,51 @@ func _test_street(hud: Control = null) -> void:
 	var crushed: int = build.crush_visitors_in_rect(Rect2(0.0, 0.0, 400.0, 300.0))
 	assert(crushed == 1, "placing a pen on a guest should despawn them, got %d" % crushed)
 	assert(guest.is_queued_for_deletion(), "crushed guests should despawn")
+	if hud != null:
+		hud._on_toggle_zoo_hours()
+		assert(hud.get_node("%HoursPanel").visible, "Close zoo should show a closing popup")
+		assert(str(hud.get_node("%HoursTitle").text) == "Closing the zoo", "close popup should say the zoo is closing")
+		assert(str(hud.get_node("%HoursCopy").text).contains("closing"), "close popup should explain guests leave")
+		assert(bool(street.get("is_open")), "dismissing without confirm should leave the zoo open")
+		hud._on_dismiss_hours()
+		assert(bool(street.get("is_open")), "cancelling the close popup should keep the zoo open")
+		hud._on_toggle_zoo_hours()
+		hud._on_confirm_hours()
+	else:
+		assert(street.set_open(false), "should be able to close the zoo")
+	assert(not bool(street.get("is_open")), "Close zoo should shut the gates")
+	assert(street.spawn_dropoff() == null, "closed gates should stop new arrivals")
+	for child in street.get_children():
+		var leftover := child as Visitor
+		if leftover != null and is_instance_valid(leftover) and not leftover.is_queued_for_deletion():
+			assert(leftover.is_leaving(), "closing should send guests home immediately")
+	if hud != null:
+		assert(str(hud.get_node("%ZooHoursButton").text) == "Open zoo", "closed gates should offer Open zoo")
+		assert(str(hud.get_node("%HoursLabel").text) == "Closed", "hours chip should say Closed")
 	print("Street OK — bays=%d visitors=%d" % [street.bay_count(), street.visitor_count()])
+
+
+func _fill_mean(tex: Texture2D) -> float:
+	var img: Image = tex.get_image()
+	if img == null:
+		return 0.0
+	if img.is_compressed():
+		img.decompress()
+	var sum: float = 0.0
+	var count: int = 0
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var pixel: Color = img.get_pixel(x, y)
+			if pixel.a < 0.08:
+				continue
+			var lum: float = pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114
+			if lum < 0.30:
+				continue
+			sum += lum
+			count += 1
+	if count <= 0:
+		return 0.0
+	return sum / float(count)
 
 
 func _crowd_card_text(root: Node) -> String:

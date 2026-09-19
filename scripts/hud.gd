@@ -8,8 +8,16 @@ const FILL_BAD := Color(0.769, 0.271, 0.212, 1)
 const TAG_BAR_MAX: int = 6
 const INK := Color(0.11, 0.09, 0.063, 1)
 const MUTED := Color(0.42, 0.36, 0.26, 1)
+const QuestBadges := preload("res://scripts/quest_badge_art.gd")
 
 @onready var _wallet_label: Label = %WalletLabel
+@onready var _hours_label: Label = %HoursLabel
+@onready var _hours_button: Button = %ZooHoursButton
+@onready var _hours_scrim: ColorRect = %HoursScrim
+@onready var _hours_panel: PanelContainer = %HoursPanel
+@onready var _hours_title: Label = %HoursTitle
+@onready var _hours_copy: Label = %HoursCopy
+@onready var _hours_confirm: Button = %HoursConfirm
 @onready var _stats_home: Control = %Body
 @onready var _stats_panel: PanelContainer = %StatsPanel
 @onready var _pen_panel: PanelContainer = %PenPanel
@@ -49,6 +57,8 @@ const MUTED := Color(0.42, 0.36, 0.26, 1)
 @onready var _vial_row: Container = %VialRow
 @onready var _quest_scrim: ColorRect = %QuestScrim
 @onready var _quest_panel: PanelContainer = %QuestPanel
+@onready var _quest_badge: TextureRect = %QuestBadge
+@onready var _quest_status_icon: TextureRect = %QuestStatusIcon
 @onready var _quest_name: Label = %QuestName
 @onready var _quest_brief: Label = %QuestBrief
 @onready var _quest_progress: Label = %QuestProgress
@@ -58,6 +68,7 @@ const MUTED := Color(0.42, 0.36, 0.26, 1)
 @onready var _catalog_row: Container = %CatalogRow
 @onready var _cat_pens: Button = %CatPens
 @onready var _cat_animals: Button = %CatAnimals
+@onready var _cat_paths: Button = %CatPaths
 @onready var _dock: Control = %Dock
 
 var _selected_animal: Animal = null
@@ -69,6 +80,9 @@ var _slot_buttons: Dictionary = {} # slot -> Button
 var _tile_buttons: Dictionary = {} # item_id -> Button
 var _open_category: String = ""
 var _open_card_section: String = ""
+var _quest_badge_kind: String = ""
+var _quest_badge_tween: Tween
+var _hours_closing: bool = false
 
 
 func _ready() -> void:
@@ -86,6 +100,7 @@ func _ready() -> void:
 	_ink_paper_labels(_lab_panel)
 	_ink_paper_labels(_shop_panel)
 	_ink_paper_labels(_quest_panel)
+	_ink_paper_labels(_hours_panel)
 	_style_paper_toggle(_audience_toggle)
 	_style_paper_toggle(_looks_toggle)
 	_build_lab_slots()
@@ -97,10 +112,12 @@ func _ready() -> void:
 	Events.quest_changed.connect(_on_quest_changed)
 	Events.build_tool_changed.connect(_on_build_tool_changed)
 	Events.placement_succeeded.connect(_on_placement_succeeded)
+	Events.zoo_hours_changed.connect(_on_zoo_hours_changed)
 	_on_money_changed(WalletService.money)
 	_on_vials_changed(GeneTree.stock)
 	_refresh_quest()
 	_refresh_lab_tray()
+	_refresh_hours()
 	set_process(false)
 
 
@@ -122,12 +139,86 @@ func set_build_mode(build_mode: BuildMode) -> void:
 	_refresh_catalog_selection()
 
 
+func _street() -> Street:
+	return get_tree().get_first_node_in_group("street") as Street
+
+
+func _on_zoo_hours_changed(_is_open: bool) -> void:
+	_refresh_hours()
+
+
+func _on_toggle_zoo_hours() -> void:
+	var street := _street()
+	if street != null and street.is_open:
+		_show_hours_dialog(
+			"Closing the zoo",
+			"You're closing the zoo. Guests will leave.",
+			"Close zoo",
+			true
+		)
+		return
+	var reason := "Need a pen with at least one animal."
+	if street != null:
+		reason = street.open_block_reason()
+		if reason.is_empty() and street.set_open(true):
+			_refresh_hours()
+			return
+	_show_hours_dialog("Can't open yet", reason, "OK", false)
+	_refresh_hours()
+
+
+func _show_hours_dialog(title: String, copy: String, confirm: String, closing: bool) -> void:
+	_hours_closing = closing
+	_hours_title.text = title
+	_hours_copy.text = copy
+	_hours_confirm.text = confirm
+	_hours_scrim.visible = true
+	_hours_panel.visible = true
+
+
+func _on_dismiss_hours() -> void:
+	_hours_closing = false
+	_hours_scrim.visible = false
+	_hours_panel.visible = false
+
+
+func _on_confirm_hours() -> void:
+	var closing: bool = _hours_closing
+	_on_dismiss_hours()
+	if closing:
+		var street := _street()
+		if street != null:
+			street.set_open(false)
+		_refresh_hours()
+
+
+func _refresh_hours() -> void:
+	var street := _street()
+	var open: bool = street != null and street.is_open
+	_hours_label.text = "Open" if open else "Closed"
+	_hours_label.add_theme_color_override(
+		"font_color",
+		Color(0.35, 0.52, 0.28, 1) if open else Color(0.62, 0.28, 0.18, 1)
+	)
+	_hours_button.text = "Close zoo" if open else "Open zoo"
+	if open:
+		_hours_button.tooltip_text = "Close the gates. Guests will leave."
+	elif street != null and street.has_exhibit():
+		_hours_button.tooltip_text = "Open the gates. Guests start arriving."
+	else:
+		_hours_button.tooltip_text = "Need a pen with at least one animal."
+
+
 func _on_cat_pens() -> void:
 	_toggle_category(BuildCatalog.CAT_PENS)
 
 
 func _on_cat_animals() -> void:
 	_toggle_category(BuildCatalog.CAT_ANIMALS)
+
+
+func _on_cat_paths() -> void:
+	_toggle_category(BuildCatalog.CAT_PATHS)
 
 
 func _input(event: InputEvent) -> void:
@@ -139,6 +230,10 @@ func _input(event: InputEvent) -> void:
 
 func _dismiss_open_menu() -> void:
 	var hovered: Control = get_viewport().gui_get_hovered_control()
+	if _hours_panel.visible and not _is_on_panel(hovered, _hours_panel):
+		_on_dismiss_hours()
+		_eat_world_click(hovered)
+		return
 	if _quest_panel.visible and not _is_on_panel(hovered, _quest_panel):
 		_on_close_quests()
 		_eat_world_click(hovered)
@@ -178,6 +273,14 @@ func _toggle_category(category: String) -> void:
 	_rebuild_catalog()
 	_cat_pens.set_pressed_no_signal(category == BuildCatalog.CAT_PENS)
 	_cat_animals.set_pressed_no_signal(category == BuildCatalog.CAT_ANIMALS)
+	_cat_paths.set_pressed_no_signal(category == BuildCatalog.CAT_PATHS)
+
+
+func _clear_catalog_tiles() -> void:
+	for child in _catalog_row.get_children():
+		_catalog_row.remove_child(child)
+		child.queue_free()
+	_tile_buttons.clear()
 
 
 func _close_catalog() -> void:
@@ -185,15 +288,12 @@ func _close_catalog() -> void:
 	_catalog_ribbon.visible = false
 	_cat_pens.set_pressed_no_signal(false)
 	_cat_animals.set_pressed_no_signal(false)
-	for child in _catalog_row.get_children():
-		child.queue_free()
-	_tile_buttons.clear()
+	_cat_paths.set_pressed_no_signal(false)
+	_clear_catalog_tiles()
 
 
 func _rebuild_catalog() -> void:
-	for child in _catalog_row.get_children():
-		child.queue_free()
-	_tile_buttons.clear()
+	_clear_catalog_tiles()
 	for item in BuildCatalog.items_for(_open_category):
 		var tile := _make_catalog_tile(item)
 		_catalog_row.add_child(tile)
@@ -247,6 +347,7 @@ func _on_build_tool_changed(_item_id: String) -> void:
 func _on_placement_succeeded(_item_id: String) -> void:
 	_refresh_catalog_tiles()
 	_refresh_quest()
+	_refresh_hours()
 
 
 func _refresh_catalog_tiles() -> void:
@@ -345,6 +446,7 @@ func _refresh_lab_tray() -> void:
 
 func _refresh_quest() -> void:
 	QuestBoard.evaluate()
+	_refresh_quest_badge()
 	if QuestBoard.is_finished():
 		_quest_name.text = "That's the board"
 		_quest_brief.text = "Keep mutating and selling tickets."
@@ -360,6 +462,53 @@ func _refresh_quest() -> void:
 	_quest_reward.text = "Reward: %s" % QuestBoard.reward_text(quest)
 	_claim_quest.disabled = not QuestBoard.ready_to_claim
 	_claim_quest.text = "Claim reward" if QuestBoard.ready_to_claim else "Not yet"
+
+
+func _refresh_quest_badge() -> void:
+	var kind := ""
+	if not QuestBoard.is_finished():
+		kind = "reward" if QuestBoard.ready_to_claim else "quest"
+	_apply_quest_badge(_quest_badge, kind)
+	_apply_quest_badge(_quest_status_icon, kind)
+	_pulse_quest_badge(kind)
+
+
+func _apply_quest_badge(icon: TextureRect, kind: String) -> void:
+	if icon == null:
+		return
+	icon.visible = not kind.is_empty()
+	if kind == "reward":
+		icon.texture = QuestBadges.ribbon()
+		icon.tooltip_text = "Reward ready to claim"
+		icon.set_meta("kind", "reward")
+	elif kind == "quest":
+		icon.texture = QuestBadges.exclaim()
+		icon.tooltip_text = "You have a quest"
+		icon.set_meta("kind", "quest")
+	else:
+		icon.texture = null
+		icon.tooltip_text = ""
+		icon.set_meta("kind", "")
+
+
+func _pulse_quest_badge(kind: String) -> void:
+	if _quest_badge == null:
+		return
+	if kind == _quest_badge_kind and (kind.is_empty() or _quest_badge_tween != null):
+		return
+	if _quest_badge_tween != null:
+		_quest_badge_tween.kill()
+		_quest_badge_tween = null
+	_quest_badge.scale = Vector2.ONE
+	_quest_badge_kind = kind
+	if kind.is_empty():
+		return
+	var amp: float = 1.14 if kind == "reward" else 1.07
+	var tw := create_tween()
+	tw.set_loops()
+	tw.tween_property(_quest_badge, "scale", Vector2(amp, amp), 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(_quest_badge, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_quest_badge_tween = tw
 
 
 func _on_animal_selected(animal: Node) -> void:
@@ -781,7 +930,7 @@ func _build_lab_slots() -> void:
 	for child in _lab_slots.get_children():
 		child.queue_free()
 	_slot_buttons.clear()
-	var slots: Array[String] = TraitLibrary.SHAPE_SLOTS.duplicate()
+	var slots: Array[String] = TraitLibrary.LAB_SLOTS.duplicate()
 	slots.append(TraitLibrary.COLOR_SLOT)
 	for slot in slots:
 		var btn := Button.new()

@@ -4,16 +4,24 @@ class_name BuildMode
 ## Pen and animal placement from the bottom catalog. Cash is spent on a
 ## successful place. Ghost preview snaps to the grid. See docs/DEMO.md.
 
-enum Mode { NONE, PLACE_PEN_SMALL, PLACE_PEN_LARGE, PLACE_ANIMAL }
+enum Mode { NONE, PLACE_PEN_SMALL, PLACE_PEN_LARGE, PLACE_ANIMAL, PLACE_PATH }
 
 const PEN_SCENE: PackedScene = preload("res://scenes/Pen.tscn")
 const ANIMAL_SCENE: PackedScene = preload("res://scenes/Animal.tscn")
+const PATH_TEXTURES: Array[Texture2D] = [
+	preload("res://art/tiles/paths/path_1.png"),
+	preload("res://art/tiles/paths/path_2.png"),
+	preload("res://art/tiles/paths/path_3.png"),
+	preload("res://art/tiles/paths/path_4.png"),
+]
 
 var current_mode: int = Mode.NONE
 var current_item_id: String = ""
 
 var _pens: Array[Pen] = []
 var _animal_count: int = 0
+var _path_tiles: Dictionary = {} # Vector2i -> Sprite2D
+var _last_path_cell := Vector2i(-999, -999)
 
 @onready var _ghost: Polygon2D = Polygon2D.new()
 
@@ -39,6 +47,7 @@ func clear_tool() -> void:
 	current_item_id = ""
 	_sync_mode()
 	_ghost.visible = false
+	_last_path_cell = Vector2i(-999, -999)
 	Events.build_tool_changed.emit("")
 
 
@@ -63,6 +72,8 @@ func _sync_mode() -> void:
 			current_mode = Mode.PLACE_PEN_LARGE if size.x >= 6 else Mode.PLACE_PEN_SMALL
 		"animal":
 			current_mode = Mode.PLACE_ANIMAL
+		"path":
+			current_mode = Mode.PLACE_PATH
 		_:
 			current_mode = Mode.NONE
 
@@ -100,11 +111,23 @@ func _process(_delta: float) -> void:
 		_update_animal_ghost()
 	else:
 		_update_pen_ghost()
+	if current_mode == Mode.PLACE_PATH and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_try_place_path()
 
 
 func _update_pen_ghost() -> void:
 	var item: Dictionary = BuildCatalog.get_item(current_item_id)
 	var size_cells: Vector2i = item.get("size_cells", Vector2i(4, 3))
+	if current_mode == Mode.PLACE_PATH:
+		var path_cell := GridService.world_to_path_cell(get_global_mouse_position())
+		var path_px := float(GridService.PATH_CELL_SIZE)
+		_ghost.position = GridService.path_cell_to_world(path_cell)
+		_ghost.polygon = PackedVector2Array([
+			Vector2(0, 0), Vector2(path_px, 0), Vector2(path_px, path_px), Vector2(0, path_px)
+		])
+		var path_ok := GridService.is_path_placeable(path_cell)
+		_ghost.color = Color(0.2, 1.0, 0.3, 0.35) if path_ok else Color(1.0, 0.2, 0.2, 0.35)
+		return
 	var origin_cell := GridService.world_to_cell(get_global_mouse_position())
 	var world_pos := GridService.cell_to_world(origin_cell)
 	var size_px := Vector2(size_cells.x * GridService.CELL_SIZE, size_cells.y * GridService.CELL_SIZE)
@@ -137,6 +160,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_try_place_pen()
 			Mode.PLACE_ANIMAL:
 				_try_place_animal()
+			Mode.PLACE_PATH:
+				_last_path_cell = Vector2i(-999, -999)
+				_try_place_path()
 			Mode.NONE:
 				var pen := _find_pen_at(get_global_mouse_position())
 				if pen != null:
@@ -164,6 +190,7 @@ func _try_place_pen() -> void:
 	pen.position = GridService.cell_to_world(origin_cell)
 	add_child(pen)
 	GridService.occupy_area(origin_cell, size_cells, pen)
+	_clear_path_sprites(origin_cell, size_cells)
 	_pens.append(pen)
 	crush_visitors_in_rect(pen.world_rect())
 	Events.placement_succeeded.emit(current_item_id)
@@ -171,32 +198,91 @@ func _try_place_pen() -> void:
 
 
 func _try_place_animal() -> void:
+	place_animal_at(get_global_mouse_position())
+
+
+func _try_place_path() -> void:
+	place_path_at(GridService.world_to_path_cell(get_global_mouse_position()))
+
+
+func place_path_at(cell: Vector2i) -> bool:
+	if current_mode != Mode.PLACE_PATH and str(BuildCatalog.get_item(current_item_id).get("kind", "")) != "path":
+		return false
+	if cell == _last_path_cell:
+		return false
+	if not GridService.is_path_placeable(cell):
+		return false
+	var item: Dictionary = BuildCatalog.get_item(current_item_id)
+	if item.is_empty():
+		item = BuildCatalog.get_item("path_stone")
+	var cost: int = int(item.get("cost", 0))
+	if not WalletService.spend(cost):
+		Events.placement_rejected.emit("Need $%d for a path tile." % cost)
+		clear_tool()
+		return false
+	GridService.add_path(cell)
+	var sprite := Sprite2D.new()
+	sprite.texture = PATH_TEXTURES[randi() % PATH_TEXTURES.size()]
+	sprite.centered = true
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	sprite.position = GridService.path_cell_center(cell)
+	sprite.rotation = float(randi() % 4) * TAU * 0.25
+	sprite.flip_h = randi() % 2 == 0
+	var tex_size := sprite.texture.get_size()
+	if tex_size.x > 0.0 and tex_size.y > 0.0:
+		var tile_px := float(GridService.PATH_CELL_SIZE)
+		sprite.scale = Vector2(tile_px / tex_size.x, tile_px / tex_size.y)
+	sprite.z_index = 0
+	add_child(sprite)
+	_path_tiles[cell] = sprite
+	_last_path_cell = cell
+	Events.placement_succeeded.emit(str(item.get("id", "path_stone")))
+	_clear_if_broke(item)
+	return true
+
+
+func _clear_path_sprites(origin_cell: Vector2i, size_cells: Vector2i) -> void:
+	var origin := GridService.cell_to_world(origin_cell)
+	var size := Vector2(size_cells.x * GridService.CELL_SIZE, size_cells.y * GridService.CELL_SIZE)
+	var area := Rect2(origin, size)
+	var stale: Array[Vector2i] = []
+	for cell in _path_tiles.keys():
+		if area.has_point(GridService.path_cell_center(cell)):
+			stale.append(cell)
+	for cell in stale:
+		var sprite: Sprite2D = _path_tiles[cell]
+		_path_tiles.erase(cell)
+		if sprite != null and is_instance_valid(sprite):
+			sprite.queue_free()
+
+
+func place_animal_at(world_pos: Vector2) -> bool:
 	var item: Dictionary = BuildCatalog.get_item(current_item_id)
 	if item.is_empty() or str(item.get("kind", "")) != "animal":
-		return
-	var mouse_world := get_global_mouse_position()
-	var pen := _find_pen_at(mouse_world)
+		return false
+	var pen := _find_pen_at(world_pos)
 	if pen == null:
 		Events.placement_rejected.emit("Drop them inside a pen.")
-		return
+		return false
 	if not pen.can_accept_animal():
 		Events.placement_rejected.emit("This pen is full (%d/%d)." % [pen.occupant_count(), pen.animal_capacity()])
-		return
+		return false
 	var cost: int = int(item.get("cost", 0))
 	if not WalletService.spend(cost):
 		Events.placement_rejected.emit("Need $%d for a %s." % [cost, item.get("name", "animal")])
 		clear_tool()
-		return
+		return false
 
 	var animal := ANIMAL_SCENE.instantiate() as Animal
 	pen.add_child(animal)
-	animal.position = pen.to_local(mouse_world)
+	animal.position = pen.to_local(world_pos)
 	animal.set_pen(pen)
 	_apply_species(animal, item)
 	_animal_count += 1
 	pen.register_animal(animal)
 	Events.placement_succeeded.emit(current_item_id)
-	_clear_if_broke(item)
+	clear_tool()
+	return true
 
 
 func _apply_species(animal: Animal, item: Dictionary) -> void:

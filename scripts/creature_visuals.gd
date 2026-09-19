@@ -112,9 +112,14 @@ func apply_loadout(parts: Dictionary, color_index: int, hidden: Array = []) -> v
 		set_slot_visible(str(slot), false)
 
 
-## Recolor every part at once by picking a palette (skin/coat) index.
+## Recolor every part at once by picking a coat (palette + pattern) index.
 func set_skin(option_index: int) -> void:
 	if _palette_options.is_empty():
 		return
 	_current_palette_index = option_index % _palette_options.size()
 	_skin_material.set_shader_parameter("palette", _palette_options[_current_palette_index])
+	var look: Dictionary = TraitLibrary.get_option(TraitLibrary.COLOR_SLOT, _current_palette_index)
+	_skin_material.set_shader_parameter("mark_color", TraitLibrary.coat_mark_color(look))
+	_skin_material.set_shader_parameter("pattern", int(look.get("pattern", 0)))
+	_skin_material.set_shader_parameter("pattern_amount", float(look.get("pattern_amount", 0.25)))
+	_skin_material.set_shader_parameter("pattern_scale", float(look.get("pattern_scale", 4.0)))

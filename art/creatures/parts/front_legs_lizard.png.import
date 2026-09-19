@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bujewodxt4pq1"
-path="res://.godot/imported/front_legs_jimmothy.png-b2c6ef1f67a563ba1afe03cf89845c1e.ctex"
+uid="uid://cxjj0cdy35sa0"
+path="res://.godot/imported/front_legs_lizard.png-75b1b94eb32e2818e1bc2c5db2f02040.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/creatures/parts/front_legs_jimmothy.png"
-dest_files=["res://.godot/imported/front_legs_jimmothy.png-b2c6ef1f67a563ba1afe03cf89845c1e.ctex"]
+source_file="res://art/creatures/parts/front_legs_lizard.png"
+dest_files=["res://.godot/imported/front_legs_lizard.png-75b1b94eb32e2818e1bc2c5db2f02040.ctex"]
 
 [params]
 

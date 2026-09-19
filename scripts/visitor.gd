@@ -41,6 +41,8 @@ var _leaving: bool = false
 var _look_time: float = 0.0
 var _look_pen: Pen = null
 var _seen_poster: bool = false
+var _via: Vector2 = Vector2.ZERO
+var _has_via: bool = false
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _hit: CollisionShape2D = $CollisionShape2D
@@ -125,6 +127,8 @@ func join_hail(point: Vector2, bay: int) -> void:
 
 func go_to(point: Vector2) -> void:
 	_target = point
+	_via = Vector2.ZERO
+	_has_via = false
 	_state = State.HAIL
 
 
@@ -668,16 +672,30 @@ func _notice_exhibits() -> void:
 
 
 func _move_toward(target: Vector2, delta: float) -> void:
-	var step := position.move_toward(target, _speed * delta)
-	if not _is_walkable(step):
+	var dest := target
+	if _has_via:
+		if position.distance_to(_via) <= 10.0:
+			_has_via = false
+			dest = target
+		else:
+			dest = _via
+	elif GridService.has_any_path():
+		var nxt := _path_next(target)
+		if nxt != Vector2.INF:
+			_via = nxt
+			_has_via = true
+			dest = nxt
+	var dist: float = _speed * delta
+	var step := _steer_step(position, dest, dist)
+	if step.distance_squared_to(position) <= 0.0001:
+		var nxt := _path_next(target)
+		if nxt != Vector2.INF:
+			_via = nxt
+			_has_via = true
+			step = _steer_step(position, nxt, dist)
+	if step.distance_squared_to(position) <= 0.0001:
 		if _state == State.ENTER and _street != null:
-			_target = _street.gate_point()
-		elif _state == State.WANDER:
-			_pick_wander_target()
-		return
-	var cell := GridService.world_to_cell(step)
-	if GridService.is_area_in_world(cell, Vector2i.ONE) and GridService.is_cell_occupied(cell):
-		if _state == State.ENTER and _street != null:
+			_has_via = false
 			_target = _street.gate_point()
 		elif _state == State.WANDER:
 			_pick_wander_target()
@@ -730,16 +748,84 @@ func _apply_look() -> void:
 			circle.radius = DISPLAY_HEIGHT * 0.32
 
 
-func _is_walkable(point: Vector2) -> bool:
-	if GridService.road_rect().has_point(point):
-		return false
-	var map := GridService.map_size()
-	if point.x < 8.0 or point.x > map.x - 8.0 or point.y < 8.0:
-		return false
-	return point.y <= GridService.parking_rect().end.y - 2.0
+func _steer_step(from: Vector2, to: Vector2, dist: float) -> Vector2:
+	var direct := from.move_toward(to, dist)
+	if GridService.is_guest_walkable(direct):
+		return direct
+	var along_x := Vector2(to.x, from.y)
+	var along_y := Vector2(from.x, to.y)
+	var first := along_x if absf(to.x - from.x) >= absf(to.y - from.y) else along_y
+	var second := along_y if first == along_x else along_x
+	for slide_to in [first, second]:
+		var slid := from.move_toward(slide_to, dist)
+		if slid.distance_squared_to(from) > 0.0001 and GridService.is_guest_walkable(slid):
+			return slid
+	return from
+
+
+func _path_next(goal: Vector2) -> Vector2:
+	var start := GridService.world_to_cell(position)
+	var end := GridService.world_to_cell(goal)
+	if start == end:
+		return Vector2.INF
+	var dist: Dictionary = {start: 0}
+	var came: Dictionary = {start: start}
+	var open: Array[Vector2i] = [start]
+	var dirs: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+	var best: Vector2i = start
+	var best_goal: int = 1_000_000
+	while not open.is_empty():
+		var pick: int = 0
+		var pick_cost: int = int(dist[open[0]])
+		for i in range(1, open.size()):
+			var cost_i: int = int(dist[open[i]])
+			if cost_i < pick_cost:
+				pick_cost = cost_i
+				pick = i
+		var cur: Vector2i = open[pick]
+		open.remove_at(pick)
+		if cur == end:
+			best = end
+			break
+		var goal_d: int = absi(cur.x - end.x) + absi(cur.y - end.y)
+		if goal_d < best_goal:
+			best_goal = goal_d
+			best = cur
+		for d in dirs:
+			var nxt: Vector2i = cur + d
+			if not _cell_ok(nxt):
+				continue
+			var nd: int = int(dist[cur]) + _step_cost(nxt)
+			if dist.has(nxt) and nd >= int(dist[nxt]):
+				continue
+			dist[nxt] = nd
+			came[nxt] = cur
+			if not open.has(nxt):
+				open.append(nxt)
+	if not came.has(best) or best == start:
+		return Vector2.INF
+	var cursor: Vector2i = best
+	while came[cursor] != start:
+		cursor = came[cursor]
+	return GridService.cell_center(cursor)
+
+
+func _step_cost(cell: Vector2i) -> int:
+	if GridService.has_path(cell):
+		return 1
+	if GridService.is_area_in_world(cell, Vector2i.ONE) and GridService.has_any_path():
+		return 5
+	return 1
+
+
+func _cell_ok(cell: Vector2i) -> bool:
+	if cell == GridService.world_to_cell(position):
+		return true
+	return GridService.is_guest_cell_walkable(cell)
 
 
 func _pick_wander_target() -> void:
+	_has_via = false
 	if _street != null:
 		_target = _street.wander_point(self)
 		_look_pen = _street.pen_near(_target)

@@ -7,9 +7,11 @@ class_name Car
 enum Role { TRAFFIC, DROPOFF, PICKUP }
 enum State { DRIVE, PARK_IN, PARKED, PARK_OUT, LEAVE }
 
-const SIZE := Vector2(100, 44) # ~one pen cell long, reads against 50px brick walls
+const SIZE := Vector2(100, 50) # ~one pen cell long, reads against 50px brick walls
 const SPEED: float = 200.0
 const GAP: float = 28.0
+const TEX_BODY: Texture2D = preload("res://art/vehicles/car.png")
+const TINT_SHADER: Shader = preload("res://scripts/shaders/car_tint.gdshader")
 
 var role: int = Role.TRAFFIC
 var direction: int = 1
@@ -21,6 +23,28 @@ var body_color: Color = Color(0.75, 0.22, 0.18)
 var _state: int = State.DRIVE
 var _street: Street
 var _hold: float = 0.0
+var _sprite: Sprite2D
+var _tint: ShaderMaterial
+
+
+func _ready() -> void:
+	_sprite = Sprite2D.new()
+	_sprite.name = "Sprite2D"
+	_sprite.texture = TEX_BODY
+	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_tint = ShaderMaterial.new()
+	_tint.shader = TINT_SHADER
+	_sprite.material = _tint
+	var tex_size := TEX_BODY.get_size()
+	if tex_size.x > 0.0:
+		var s: float = SIZE.x / tex_size.x
+		_sprite.scale = Vector2(s, s)
+	add_child(_sprite)
+	_apply_tint()
+
+
+static func random_body_color() -> Color:
+	return Color.from_hsv(randf(), randf_range(0.42, 0.88), randf_range(0.40, 0.95))
 
 
 func setup(street: Street, car_role: int, dir: int, start: Vector2, color: Color) -> void:
@@ -32,7 +56,7 @@ func setup(street: Street, car_role: int, dir: int, start: Vector2, color: Color
 	lane_y = start.y
 	rotation = 0.0 if dir > 0 else PI
 	z_index = 1
-	queue_redraw()
+	_apply_tint()
 
 
 func assign_stall(index: int, park_at: Vector2) -> void:
@@ -42,6 +66,11 @@ func assign_stall(index: int, park_at: Vector2) -> void:
 
 func is_parked() -> bool:
 	return _state == State.PARKED
+
+
+func _apply_tint() -> void:
+	if _tint != null:
+		_tint.set_shader_parameter("body_color", body_color)
 
 
 func _process(delta: float) -> void:
@@ -109,18 +138,3 @@ func _finish() -> void:
 	if _street != null and bay_index >= 0:
 		_street.release_bay(bay_index)
 	queue_free()
-
-
-func _draw() -> void:
-	var half := SIZE * 0.5
-	var body := Rect2(-half, SIZE)
-	draw_rect(body, body_color, true)
-	draw_rect(body.grow(-1.5), Color(0.08, 0.08, 0.09), false, 2.0)
-	var window := Rect2(
-		Vector2(-SIZE.x * 0.14, -SIZE.y * 0.32),
-		Vector2(SIZE.x * 0.36, SIZE.y * 0.38)
-	)
-	draw_rect(window, Color(0.55, 0.75, 0.88, 0.85), true)
-	var light := Vector2(SIZE.x * 0.07, SIZE.y * 0.16)
-	draw_rect(Rect2(Vector2(half.x - light.x - 2.0, -light.y - 2.0), light), Color(1.0, 0.92, 0.45), true)
-	draw_rect(Rect2(Vector2(half.x - light.x - 2.0, 2.0), light), Color(1.0, 0.92, 0.45), true)

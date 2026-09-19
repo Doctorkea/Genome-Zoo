@@ -8,6 +8,11 @@ extends Node
 const SHAPE_SLOTS: Array[String] = [
 	"body", "head", "front_legs", "back_legs", "tail"
 ]
+## DNA Lab mutate slots. Body stays in SHAPE_SLOTS for scoring but is not
+## player-swappable — every animal uses the shared Jimmothy torso.
+const LAB_SLOTS: Array[String] = [
+	"head", "front_legs", "back_legs", "tail"
+]
 const COLOR_SLOT: String = "color"
 
 const TAGS: Array[String] = [
@@ -104,51 +109,83 @@ const VISITORS: Array[Dictionary] = [
 ## slot -> Array of {id, name, tags}
 const OPTIONS: Dictionary = {
 	"body": [
-		{"id": "jimothy", "name": "Jimothy Body", "tags": ["Cute", "Bulky"], "rarity": 0},
-		{"id": "round", "name": "Round Body", "tags": ["Cute", "Bulky"], "rarity": 0},
-		{"id": "spiky", "name": "Spiky Body", "tags": ["Scary", "Majestic"], "rarity": 2},
-		{"id": "chimory", "name": "Chimory Body", "tags": ["Weird", "Bulky"], "rarity": 2},
-		{"id": "jimmothy", "name": "Jimmothy Body", "tags": ["Cute", "Bulky"], "rarity": 1},
+		{"id": "jimmothy", "name": "Jimmothy Body", "tags": ["Cute", "Bulky"], "rarity": 0},
 	],
 	"head": [
 		{"id": "jimothy", "name": "Jimothy Head", "tags": ["Cute"], "rarity": 0},
-		{"id": "horned", "name": "Horned Head", "tags": ["Scary", "Majestic"], "rarity": 1},
-		{"id": "bulbous", "name": "Bulbous Head", "tags": ["Weird", "Gross"], "rarity": 1},
 		{"id": "gorilla", "name": "Gorilla Head", "tags": ["Bulky", "Cute"], "rarity": 2},
+		{"id": "lizard", "name": "Lizard Head", "tags": ["Weird", "Elegant"], "rarity": 1},
 		{"id": "jimmothy", "name": "Horse Head", "tags": ["Majestic", "Elegant"], "rarity": 1},
 		{"id": "cockatoo", "name": "Cockatoo Head", "tags": ["Majestic", "Silly"], "rarity": 1},
 		{"id": "turtle", "name": "Turtle Head", "tags": ["Bulky", "Cute"], "rarity": 1},
-		{"id": "lizard", "name": "Lizard Head", "tags": ["Weird", "Elegant"], "rarity": 1},
 		{"id": "frog", "name": "Frog Head", "tags": ["Weird", "Silly"], "rarity": 1},
 		{"id": "hamster", "name": "Hamster Head", "tags": ["Cute", "Silly"], "rarity": 0},
 		{"id": "duck", "name": "Duck Head", "tags": ["Silly", "Cute"], "rarity": 0},
 		{"id": "lion", "name": "Lion Head", "tags": ["Majestic", "Scary"], "rarity": 2},
 	],
 	"front_legs": [
-		{"id": "jimothy", "name": "Jimothy Arm", "tags": ["Cute", "Bulky"], "rarity": 0},
-		{"id": "slender", "name": "Slender Front Legs", "tags": ["Elegant", "Silly"], "rarity": 1},
-		{"id": "many", "name": "Many Front Legs", "tags": ["Weird", "Gross"], "rarity": 1},
+		{"id": "turtle", "name": "Turtle Arm", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "horse", "name": "Horse Arm", "tags": ["Elegant", "Cute"], "rarity": 1},
+		{"id": "lizard", "name": "Lizard Arm", "tags": ["Weird", "Scary"], "rarity": 1},
+		{"id": "lion", "name": "Lion Arm", "tags": ["Majestic", "Scary"], "rarity": 1},
+		{"id": "trex", "name": "T. rex Arm", "tags": ["Scary", "Weird"], "rarity": 2},
 		{"id": "chimory", "name": "Frog Arms", "tags": ["Weird", "Silly"], "rarity": 2},
-		{"id": "jimmothy", "name": "Horse Arm", "tags": ["Elegant", "Cute"], "rarity": 1},
 	],
 	"back_legs": [
-		{"id": "jimothy", "name": "Jimothy Leg", "tags": ["Cute", "Bulky"], "rarity": 0},
-		{"id": "slender", "name": "Slender Back Legs", "tags": ["Elegant", "Silly"], "rarity": 1},
-		{"id": "many", "name": "Many Back Legs", "tags": ["Weird", "Gross"], "rarity": 1},
-		{"id": "chimory", "name": "Sheep Legs", "tags": ["Cute", "Bulky"], "rarity": 2},
+		{"id": "sheep", "name": "Sheep Leg", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "horse", "name": "Horse Leg", "tags": ["Elegant", "Cute"], "rarity": 1},
 		{"id": "jimmothy", "name": "Clawed Leg", "tags": ["Weird", "Scary"], "rarity": 1},
+		{"id": "frog", "name": "Frog Leg", "tags": ["Weird", "Silly"], "rarity": 1},
+		{"id": "bird", "name": "Bird Leg", "tags": ["Elegant", "Silly"], "rarity": 1},
+		{"id": "elephant", "name": "Elephant Leg", "tags": ["Bulky", "Majestic"], "rarity": 1},
+		{"id": "gorilla", "name": "Gorilla Leg", "tags": ["Bulky", "Cute"], "rarity": 1},
+		{"id": "lion", "name": "Lion Leg", "tags": ["Majestic", "Scary"], "rarity": 1},
+		{"id": "turtle", "name": "Turtle Leg", "tags": ["Bulky", "Cute"], "rarity": 1},
 	],
 	"tail": [
-		{"id": "short", "name": "Short Tail", "tags": ["Cute", "Bulky"], "rarity": 0},
-		{"id": "long", "name": "Long Tail", "tags": ["Elegant", "Weird"], "rarity": 1},
-		{"id": "forked", "name": "Forked Tail", "tags": ["Weird", "Gross"], "rarity": 1},
-		{"id": "chimory", "name": "Scorpion Tail", "tags": ["Scary", "Weird"], "rarity": 2},
+		{"id": "pig", "name": "Pig Tail", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "sheep", "name": "Sheep Tail", "tags": ["Cute", "Silly"], "rarity": 1},
+		{"id": "tentacle", "name": "Tentacle Tail", "tags": ["Weird", "Gross"], "rarity": 1},
+		{"id": "fire", "name": "Fire Tail", "tags": ["Scary", "Majestic"], "rarity": 1},
+		{"id": "lion", "name": "Lion Tail", "tags": ["Majestic", "Cute"], "rarity": 1},
+		{"id": "lizard", "name": "Lizard Tail", "tags": ["Weird", "Elegant"], "rarity": 1},
+		{"id": "scorpion", "name": "Scorpion Tail", "tags": ["Scary", "Weird"], "rarity": 2},
 		{"id": "jimmothy", "name": "Curly Tail", "tags": ["Cute", "Silly"], "rarity": 1},
 	],
 	"color": [
-		{"id": "fur", "name": "Soft Fur", "tags": ["Cute"], "rarity": 0},
-		{"id": "scales", "name": "Iridescent Scales", "tags": ["Majestic", "Elegant"], "rarity": 1},
-		{"id": "slime", "name": "Oozing Slime", "tags": ["Gross", "Weird"], "rarity": 2},
+		{"id": "fur", "name": "Soft Fur", "tags": ["Cute"], "rarity": 0,
+			"base": Color(0.62, 0.42, 0.24), "mark": Color(0.42, 0.26, 0.14),
+			"pattern": 0, "pattern_scale": 4.5, "pattern_amount": 0.1},
+		{"id": "scales", "name": "Fish Scales", "tags": ["Majestic", "Elegant"], "rarity": 1,
+			"base": Color(0.22, 0.50, 0.48), "mark": Color(0.12, 0.28, 0.30),
+			"pattern": 3, "pattern_scale": 6.8, "pattern_amount": 0.4},
+		{"id": "slime", "name": "Toad Skin", "tags": ["Gross", "Weird"], "rarity": 2,
+			"base": Color(0.40, 0.48, 0.22), "mark": Color(0.22, 0.28, 0.10),
+			"pattern": 4, "pattern_scale": 2.8, "pattern_amount": 0.38},
+		{"id": "spots", "name": "Leopard Spots", "tags": ["Cute", "Silly"], "rarity": 0,
+			"base": Color(0.82, 0.62, 0.34), "mark": Color(0.18, 0.10, 0.06),
+			"pattern": 1, "pattern_scale": 4.6, "pattern_amount": 0.72},
+		{"id": "stripes", "name": "Tiger Stripes", "tags": ["Scary", "Majestic"], "rarity": 1,
+			"base": Color(0.84, 0.48, 0.16), "mark": Color(0.08, 0.05, 0.03),
+			"pattern": 2, "pattern_scale": 3.6, "pattern_amount": 0.78},
+		{"id": "hide", "name": "Elephant Hide", "tags": ["Bulky"], "rarity": 0,
+			"base": Color(0.58, 0.52, 0.46), "mark": Color(0.38, 0.32, 0.28),
+			"pattern": 5, "pattern_scale": 3.2, "pattern_amount": 0.22},
+		{"id": "sleek", "name": "Seal Coat", "tags": ["Elegant"], "rarity": 1,
+			"base": Color(0.52, 0.56, 0.60), "mark": Color(0.32, 0.34, 0.38),
+			"pattern": 0, "pattern_scale": 5.0, "pattern_amount": 0.08},
+		{"id": "patches", "name": "Piebald Patches", "tags": ["Silly"], "rarity": 0,
+			"base": Color(0.90, 0.88, 0.82), "mark": Color(0.12, 0.09, 0.07),
+			"pattern": 6, "pattern_scale": 1.8, "pattern_amount": 0.82},
+		{"id": "oil", "name": "Zebra Stripes", "tags": ["Weird"], "rarity": 1,
+			"base": Color(0.92, 0.90, 0.86), "mark": Color(0.06, 0.05, 0.04),
+			"pattern": 7, "pattern_scale": 4.8, "pattern_amount": 0.85},
+		{"id": "bristles", "name": "Tabby Streaks", "tags": ["Bulky", "Scary"], "rarity": 1,
+			"base": Color(0.62, 0.40, 0.20), "mark": Color(0.16, 0.10, 0.06),
+			"pattern": 8, "pattern_scale": 3.8, "pattern_amount": 0.48},
+		{"id": "mould", "name": "Toad Mottling", "tags": ["Gross"], "rarity": 1,
+			"base": Color(0.40, 0.44, 0.20), "mark": Color(0.18, 0.22, 0.10),
+			"pattern": 4, "pattern_scale": 2.2, "pattern_amount": 0.4},
 	],
 }
 
@@ -241,7 +278,7 @@ func slot_display_name(slot: String) -> String:
 		"back_legs":
 			return "Back Legs"
 		"color":
-			return "Color"
+			return "Coat"
 		_:
 			return slot.capitalize()
 
@@ -324,6 +361,23 @@ func get_option(slot: String, index: int) -> Dictionary:
 		push_warning("TraitLibrary: unknown slot '%s'" % slot)
 		return {}
 	return list[index % list.size()]
+
+
+func coat_base_color(option: Dictionary) -> Color:
+	return _as_color(option.get("base", Color(0.55, 0.36, 0.20)))
+
+
+func coat_mark_color(option: Dictionary) -> Color:
+	return _as_color(option.get("mark", Color(0.35, 0.22, 0.12)))
+
+
+func _as_color(value: Variant) -> Color:
+	if value is Color:
+		return value
+	if value is Vector3:
+		var v: Vector3 = value
+		return Color(v.x, v.y, v.z)
+	return Color(0.55, 0.36, 0.20)
 
 
 func option_label(slot: String, index: int) -> String:

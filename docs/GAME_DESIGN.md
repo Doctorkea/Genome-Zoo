@@ -20,6 +20,10 @@ mutate one trait slot on a creature. The new trait immediately changes the creat
 immediately changes both its visitor approval and its dominant skill archetype. The zoo then opens and the
 result plays out.
 
+The zoo **starts closed**. Open zoo from the top bar once at least one pen holds an animal;
+cars then start dropping guests at the kerb. Close zoo any time — anyone already on the grass
+heads for a pickup immediately, and new drop-offs stop.
+
 ### Key architecture recommendation
 
 Drive **visitor attraction/repulsion** and **skill archetype** from the *same* trait-tag system. One data
@@ -72,13 +76,20 @@ Each option is one texture the artist draws once (or one palette strip, for Colo
 | Tail | Long Tail | Elegant, Weird | Replaces the old Long Neck swing |
 | Tail | Forked Tail | Weird, Gross | Replaces the old Extra Neck swing |
 | Tail | Scorpion Tail | Scary, Weird | Chimory tail |
-| Color | Soft Fur | Cute | Cheapest, safest, lowest ceiling |
-| Color | Iridescent Scales | Majestic, Elegant | Best all-round crowd pleaser |
-| Color | Oozing Slime | Gross, Weird | Highest Novelty, highest Families risk |
+| Coat | Soft Fur | Cute | Plain warm coat |
+| Coat | Iridescent Scales | Majestic, Elegant | Teal with gold scale marks |
+| Coat | Oozing Slime | Gross, Weird | Blotchy slime |
+| Coat | Spotted Coat | Cute, Silly | Cream with dark spots |
+| Coat | Tiger Stripes | Scary, Majestic | Orange with black stripes |
+| Coat | Thick Hide | Bulky | Mottled hide |
+| Coat | Sleek Coat | Elegant | Cool silver sheen |
+| Coat | Party Patches | Silly | Pink and yellow patches |
+| Coat | Oil Slick | Weird | Dark rainbow bands |
+| Coat | Bristled Coat | Bulky, Scary | Scratchy dark bristles |
+| Coat | Mouldy Coat | Gross | Olive blotches |
 
-> Implementation note: `Color` is handled differently from the shape slots — see
-> [`ART_PIPELINE.md`](./ART_PIPELINE.md). It's a palette applied via shader on top of every part, not a
-> separate texture per shape combination.
+> Implementation note: `Coat` is a shared palette-swap shader plus a procedural pattern on every part,
+> not a separate texture per shape combination. See [`ART_PIPELINE.md`](./ART_PIPELINE.md).
 
 ## Visitor archetypes
 

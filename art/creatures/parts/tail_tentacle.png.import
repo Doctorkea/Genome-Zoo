@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://te06uhahwjre"
-path="res://.godot/imported/body_chimory.png-08f81a9459076abedeedba167bb35a50.ctex"
+uid="uid://csg217hx7athw"
+path="res://.godot/imported/tail_tentacle.png-0937e6a305fe3281f3292b56969ea79a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/creatures/parts/body_chimory.png"
-dest_files=["res://.godot/imported/body_chimory.png-08f81a9459076abedeedba167bb35a50.ctex"]
+source_file="res://art/creatures/parts/tail_tentacle.png"
+dest_files=["res://.godot/imported/tail_tentacle.png-0937e6a305fe3281f3292b56969ea79a.ctex"]
 
 [params]
 

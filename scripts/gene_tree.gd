@@ -85,7 +85,7 @@ const VIALS: Array[Dictionary] = [
 		"shop_cost": 90,
 		"tag": "Scary",
 		"rarity_min": 2,
-		"pool": ["lion", "horned", "spiky", "chimory"],
+		"pool": ["lion", "trex", "fire", "scorpion"],
 	},
 	{
 		"id": "chimera",
@@ -94,7 +94,7 @@ const VIALS: Array[Dictionary] = [
 		"shop_cost": 85,
 		"tag": "Weird",
 		"rarity_min": 2,
-		"pool": ["chimory", "gorilla", "bulbous", "many", "slime"],
+		"pool": ["gorilla", "frog", "tentacle", "lizard", "slime"],
 	},
 	{
 		"id": "linger",

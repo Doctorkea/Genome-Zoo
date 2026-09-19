@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://7tosk427olsy"
-path="res://.godot/imported/front_legs_jimothy.png-422d27af709b78939c891d87f0199214.ctex"
+uid="uid://cegyhrjt1r4ev"
+path="res://.godot/imported/tail_tentacle.jpg-7fc2362d1239ac3d63833efacd6f29f7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/creatures/parts/front_legs_jimothy.png"
-dest_files=["res://.godot/imported/front_legs_jimothy.png-422d27af709b78939c891d87f0199214.ctex"]
+source_file="res://_tmp_parts_src/tail_tentacle.jpg"
+dest_files=["res://.godot/imported/tail_tentacle.jpg-7fc2362d1239ac3d63833efacd6f29f7.ctex"]
 
 [params]
 

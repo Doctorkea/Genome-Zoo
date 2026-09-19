@@ -71,15 +71,54 @@ theme_override_font_sizes/font_size = 22
 text = "Evolution Zoo"
 vertical_alignment = 1
 
+[node name="HoursChip" type="PanelContainer" parent="Safe/Column/TopRow"]
+layout_mode = 2
+
+[node name="HoursPad" type="MarginContainer" parent="Safe/Column/TopRow/HoursChip"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_right = 10
+
+[node name="HoursLabel" type="Label" parent="Safe/Column/TopRow/HoursChip/HoursPad"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Closed"
+vertical_alignment = 1
+
 [node name="TopSpacer" type="Control" parent="Safe/Column/TopRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
+[node name="ZooHoursButton" type="Button" parent="Safe/Column/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open zoo"
+tooltip_text = "Need a pen with at least one animal."
+
 [node name="QuestButton" type="Button" parent="Safe/Column/TopRow"]
 unique_name_in_owner = true
 layout_mode = 2
+clip_contents = false
 text = "Quests"
+
+[node name="QuestBadge" type="TextureRect" parent="Safe/Column/TopRow/QuestButton"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -12.0
+offset_top = -12.0
+offset_right = 16.0
+offset_bottom = 16.0
+grow_horizontal = 0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+pivot_offset = Vector2(14, 14)
 
 [node name="ShopButton" type="Button" parent="Safe/Column/TopRow"]
 unique_name_in_owner = true
@@ -469,6 +508,13 @@ layout_mode = 2
 toggle_mode = true
 text = "Animals"
 
+[node name="CatPaths" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+toggle_mode = true
+text = "Paths"
+
 [node name="DockSpacer" type="Control" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -717,9 +763,23 @@ theme_type_variation = &"PaperMuted"
 text = "One job at a time. Finish it, claim the reward, the next one shows up."
 autowrap_mode = 3
 
-[node name="QuestName" type="Label" parent="QuestCenter/QuestPanel/QuestVBox"]
+[node name="QuestNameRow" type="HBoxContainer" parent="QuestCenter/QuestPanel/QuestVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="QuestStatusIcon" type="TextureRect" parent="QuestCenter/QuestPanel/QuestVBox/QuestNameRow"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="QuestName" type="Label" parent="QuestCenter/QuestPanel/QuestVBox/QuestNameRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"PaperLabel"
 theme_override_font_sizes/font_size = 20
 text = "Fence it in"
@@ -751,6 +811,66 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Claim reward"
 
+[node name="HoursScrim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.04, 0.02, 0.45)
+
+[node name="HoursCenter" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HoursPanel" type="PanelContainer" parent="HoursCenter"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+theme_type_variation = &"ExhibitCard"
+theme_override_styles/panel = SubResource("paper_panel")
+
+[node name="HoursVBox" type="VBoxContainer" parent="HoursCenter/HoursPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HoursHeader" type="HBoxContainer" parent="HoursCenter/HoursPanel/HoursVBox"]
+layout_mode = 2
+
+[node name="HoursTitle" type="Label" parent="HoursCenter/HoursPanel/HoursVBox/HoursHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 22
+text = "Can't open yet"
+
+[node name="CloseHours" type="Button" parent="HoursCenter/HoursPanel/HoursVBox/HoursHeader"]
+layout_mode = 2
+text = "Close"
+
+[node name="HoursCopy" type="Label" parent="HoursCenter/HoursPanel/HoursVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+text = "Need a pen with at least one animal."
+autowrap_mode = 3
+
+[node name="HoursConfirm" type="Button" parent="HoursCenter/HoursPanel/HoursVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "OK"
+
+[connection signal="pressed" from="Safe/Column/TopRow/ZooHoursButton" to="." method="_on_toggle_zoo_hours"]
 [connection signal="pressed" from="Safe/Column/TopRow/QuestButton" to="." method="_on_open_quests"]
 [connection signal="pressed" from="Safe/Column/TopRow/ShopButton" to="." method="_on_open_shop"]
 [connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/CardHeader/Deselect" to="." method="_on_deselect"]
@@ -764,9 +884,12 @@ text = "Claim reward"
 [connection signal="pressed" from="Safe/Column/Body/GuestPanel/GuestScroll/GuestVBox/HailGuest" to="." method="_on_hail_guest"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPens" to="." method="_on_cat_pens"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatAnimals" to="." method="_on_cat_animals"]
+[connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPaths" to="." method="_on_cat_paths"]
 [connection signal="vial_dropped" from="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft/StrandWrap/DnaStrand" to="." method="_on_vial_dropped"]
 [connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/OpenShopFromLab" to="." method="_on_open_shop"]
 [connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/CloseLab" to="." method="_on_close_lab"]
 [connection signal="pressed" from="ShopCenter/ShopPanel/ShopVBox/ShopHeader/CloseShop" to="." method="_on_close_shop"]
 [connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/QuestHeader/CloseQuests" to="." method="_on_close_quests"]
 [connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/ClaimQuest" to="." method="_on_claim_quest"]
+[connection signal="pressed" from="HoursCenter/HoursPanel/HoursVBox/HoursHeader/CloseHours" to="." method="_on_dismiss_hours"]
+[connection signal="pressed" from="HoursCenter/HoursPanel/HoursVBox/HoursConfirm" to="." method="_on_confirm_hours"]

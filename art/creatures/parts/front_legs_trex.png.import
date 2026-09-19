@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bwoe28i3olf1b"
-path="res://.godot/imported/body_jimothy.png-4547f251a3928cd16cb5b5cac3af01f7.ctex"
+uid="uid://35bld3cylgpu"
+path="res://.godot/imported/front_legs_trex.png-cdf722789b58e50bad3b3bfc8a55d60e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/creatures/parts/body_jimothy.png"
-dest_files=["res://.godot/imported/body_jimothy.png-4547f251a3928cd16cb5b5cac3af01f7.ctex"]
+source_file="res://art/creatures/parts/front_legs_trex.png"
+dest_files=["res://.godot/imported/front_legs_trex.png-cdf722789b58e50bad3b3bfc8a55d60e.ctex"]
 
 [params]
 

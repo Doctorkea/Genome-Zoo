@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c8kqv6ehspw1p"
-path="res://.godot/imported/head_chimory.png-4678e70bf70c13fca62ea2b40420a5d1.ctex"
+uid="uid://qgbpygvfkd67"
+path="res://.godot/imported/back_legs_elephant.jpg-1bab7b0113228e84d64cf3dcb31df04a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/creatures/parts/head_chimory.png"
-dest_files=["res://.godot/imported/head_chimory.png-4678e70bf70c13fca62ea2b40420a5d1.ctex"]
+source_file="res://_tmp_parts_src/back_legs_elephant.jpg"
+dest_files=["res://.godot/imported/back_legs_elephant.jpg-1bab7b0113228e84d64cf3dcb31df04a.ctex"]
 
 [params]
 
