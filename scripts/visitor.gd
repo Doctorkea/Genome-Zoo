@@ -1,7 +1,7 @@
 extends Area2D
 class_name Visitor
 
-## Park guest. Parents and children use dedicated boy/girl sprites;
+## Park guest. Parents, children, goths, and tourists use dedicated sprites;
 ## everyone else uses the generic patron with a type tint.
 ## Interest drains until they see a new exhibit; boredom sends them home,
 ## and remaining interest is what their ticket is worth.
@@ -17,10 +17,16 @@ const DECAY_EMPTY: float = 2.05
 const TICKET_MAX: int = 2
 ## Planet Zoo: unhappy guests stop spending. Below this interest ratio, $0.
 const TICKET_PAY_FLOOR: float = 0.28
+const GOTH_SCARE_RANGE: float = 108.0
+const CREATOR_CLIP_CASH: int = 3
 const TEX_CHILD_BOY: Texture2D = preload("res://art/visitors/child_boy.png")
 const TEX_CHILD_GIRL: Texture2D = preload("res://art/visitors/child_girl.png")
 const TEX_PARENT_MUM: Texture2D = preload("res://art/visitors/parent_mum.png")
 const TEX_PARENT_DAD: Texture2D = preload("res://art/visitors/parent_dad.png")
+const TEX_GOTH_GIRL: Texture2D = preload("res://art/visitors/goth_girl.png")
+const TEX_GOTH_GUY: Texture2D = preload("res://art/visitors/goth_guy.png")
+const TEX_TOURIST_GIRL: Texture2D = preload("res://art/visitors/tourist_girl.png")
+const TEX_TOURIST_GUY: Texture2D = preload("res://art/visitors/tourist_guy.png")
 const TEX_PATRON: Texture2D = preload("res://art/visitors/patron.png")
 const ZooFx := preload("res://scripts/fx.gd")
 
@@ -51,6 +57,9 @@ var _thought_time: float = 0.0
 var _gait_phase: float = 0.0
 var _body_scale: float = 1.0
 var _rest_pos: Vector2 = Vector2(0.0, -DISPLAY_HEIGHT * 0.5)
+var _flee_time: float = 0.0
+var _goth_said: bool = false
+var _creator_boosted: bool = false
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _hit: CollisionShape2D = $CollisionShape2D
@@ -342,9 +351,9 @@ func _party_kind_line(counts: Dictionary, is_family: bool) -> String:
 		"tourists":
 			return "Tourist — here for a majestic photo"
 		"goths":
-			return "Goth — wants the weird and the grim"
+			return "Goth — send them home if they spook families"
 		"creators":
-			return "Content creator — hunting a clip"
+			return "Content creator — a clip pays the zoo $%d" % CREATOR_CLIP_CASH
 		"thrill":
 			return "Thrill-seeker — here for a scare"
 		"scientists":
@@ -632,6 +641,7 @@ func _process(delta: float) -> void:
 	_use_park_props()
 	var steer: bool = true
 	if _state == State.ENTER or _state == State.WANDER or _state == State.LOOK:
+		_tick_goth_scare(delta)
 		_notice_exhibits()
 		_drain_interest(delta)
 		if interest <= 0.0:
@@ -650,7 +660,10 @@ func _process(delta: float) -> void:
 				State.WANDER:
 					_move_toward(_target, delta)
 					if position.distance_to(_target) <= 6.0:
-						_start_look()
+						if _flee_time > 0.0:
+							_pick_wander_target()
+						else:
+							_start_look()
 				State.LOOK:
 					_look_time -= delta
 					_face_pen()
@@ -691,6 +704,91 @@ func _drain_interest(delta: float) -> void:
 	if visitor_id == "children" and _seen_scary() >= TraitLibrary.CHILD_CRY_SCARY:
 		rate *= 1.35
 	interest = maxf(0.0, interest - rate * delta)
+
+
+func is_scaring() -> bool:
+	return visitor_id == "goths" and not _leaving and _state != State.HAIL and _state != State.WAIT
+
+
+func _tick_goth_scare(delta: float) -> void:
+	if visitor_id == "goths" or _leaving:
+		return
+	if _state == State.HAIL or _state == State.WAIT:
+		return
+	var goth := _nearest_scaring_goth()
+	if goth == null:
+		_goth_said = false
+		_flee_time = maxf(0.0, _flee_time - delta)
+		return
+	if _family_spooks_from_goths():
+		if is_leader():
+			_start_flee(goth)
+		interest = maxf(0.0, interest - 3.4 * delta)
+		if interest <= MAX_INTEREST * TICKET_PAY_FLOOR:
+			hail()
+		return
+	if visitor_id == "tourists":
+		interest = maxf(0.0, interest - 2.6 * delta)
+		if not _goth_said:
+			_goth_said = true
+			_say("This crowd is a bit much.")
+		if interest <= MAX_INTEREST * TICKET_PAY_FLOOR:
+			hail()
+
+
+func _family_spooks_from_goths() -> bool:
+	return visitor_id == "parents" or visitor_id == "children" \
+		or _party_has_kind("parents") or _party_has_kind("children")
+
+
+func _nearest_scaring_goth() -> Visitor:
+	if not is_inside_tree():
+		return null
+	var best: Visitor = null
+	var best_d: float = GOTH_SCARE_RANGE
+	for node in get_tree().get_nodes_in_group("visitors"):
+		var other := node as Visitor
+		if other == null or other == self or not is_instance_valid(other):
+			continue
+		if not other.is_scaring():
+			continue
+		var d: float = position.distance_to(other.position)
+		if d < best_d:
+			best_d = d
+			best = other
+	return best
+
+
+func _start_flee(goth: Visitor) -> void:
+	if goth == null or not is_instance_valid(goth):
+		return
+	var away: Vector2 = position - goth.position
+	if away.length_squared() < 16.0:
+		away = Vector2.RIGHT.rotated(randf() * TAU)
+	_flee_time = 1.6
+	_has_via = false
+	_look_pen = null
+	_target = position + away.normalized() * 150.0
+	_state = State.WANDER
+	if _goth_said:
+		return
+	_goth_said = true
+	if visitor_id == "children":
+		_say("Scary people!")
+	else:
+		_say("Kids, this way!")
+
+
+func _post_creator_clip() -> void:
+	if _creator_boosted:
+		return
+	_creator_boosted = true
+	if _street != null:
+		_street.add_hype(20.0)
+	WalletService.add_cash(CREATOR_CLIP_CASH, false, "Creator clip")
+	Events.creator_posted.emit(CREATOR_CLIP_CASH)
+	ZooFx.burst(self, ZooFx.Kind.GOLD, Vector2(0.0, -36.0))
+	_say("Posted. More guests are coming.")
 
 
 func _exhibit_count() -> int:
@@ -734,8 +832,8 @@ func _notice_exhibits() -> void:
 		var quality: float = pen.enjoyment_factor() * pen.occupancy_factor()
 		interest = minf(MAX_INTEREST, interest + VIEW_BONUS * quality)
 		_say(party_thought())
-		if visitor_id == "creators" and _street != null:
-			_street.add_hype(15.0)
+		if visitor_id == "creators":
+			_post_creator_clip()
 
 
 func _move_toward(target: Vector2, delta: float) -> void:
@@ -753,6 +851,8 @@ func _move_toward(target: Vector2, delta: float) -> void:
 			_has_via = true
 			dest = nxt
 	var dist: float = _speed * delta
+	if _flee_time > 0.0:
+		dist *= 1.55
 	var step := _steer_step(position, dest, dist)
 	if step.distance_squared_to(position) <= 0.0001:
 		var nxt := _path_next(target)
@@ -797,6 +897,20 @@ func _apply_look() -> void:
 			else:
 				tex = TEX_PARENT_DAD
 				look_path = "res://art/visitors/parent_dad.png"
+		"goths":
+			if randf() < 0.5:
+				tex = TEX_GOTH_GIRL
+				look_path = "res://art/visitors/goth_girl.png"
+			else:
+				tex = TEX_GOTH_GUY
+				look_path = "res://art/visitors/goth_guy.png"
+		"tourists":
+			if randf() < 0.5:
+				tex = TEX_TOURIST_GIRL
+				look_path = "res://art/visitors/tourist_girl.png"
+			else:
+				tex = TEX_TOURIST_GUY
+				look_path = "res://art/visitors/tourist_guy.png"
 		_:
 			look_path = "res://art/visitors/patron.png"
 	_sprite.texture = tex
@@ -809,7 +923,7 @@ func _apply_look() -> void:
 		_sprite.scale = Vector2(_body_scale, _body_scale)
 		_sprite.position = _rest_pos
 		_sprite.rotation = 0.0
-	if visitor_id == "children" or visitor_id == "parents":
+	if visitor_id in ["children", "parents", "goths", "tourists"]:
 		_sprite.modulate = Color.WHITE
 	else:
 		_sprite.modulate = fill_color.lerp(Color.WHITE, 0.18)
@@ -953,7 +1067,7 @@ func _pay_merch() -> void:
 	if int(_party_seen_tags().get("Majestic", 0)) <= 0:
 		return
 	_merch_paid = true
-	WalletService.add_cash(1)
+	WalletService.add_cash(1, false, "Souvenir")
 	_say("Souvenir!")
 
 
@@ -962,7 +1076,7 @@ func _use_park_props() -> void:
 		var snack := GridService.nearest_prop("park_snack", position, 42.0)
 		if snack != Vector2.INF:
 			_snack_used = true
-			WalletService.add_cash(1)
+			WalletService.add_cash(1, false, "Snack stand")
 			_say("Snack run")
 			ZooFx.burst(self, ZooFx.Kind.STEAM, Vector2(0.0, -DISPLAY_HEIGHT * 0.35))
 	if GridService.has_bench(GridService.world_to_cell(position)) and _state == State.LOOK:

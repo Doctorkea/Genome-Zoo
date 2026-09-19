@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Theme" path="res://art/ui/zoo_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="2_script"]
@@ -22,6 +22,22 @@ corner_radius_bottom_left = 2
 shadow_color = Color(0.05, 0.04, 0.02, 0.4)
 shadow_size = 6
 shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="glass_panel"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0.035, 0.045, 0.04, 0.55)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.91, 0.82, 0.55, 0.32)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
 
 [node name="HUD" type="Control"]
 process_mode = 3
@@ -54,12 +70,15 @@ mouse_filter = 2
 theme_override_constants/separation = 8
 
 [node name="TopRow" type="HBoxContainer" parent="Safe/Column"]
+unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 12
+alignment = 1
 
 [node name="Plaque" type="PanelContainer" parent="Safe/Column/TopRow"]
 layout_mode = 2
+size_flags_vertical = 4
 
 [node name="PlaquePad" type="MarginContainer" parent="Safe/Column/TopRow/Plaque"]
 layout_mode = 2
@@ -73,19 +92,33 @@ text = "Evolution Zoo"
 vertical_alignment = 1
 
 [node name="HoursChip" type="PanelContainer" parent="Safe/Column/TopRow"]
+unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 4
 
 [node name="HoursPad" type="MarginContainer" parent="Safe/Column/TopRow/HoursChip"]
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_right = 10
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 6
 
-[node name="HoursLabel" type="Label" parent="Safe/Column/TopRow/HoursChip/HoursPad"]
+[node name="HoursCol" type="VBoxContainer" parent="Safe/Column/TopRow/HoursChip/HoursPad"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="HoursLabel" type="Label" parent="Safe/Column/TopRow/HoursChip/HoursPad/HoursCol"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "Closed"
+theme_override_font_sizes/font_size = 18
+text = "Zoo closed"
 vertical_alignment = 1
+
+[node name="HoursDetail" type="Label" parent="Safe/Column/TopRow/HoursChip/HoursPad/HoursCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Guests cannot arrive"
 
 [node name="TopSpacer" type="Control" parent="Safe/Column/TopRow"]
 layout_mode = 2
@@ -95,12 +128,14 @@ mouse_filter = 2
 [node name="ZooHoursButton" type="Button" parent="Safe/Column/TopRow"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Open zoo"
+size_flags_vertical = 4
+text = "Open the zoo"
 tooltip_text = "Need a pen with at least one animal."
 
 [node name="QuestButton" type="Button" parent="Safe/Column/TopRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 4
 clip_contents = false
 text = "Quests"
 
@@ -121,39 +156,161 @@ expand_mode = 1
 stretch_mode = 5
 pivot_offset = Vector2(14, 14)
 
-[node name="ShopButton" type="Button" parent="Safe/Column/TopRow"]
+[node name="TopRightButtons" type="HBoxContainer" parent="Safe/Column/TopRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 2
+
+[node name="ShopButton" type="Button" parent="Safe/Column/TopRow/TopRightButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
 text = "Vial shop"
 
-[node name="WalletChip" type="PanelContainer" parent="Safe/Column/TopRow"]
+[node name="WalletChip" type="PanelContainer" parent="Safe/Column/TopRow/TopRightButtons"]
+unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "See why cash changed"
+mouse_default_cursor_shape = 2
 
-[node name="WalletRow" type="HBoxContainer" parent="Safe/Column/TopRow/WalletChip"]
+[node name="WalletRow" type="HBoxContainer" parent="Safe/Column/TopRow/TopRightButtons/WalletChip"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="WalletCaption" type="Label" parent="Safe/Column/TopRow/WalletChip/WalletRow"]
+[node name="WalletCaption" type="Label" parent="Safe/Column/TopRow/TopRightButtons/WalletChip/WalletRow"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_font_sizes/font_size = 13
 text = "Cash"
 vertical_alignment = 1
 
-[node name="WalletLabel" type="Label" parent="Safe/Column/TopRow/WalletChip/WalletRow"]
+[node name="WalletLabel" type="Label" parent="Safe/Column/TopRow/TopRightButtons/WalletChip/WalletRow"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_filter = 2
 theme_type_variation = &"SodiumLabel"
 theme_override_font_sizes/font_size = 26
 text = "$80"
 vertical_alignment = 1
 
-[node name="WalletDrip" type="Label" parent="Safe/Column/TopRow/WalletChip/WalletRow"]
+[node name="WalletDrip" type="Label" parent="Safe/Column/TopRow/TopRightButtons/WalletChip/WalletRow"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_filter = 2
 theme_type_variation = &"PaperMuted"
 theme_override_font_sizes/font_size = 12
 text = ""
 vertical_alignment = 1
+
+[node name="TopRightOverlay" type="VBoxContainer" parent="Safe"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="OverlayPad" type="Control" parent="Safe/TopRightOverlay"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 48)
+layout_mode = 2
+mouse_filter = 2
+size_flags_horizontal = 8
+
+[node name="LedgerPanel" type="PanelContainer" parent="Safe/TopRightOverlay"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("glass_panel")
+
+[node name="LedgerCol" type="VBoxContainer" parent="Safe/TopRightOverlay/LedgerPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LedgerTitle" type="Label" parent="Safe/TopRightOverlay/LedgerPanel/LedgerCol"]
+layout_mode = 2
+theme_type_variation = &"SodiumLabel"
+theme_override_font_sizes/font_size = 14
+text = "Cash"
+
+[node name="LedgerSummary" type="Label" parent="Safe/TopRightOverlay/LedgerPanel/LedgerCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.82, 0.7, 0.9)
+theme_override_font_sizes/font_size = 13
+text = "No tickets or upkeep yet."
+autowrap_mode = 3
+
+[node name="LedgerRecent" type="Label" parent="Safe/TopRightOverlay/LedgerPanel/LedgerCol"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.82, 0.55, 0.7)
+theme_override_font_sizes/font_size = 12
+text = "Last five"
+
+[node name="LedgerList" type="VBoxContainer" parent="Safe/TopRightOverlay/LedgerPanel/LedgerCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="CoachPanel" type="PanelContainer" parent="Safe/TopRightOverlay"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("glass_panel")
+
+[node name="CoachCol" type="VBoxContainer" parent="Safe/TopRightOverlay/CoachPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="CoachHead" type="HBoxContainer" parent="Safe/TopRightOverlay/CoachPanel/CoachCol"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="CoachEyebrow" type="Label" parent="Safe/TopRightOverlay/CoachPanel/CoachCol/CoachHead"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.91, 0.82, 0.55, 0.72)
+theme_override_font_sizes/font_size = 12
+text = "Now"
+
+[node name="CoachTitle" type="Label" parent="Safe/TopRightOverlay/CoachPanel/CoachCol"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SodiumLabel"
+theme_override_font_sizes/font_size = 16
+text = "Fence it in"
+autowrap_mode = 3
+
+[node name="CoachCopy" type="Label" parent="Safe/TopRightOverlay/CoachPanel/CoachCol"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.9, 0.88, 0.78, 0.92)
+theme_override_font_sizes/font_size = 14
+text = "Open Pens and place a paddock."
+autowrap_mode = 3
+
+[node name="CoachProgress" type="Label" parent="Safe/TopRightOverlay/CoachPanel/CoachCol"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.78, 0.74, 0.6, 0.8)
+theme_override_font_sizes/font_size = 12
+text = ""
+autowrap_mode = 3
 
 [node name="Body" type="HBoxContainer" parent="Safe/Column"]
 unique_name_in_owner = true
@@ -482,7 +639,7 @@ text = "Send home"
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 0
+theme_override_constants/separation = 4
 
 [node name="CatalogRibbon" type="PanelContainer" parent="Safe/Column/Dock"]
 unique_name_in_owner = true
@@ -497,7 +654,7 @@ theme_override_constants/margin_right = 4
 theme_override_constants/margin_bottom = 6
 
 [node name="CatalogScroll" type="ScrollContainer" parent="Safe/Column/Dock/CatalogRibbon/CatalogPad"]
-custom_minimum_size = Vector2(0, 104)
+custom_minimum_size = Vector2(0, 112)
 layout_mode = 2
 horizontal_scroll_mode = 3
 vertical_scroll_mode = 0
@@ -516,28 +673,28 @@ theme_override_constants/separation = 10
 
 [node name="CatPens" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 36)
+custom_minimum_size = Vector2(108, 42)
 layout_mode = 2
 toggle_mode = true
 text = "Pens"
 
 [node name="CatAnimals" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 36)
+custom_minimum_size = Vector2(118, 42)
 layout_mode = 2
 toggle_mode = true
 text = "Animals"
 
 [node name="CatPaths" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 36)
+custom_minimum_size = Vector2(108, 42)
 layout_mode = 2
 toggle_mode = true
 text = "Paths"
 
 [node name="CatPark" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 36)
+custom_minimum_size = Vector2(108, 42)
 layout_mode = 2
 toggle_mode = true
 text = "Park"
@@ -546,6 +703,13 @@ text = "Park"
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
+
+[node name="CancelBuild" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(96, 42)
+layout_mode = 2
+text = "Cancel"
 
 [node name="LabScrim" type="ColorRect" parent="."]
 unique_name_in_owner = true
@@ -613,7 +777,7 @@ theme_override_constants/separation = 8
 [node name="PartCaption" type="Label" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
-text = "Which part?"
+text = "Current parts"
 
 [node name="LabSlots" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
 unique_name_in_owner = true
@@ -635,7 +799,7 @@ script = ExtResource("3_strand")
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
-text = "Pick a body part, then click a vial."
+text = "Each part has one look. The majority look sets the overall type."
 autowrap_mode = 3
 
 [node name="VialRow" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
@@ -786,15 +950,6 @@ theme_type_variation = &"PaperMuted"
 text = "One job at a time. Finish it, claim the reward, the next one shows up."
 autowrap_mode = 3
 
-[node name="ShowQuestHint" type="Button" parent="QuestCenter/QuestPanel/QuestVBox"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_type_variation = &"PaperChoice"
-flat = true
-text = "Show Quest Hint"
-alignment = 0
-
 [node name="QuestNameRow" type="HBoxContainer" parent="QuestCenter/QuestPanel/QuestVBox"]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -902,50 +1057,6 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "OK"
 
-[node name="CoachPanel" type="PanelContainer" parent="."]
-unique_name_in_owner = true
-visible = false
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -248.0
-offset_top = -168.0
-offset_right = 248.0
-offset_bottom = -112.0
-grow_horizontal = 2
-grow_vertical = 0
-mouse_filter = 2
-theme_override_styles/panel = SubResource("paper_panel")
-
-[node name="CoachRow" type="HBoxContainer" parent="CoachPanel"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="CoachCopy" type="Label" parent="CoachPanel/CoachRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"PaperLabel"
-theme_override_font_sizes/font_size = 16
-text = "Open Pens and place a paddock."
-horizontal_alignment = 1
-autowrap_mode = 3
-
-[node name="CoachHideEye" type="TextureButton" parent="CoachPanel/CoachRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(28, 28)
-layout_mode = 2
-size_flags_vertical = 4
-mouse_default_cursor_shape = 2
-modulate = Color(1, 1, 1, 0.48)
-ignore_texture_size = true
-stretch_mode = 5
-
 [node name="PauseScrim" type="ColorRect" parent="."]
 unique_name_in_owner = true
 process_mode = 3
@@ -1005,7 +1116,8 @@ text = "Quit"
 
 [connection signal="pressed" from="Safe/Column/TopRow/ZooHoursButton" to="." method="_on_toggle_zoo_hours"]
 [connection signal="pressed" from="Safe/Column/TopRow/QuestButton" to="." method="_on_open_quests"]
-[connection signal="pressed" from="Safe/Column/TopRow/ShopButton" to="." method="_on_open_shop"]
+[connection signal="pressed" from="Safe/Column/TopRow/TopRightButtons/ShopButton" to="." method="_on_open_shop"]
+[connection signal="gui_input" from="Safe/Column/TopRow/TopRightButtons/WalletChip" to="." method="_on_wallet_gui_input"]
 [connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/CardHeader/Deselect" to="." method="_on_deselect"]
 [connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/AudienceBox/AudienceToggle" to="." method="_on_toggle_audience"]
 [connection signal="pressed" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/LooksBox/LooksToggle" to="." method="_on_toggle_looks"]
@@ -1019,14 +1131,13 @@ text = "Quit"
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatAnimals" to="." method="_on_cat_animals"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPaths" to="." method="_on_cat_paths"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPark" to="." method="_on_cat_park"]
+[connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CancelBuild" to="." method="_on_cancel_build"]
 [connection signal="gui_input" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/ThumbContainer" to="." method="_on_thumb_gui_input"]
 [connection signal="vial_dropped" from="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft/StrandWrap/DnaStrand" to="." method="_on_vial_dropped"]
 [connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/CloseLab" to="." method="_on_close_lab"]
 [connection signal="pressed" from="ShopCenter/ShopPanel/ShopVBox/ShopHeader/CloseShop" to="." method="_on_close_shop"]
 [connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/QuestHeader/CloseQuests" to="." method="_on_close_quests"]
-[connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/ShowQuestHint" to="." method="_on_show_hint"]
 [connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/ClaimQuest" to="." method="_on_claim_quest"]
-[connection signal="pressed" from="CoachPanel/CoachRow/CoachHideEye" to="." method="_on_hide_hint"]
 [connection signal="pressed" from="HoursCenter/HoursPanel/HoursVBox/HoursHeader/CloseHours" to="." method="_on_dismiss_hours"]
 [connection signal="pressed" from="HoursCenter/HoursPanel/HoursVBox/HoursConfirm" to="." method="_on_confirm_hours"]
 [connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/ResumeButton" to="." method="_on_resume"]

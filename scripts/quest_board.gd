@@ -19,25 +19,30 @@ const QUESTS: Array[Dictionary] = [
 		"reward_cash": 10,
 	},
 	{
+		"id": "gates",
+		"title": "Open the gates",
+		"brief": "Open the zoo so guests can arrive.",
+		"goal": "zoo_open",
+		"reward_cash": 10,
+	},
+	{
 		"id": "splice",
 		"title": "Tweak the DNA",
-		"brief": "Open the DNA Lab and click a serum onto a body part.",
+		"brief": "Open the DNA Lab and use Cute serum on a body part.",
 		"goal": "mutate",
 		"reward_cash": 0,
 		"reward_vial": "majestic",
-		"reward_charges": 3,
 	},
 	{
 		"id": "parade",
 		"title": "A proper showpiece",
-		"brief": "Turn one animal into a Showpiece — Majestic on the head, coat, and tail.",
+		"brief": "Use Majestic serum until an animal is a Showpiece (Majestic ×3).",
 		"goal": "committed",
 		"tag": "Majestic",
 		"amount": 3,
 		"archetype": "Showpiece",
 		"reward_cash": 10,
 		"reward_vial": "scary",
-		"reward_charges": 2,
 	},
 	{
 		"id": "expand",
@@ -47,30 +52,30 @@ const QUESTS: Array[Dictionary] = [
 		"amount": 2,
 		"reward_cash": 0,
 		"reward_perk": "open_longer",
+		"reward_build": ["pen_large", "park_lamp"],
 	},
 	{
 		"id": "fright",
 		"title": "Fill the new paddock",
-		"brief": "Make a Scary animal — stack Scary until it is a Predator.",
+		"brief": "Use Scary serum until an animal is a Predator (Scary ×3).",
 		"goal": "committed",
 		"tag": "Scary",
 		"amount": 3,
 		"archetype": "Predator",
 		"reward_cash": 10,
 		"reward_vial": "weird",
-		"reward_charges": 2,
+		"reward_build": ["chimory"],
 	},
 	{
 		"id": "odd",
 		"title": "Something nobody's seen",
-		"brief": "Make a Weird animal — stack Weird until it is a Novelty.",
+		"brief": "Use Weird serum until an animal is a Novelty (Weird ×3).",
 		"goal": "committed",
 		"tag": "Weird",
 		"amount": 3,
 		"archetype": "Novelty",
 		"reward_cash": 10,
-		"reward_vial": "silly",
-		"reward_charges": 1,
+		"reward_vial": "bulky",
 	},
 	{
 		"id": "till",
@@ -80,41 +85,27 @@ const QUESTS: Array[Dictionary] = [
 		"amount": 40,
 		"reward_cash": 0,
 		"reward_perk": "ticket_booth",
-	},
-	{
-		"id": "grace",
-		"title": "On their toes",
-		"brief": "Stack Elegant until an animal is Nimble.",
-		"goal": "committed",
-		"tag": "Elegant",
-		"amount": 2,
-		"archetype": "Nimble",
-		"reward_cash": 5,
-		"reward_vial": "elegant",
-		"reward_charges": 2,
+		"reward_build": ["park_snack"],
 	},
 	{
 		"id": "heft",
 		"title": "Built like a tank",
-		"brief": "Keep an animal Tanky with plenty of Bulky.",
+		"brief": "Use Bulky serum until an animal is Tanky (Bulky ×3).",
 		"goal": "committed",
 		"tag": "Bulky",
 		"amount": 3,
 		"archetype": "Tanky",
 		"reward_cash": 5,
-		"reward_vial": "bulky",
-		"reward_charges": 2,
+		"reward_vial": "gross",
 	},
 	{
 		"id": "ick",
 		"title": "A little icky",
-		"brief": "Put Gross on a creature — tail or coat works.",
+		"brief": "Use Gross serum on a tail or coat.",
 		"goal": "tag",
 		"tag": "Gross",
 		"amount": 1,
 		"reward_cash": 5,
-		"reward_vial": "gross",
-		"reward_charges": 2,
 	},
 	{
 		"id": "stay",
@@ -124,7 +115,7 @@ const QUESTS: Array[Dictionary] = [
 		"amount": 3,
 		"reward_cash": 0,
 		"reward_vial": "linger",
-		"reward_charges": 1,
+		"reward_build": ["pen_gallery"],
 	},
 	{
 		"id": "fame",
@@ -134,31 +125,29 @@ const QUESTS: Array[Dictionary] = [
 		"amount": 80,
 		"reward_cash": 0,
 		"reward_vial": "poster",
-		"reward_charges": 1,
+		"reward_build": ["park_poster"],
 	},
 	{
 		"id": "mix",
 		"title": "Impossible animal",
-		"brief": "Push Weird high enough that a Novelty looks chimeric.",
+		"brief": "Use Weird serum until a Novelty is Weird ×4.",
 		"goal": "committed",
 		"tag": "Weird",
 		"amount": 4,
 		"archetype": "Novelty",
 		"reward_cash": 0,
 		"reward_vial": "chimera",
-		"reward_charges": 1,
 	},
 	{
 		"id": "king",
 		"title": "Apex of the chain",
-		"brief": "A Predator stacked to Scary ×4.",
+		"brief": "Use Scary serum until a Predator is Scary ×4.",
 		"goal": "committed",
 		"tag": "Scary",
 		"amount": 4,
 		"archetype": "Predator",
 		"reward_cash": 0,
 		"reward_vial": "apex",
-		"reward_charges": 1,
 	},
 	{
 		"id": "draw",
@@ -180,6 +169,7 @@ func _ready() -> void:
 	Events.placement_succeeded.connect(_on_world_changed)
 	Events.creature_mutated.connect(_on_mutated)
 	Events.money_changed.connect(_on_money)
+	Events.zoo_hours_changed.connect(_on_hours_changed)
 	call_deferred("evaluate")
 
 
@@ -216,6 +206,22 @@ func is_finished() -> bool:
 	return index >= QUESTS.size()
 
 
+func has_claimed(quest_id: String) -> bool:
+	if quest_id.is_empty():
+		return false
+	for i in range(mini(index, QUESTS.size())):
+		if str(QUESTS[i].get("id", "")) == quest_id:
+			return true
+	return false
+
+
+func title_of(quest_id: String) -> String:
+	for quest in QUESTS:
+		if str(quest.get("id", "")) == quest_id:
+			return str(quest.get("title", quest_id))
+	return ""
+
+
 func reward_text(quest: Dictionary = {}) -> String:
 	if quest.is_empty():
 		quest = current()
@@ -229,11 +235,7 @@ func reward_text(quest: Dictionary = {}) -> String:
 	if not vial_id.is_empty():
 		var vial: Dictionary = GeneTree.get_vial(vial_id)
 		var vial_name: String = str(vial.get("name", vial_id))
-		var charges: int = int(quest.get("reward_charges", 0))
-		if charges > 0:
-			bits.append("%s unlocked + %d charge" % [vial_name, charges])
-		else:
-			bits.append("%s unlocked" % vial_name)
+		bits.append("%s unlocked" % vial_name)
 	var perk_id: String = str(quest.get("reward_perk", ""))
 	if perk_id == GeneTree.PERK_OPEN_LONGER:
 		bits.append("Open longer")
@@ -243,6 +245,10 @@ func reward_text(quest: Dictionary = {}) -> String:
 		bits.append("Crowd pull")
 	elif not perk_id.is_empty():
 		bits.append(perk_id.capitalize())
+	for build_id in quest.get("reward_build", []):
+		var item: Dictionary = BuildCatalog.get_item(str(build_id))
+		var item_name: String = str(item.get("name", build_id))
+		bits.append("%s unlocked" % item_name)
 	if bits.is_empty():
 		return "None"
 	return "  ·  ".join(bits)
@@ -271,6 +277,8 @@ func progress_text() -> String:
 		"tickets":
 			var need_cash: int = int(quest.get("amount", 0))
 			return "Tickets: $%d / $%d" % [WalletService.tickets_earned, need_cash]
+		"zoo_open":
+			return "Zoo open" if _zoo_is_open() else "Zoo still closed"
 		_:
 			return ""
 
@@ -288,10 +296,10 @@ func claim() -> bool:
 	var quest := current()
 	var cash: int = int(quest.get("reward_cash", 0))
 	if cash > 0:
-		WalletService.add_cash(cash)
+		WalletService.add_cash(cash, false, "Quest reward")
 	var vial_id: String = str(quest.get("reward_vial", ""))
 	if not vial_id.is_empty():
-		GeneTree.unlock_vial(vial_id, int(quest.get("reward_charges", 0)))
+		GeneTree.unlock_vial(vial_id)
 	var perk_id: String = str(quest.get("reward_perk", ""))
 	if not perk_id.is_empty():
 		GeneTree.grant_zoo_perk(perk_id)
@@ -315,6 +323,10 @@ func _on_money(_amount: int) -> void:
 	evaluate()
 
 
+func _on_hours_changed(_is_open: bool) -> void:
+	evaluate()
+
+
 func _goal_met(quest: Dictionary) -> bool:
 	if quest.is_empty():
 		return false
@@ -333,8 +345,17 @@ func _goal_met(quest: Dictionary) -> bool:
 			return _stocked_pens() >= int(quest.get("amount", 2))
 		"tickets":
 			return WalletService.tickets_earned >= int(quest.get("amount", 0))
+		"zoo_open":
+			return _zoo_is_open()
 		_:
 			return false
+
+
+func _zoo_is_open() -> bool:
+	if get_tree() == null:
+		return false
+	var street := get_tree().get_first_node_in_group("street") as Street
+	return street != null and street.is_open
 
 
 func _pen_count() -> int:

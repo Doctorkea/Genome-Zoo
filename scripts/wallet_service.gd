@@ -5,6 +5,7 @@ extends Node
 ## Autoloaded as "WalletService".
 
 const ZooFx := preload("res://scripts/fx.gd")
+const LEDGER_MAX: int = 5
 
 @export var starting_money: int = 80
 @export var tick_seconds: float = 6.0
@@ -14,6 +15,7 @@ var money: int = 0
 var tickets_earned: int = 0
 var last_payout: int = 0
 var last_upkeep: int = 0
+var ledger: Array[Dictionary] = []
 
 @onready var _timer: Timer = Timer.new()
 
@@ -31,6 +33,8 @@ func reset() -> void:
 	tickets_earned = 0
 	last_payout = 0
 	last_upkeep = 0
+	ledger.clear()
+	_record(starting_money, "Starting cash")
 	Events.money_changed.emit(money)
 
 
@@ -55,6 +59,9 @@ func collect_tickets() -> int:
 	var net: int = payout - last_upkeep
 	if payout > 0:
 		tickets_earned += payout
+		_record(payout, "Guest tickets")
+	if last_upkeep > 0:
+		_record(-last_upkeep, "Pen upkeep")
 	if net != 0:
 		money = maxi(0, money + net)
 		Events.money_changed.emit(money)
@@ -93,10 +100,13 @@ func _zoo_is_open() -> bool:
 	return false
 
 
-func add_cash(amount: int) -> void:
+func add_cash(amount: int, tickets: bool = false, reason: String = "") -> void:
 	if amount <= 0:
 		return
 	money += amount
+	if tickets:
+		tickets_earned += amount
+	_record(amount, reason if not reason.is_empty() else "Cash in")
 	Events.money_changed.emit(money)
 
 
@@ -112,6 +122,7 @@ func apply_state(data: Dictionary) -> void:
 	tickets_earned = int(data.get("tickets_earned", 0))
 	last_payout = 0
 	last_upkeep = 0
+	ledger.clear()
 	Events.money_changed.emit(money)
 
 
@@ -119,9 +130,38 @@ func can_afford(cost: int) -> bool:
 	return money >= cost
 
 
-func spend(cost: int) -> bool:
+func spend(cost: int, reason: String = "Purchase") -> bool:
 	if not can_afford(cost):
 		return false
 	money -= cost
+	_record(-cost, reason)
 	Events.money_changed.emit(money)
 	return true
+
+
+func _record(delta: int, reason: String) -> void:
+	if delta == 0:
+		return
+	var line: String = reason.strip_edges()
+	if line.is_empty():
+		line = "Cash" if delta > 0 else "Purchase"
+	ledger.push_front({"delta": delta, "reason": line})
+	while ledger.size() > LEDGER_MAX:
+		ledger.pop_back()
+
+
+func last_tick_summary() -> String:
+	if last_payout <= 0 and last_upkeep <= 0:
+		return "No tickets or upkeep yet."
+	if last_upkeep <= 0:
+		return "Last collection: guest tickets +$%d." % last_payout
+	if last_payout <= 0:
+		return "Last collection: pen upkeep −$%d." % last_upkeep
+	var net: int = last_payout - last_upkeep
+	if net >= 0:
+		return "Last collection: tickets +$%d, upkeep −$%d (net +$%d)." % [
+			last_payout, last_upkeep, net
+		]
+	return "Last collection: tickets +$%d, upkeep −$%d (net −$%d)." % [
+		last_payout, last_upkeep, -net
+	]

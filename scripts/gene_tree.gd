@@ -21,30 +21,7 @@ const VIALS: Array[Dictionary] = [
 		"shop_cost": 25,
 		"tag": "Cute",
 		"rarity_min": 0,
-	},
-	{
-		"id": "silly",
-		"name": "Silly serum",
-		"kind": VIAL_KIND_TAG,
-		"shop_cost": 40,
-		"tag": "Silly",
-		"rarity_min": 0,
-	},
-	{
-		"id": "scary",
-		"name": "Scary serum",
-		"kind": VIAL_KIND_TAG,
-		"shop_cost": 35,
-		"tag": "Scary",
-		"rarity_min": 0,
-	},
-	{
-		"id": "gross",
-		"name": "Gross serum",
-		"kind": VIAL_KIND_TAG,
-		"shop_cost": 40,
-		"tag": "Gross",
-		"rarity_min": 0,
+		"hint": "Soft and round. Kids flock to it.",
 	},
 	{
 		"id": "majestic",
@@ -53,14 +30,7 @@ const VIALS: Array[Dictionary] = [
 		"shop_cost": 35,
 		"tag": "Majestic",
 		"rarity_min": 0,
-	},
-	{
-		"id": "elegant",
-		"name": "Elegant serum",
-		"kind": VIAL_KIND_TAG,
-		"shop_cost": 40,
-		"tag": "Elegant",
-		"rarity_min": 0,
+		"hint": "Horse, lion, zebra. Tourists stop and stare.",
 	},
 	{
 		"id": "weird",
@@ -69,6 +39,16 @@ const VIALS: Array[Dictionary] = [
 		"shop_cost": 35,
 		"tag": "Weird",
 		"rarity_min": 0,
+		"hint": "Lizards, frogs, tiny T. rex arms. Odd, not pretty.",
+	},
+	{
+		"id": "scary",
+		"name": "Scary serum",
+		"kind": VIAL_KIND_TAG,
+		"shop_cost": 35,
+		"tag": "Scary",
+		"rarity_min": 0,
+		"hint": "Gorilla, claws, fire. Thrill-seekers pay extra.",
 	},
 	{
 		"id": "bulky",
@@ -77,6 +57,16 @@ const VIALS: Array[Dictionary] = [
 		"shop_cost": 40,
 		"tag": "Bulky",
 		"rarity_min": 0,
+		"hint": "Turtle, elephant, hide. A crowd that does not spook.",
+	},
+	{
+		"id": "gross",
+		"name": "Gross serum",
+		"kind": VIAL_KIND_TAG,
+		"shop_cost": 40,
+		"tag": "Gross",
+		"rarity_min": 0,
+		"hint": "Tentacles and toad spots. Goths love the ick.",
 	},
 	{
 		"id": "apex",
@@ -186,7 +176,7 @@ func buy_vial(vial_id: String) -> bool:
 	var vial := get_vial(vial_id)
 	if vial.is_empty():
 		return false
-	if not WalletService.spend(int(vial.get("shop_cost", 0))):
+	if not WalletService.spend(int(vial.get("shop_cost", 0)), str(vial.get("name", "serum"))):
 		return false
 	add_stock(vial_id, 1)
 	return true

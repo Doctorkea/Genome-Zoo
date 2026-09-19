@@ -16,7 +16,7 @@ const LAB_SLOTS: Array[String] = [
 const COLOR_SLOT: String = "color"
 
 const TAGS: Array[String] = [
-	"Cute", "Elegant", "Majestic", "Weird", "Scary", "Bulky", "Gross", "Silly"
+	"Cute", "Majestic", "Weird", "Scary", "Bulky", "Gross"
 ]
 
 ## Tag pairs that fight in one paddock. Planet Zoo treats incompatible mixes as a
@@ -24,23 +24,34 @@ const TAGS: Array[String] = [
 const OPPOSING_TAGS: Array = [
 	["Cute", "Scary"],
 	["Cute", "Gross"],
-	["Elegant", "Gross"],
-	["Silly", "Scary"],
+	["Majestic", "Gross"],
+	["Weird", "Scary"],
 ]
 
-## Dominant-tag → skill archetype. Cute / Gross / Silly never win this
-## lookup on their own — they only swing visitor scores.
+## Each part votes with exactly one look. Majority look is the overall type.
 const ARCHETYPE_BY_TAG: Dictionary = {
-	"Elegant": "Nimble",
-	"Bulky": "Tanky",
-	"Scary": "Predator",
-	"Weird": "Novelty",
+	"Cute": "Cuddly",
 	"Majestic": "Showpiece",
+	"Weird": "Novelty",
+	"Scary": "Predator",
+	"Bulky": "Tanky",
+	"Gross": "Foul",
 }
 
-## Tie-break order when two archetype tags share the lead.
-const ARCHETYPE_PRIORITY: Array[String] = [
-	"Majestic", "Scary", "Elegant", "Weird", "Bulky"
+## One visitor-facing job per look. Pairs that used to overlap are gone:
+## Majestic covers pretty/grand, Weird covers odd/goofy.
+const LOOK_BUFF: Dictionary = {
+	"Cute": "Kids flock to it",
+	"Majestic": "Tourists stop and stare",
+	"Weird": "Creators and goths lean in",
+	"Scary": "Thrill-seekers pay extra",
+	"Bulky": "A steady crowd that does not spook",
+	"Gross": "Goths love the ick",
+}
+
+## Tie-break when two looks share the lead. Cute yields so a Scary stack can still win.
+const LOOK_PRIORITY: Array[String] = [
+	"Majestic", "Scary", "Weird", "Bulky", "Gross", "Cute"
 ]
 
 ## Scary this high makes Children cry. Arrival gates (low/high zoo rating)
@@ -51,7 +62,7 @@ const VISITORS: Array[Dictionary] = [
 	{
 		"id": "children",
 		"name": "Children",
-		"loves": ["Cute", "Silly"],
+		"loves": ["Cute"],
 		"hates": ["Scary"],
 		"arrives": "always",
 		"effect": "cry",
@@ -83,7 +94,7 @@ const VISITORS: Array[Dictionary] = [
 	{
 		"id": "creators",
 		"name": "Content Creators",
-		"loves": ["Weird", "Majestic", "Silly"],
+		"loves": ["Weird", "Majestic"],
 		"hates": ["Gross"],
 		"arrives": "always",
 		"effect": "hype",
@@ -109,78 +120,78 @@ const VISITORS: Array[Dictionary] = [
 ## slot -> Array of {id, name, tags}
 const OPTIONS: Dictionary = {
 	"body": [
-		{"id": "jimmothy", "name": "Jimmothy Body", "tags": ["Cute", "Bulky"], "rarity": 0},
+		{"id": "jimmothy", "name": "Jimmothy Body", "tags": ["Cute"], "rarity": 0},
 	],
 	"head": [
 		{"id": "jimothy", "name": "Jimothy Head", "tags": ["Cute"], "rarity": 0},
-		{"id": "gorilla", "name": "Gorilla Head", "tags": ["Bulky", "Cute"], "rarity": 2},
-		{"id": "lizard", "name": "Lizard Head", "tags": ["Weird", "Elegant"], "rarity": 1},
-		{"id": "jimmothy", "name": "Horse Head", "tags": ["Majestic", "Elegant"], "rarity": 1},
-		{"id": "cockatoo", "name": "Cockatoo Head", "tags": ["Majestic", "Silly"], "rarity": 1},
-		{"id": "turtle", "name": "Turtle Head", "tags": ["Bulky", "Cute"], "rarity": 1},
-		{"id": "frog", "name": "Frog Head", "tags": ["Weird", "Silly"], "rarity": 1},
-		{"id": "hamster", "name": "Hamster Head", "tags": ["Cute", "Silly"], "rarity": 0},
-		{"id": "duck", "name": "Duck Head", "tags": ["Silly", "Cute"], "rarity": 0},
-		{"id": "lion", "name": "Lion Head", "tags": ["Majestic", "Scary"], "rarity": 2},
+		{"id": "gorilla", "name": "Gorilla Head", "tags": ["Scary"], "rarity": 2},
+		{"id": "lizard", "name": "Lizard Head", "tags": ["Weird"], "rarity": 1},
+		{"id": "jimmothy", "name": "Horse Head", "tags": ["Majestic"], "rarity": 1},
+		{"id": "cockatoo", "name": "Cockatoo Head", "tags": ["Weird"], "rarity": 1},
+		{"id": "turtle", "name": "Turtle Head", "tags": ["Bulky"], "rarity": 1},
+		{"id": "frog", "name": "Frog Head", "tags": ["Weird"], "rarity": 1},
+		{"id": "hamster", "name": "Hamster Head", "tags": ["Cute"], "rarity": 0},
+		{"id": "duck", "name": "Duck Head", "tags": ["Cute"], "rarity": 0},
+		{"id": "lion", "name": "Lion Head", "tags": ["Majestic"], "rarity": 2},
 	],
 	"front_legs": [
-		{"id": "turtle", "name": "Turtle Arm", "tags": ["Cute", "Bulky"], "rarity": 0},
-		{"id": "horse", "name": "Horse Arm", "tags": ["Elegant", "Cute"], "rarity": 1},
-		{"id": "lizard", "name": "Lizard Arm", "tags": ["Weird", "Scary"], "rarity": 1},
-		{"id": "lion", "name": "Lion Arm", "tags": ["Majestic", "Scary"], "rarity": 1},
-		{"id": "trex", "name": "T. rex Arm", "tags": ["Scary", "Weird"], "rarity": 2},
-		{"id": "chimory", "name": "Frog Arms", "tags": ["Weird", "Silly"], "rarity": 2},
+		{"id": "turtle", "name": "Turtle Arm", "tags": ["Cute"], "rarity": 0},
+		{"id": "horse", "name": "Horse Arm", "tags": ["Majestic"], "rarity": 1},
+		{"id": "lizard", "name": "Lizard Arm", "tags": ["Weird"], "rarity": 1},
+		{"id": "lion", "name": "Lion Arm", "tags": ["Majestic"], "rarity": 1},
+		{"id": "trex", "name": "T. rex Arm", "tags": ["Weird"], "rarity": 2},
+		{"id": "chimory", "name": "Frog Arms", "tags": ["Weird"], "rarity": 2},
 	],
 	"back_legs": [
-		{"id": "sheep", "name": "Sheep Leg", "tags": ["Cute", "Bulky"], "rarity": 0},
-		{"id": "horse", "name": "Horse Leg", "tags": ["Elegant", "Cute"], "rarity": 1},
-		{"id": "jimmothy", "name": "Clawed Leg", "tags": ["Weird", "Scary"], "rarity": 1},
-		{"id": "frog", "name": "Frog Leg", "tags": ["Weird", "Silly"], "rarity": 1},
-		{"id": "bird", "name": "Bird Leg", "tags": ["Elegant", "Silly"], "rarity": 1},
-		{"id": "elephant", "name": "Elephant Leg", "tags": ["Bulky", "Majestic"], "rarity": 1},
-		{"id": "gorilla", "name": "Gorilla Leg", "tags": ["Bulky", "Cute"], "rarity": 1},
-		{"id": "lion", "name": "Lion Leg", "tags": ["Majestic", "Scary"], "rarity": 1},
-		{"id": "turtle", "name": "Turtle Leg", "tags": ["Bulky", "Cute"], "rarity": 1},
+		{"id": "sheep", "name": "Sheep Leg", "tags": ["Cute"], "rarity": 0},
+		{"id": "horse", "name": "Horse Leg", "tags": ["Majestic"], "rarity": 1},
+		{"id": "jimmothy", "name": "Clawed Leg", "tags": ["Scary"], "rarity": 1},
+		{"id": "frog", "name": "Frog Leg", "tags": ["Weird"], "rarity": 1},
+		{"id": "bird", "name": "Bird Leg", "tags": ["Weird"], "rarity": 1},
+		{"id": "elephant", "name": "Elephant Leg", "tags": ["Bulky"], "rarity": 1},
+		{"id": "gorilla", "name": "Gorilla Leg", "tags": ["Bulky"], "rarity": 1},
+		{"id": "lion", "name": "Lion Leg", "tags": ["Majestic"], "rarity": 1},
+		{"id": "turtle", "name": "Turtle Leg", "tags": ["Bulky"], "rarity": 1},
 	],
 	"tail": [
-		{"id": "pig", "name": "Pig Tail", "tags": ["Cute", "Bulky"], "rarity": 0},
-		{"id": "sheep", "name": "Sheep Tail", "tags": ["Cute", "Silly"], "rarity": 1},
-		{"id": "tentacle", "name": "Tentacle Tail", "tags": ["Weird", "Gross"], "rarity": 1},
-		{"id": "fire", "name": "Fire Tail", "tags": ["Scary", "Majestic"], "rarity": 1},
-		{"id": "lion", "name": "Lion Tail", "tags": ["Majestic", "Cute"], "rarity": 1},
-		{"id": "lizard", "name": "Lizard Tail", "tags": ["Weird", "Elegant"], "rarity": 1},
-		{"id": "scorpion", "name": "Scorpion Tail", "tags": ["Scary", "Weird"], "rarity": 2},
-		{"id": "jimmothy", "name": "Curly Tail", "tags": ["Cute", "Silly"], "rarity": 1},
+		{"id": "pig", "name": "Pig Tail", "tags": ["Cute"], "rarity": 0},
+		{"id": "sheep", "name": "Sheep Tail", "tags": ["Cute"], "rarity": 1},
+		{"id": "tentacle", "name": "Tentacle Tail", "tags": ["Gross"], "rarity": 1},
+		{"id": "fire", "name": "Fire Tail", "tags": ["Scary"], "rarity": 1},
+		{"id": "lion", "name": "Lion Tail", "tags": ["Majestic"], "rarity": 1},
+		{"id": "lizard", "name": "Lizard Tail", "tags": ["Weird"], "rarity": 1},
+		{"id": "scorpion", "name": "Scorpion Tail", "tags": ["Scary"], "rarity": 2},
+		{"id": "jimmothy", "name": "Curly Tail", "tags": ["Cute"], "rarity": 1},
 	],
 	"color": [
 		{"id": "fur", "name": "Soft Fur", "tags": ["Cute"], "rarity": 0,
 			"base": Color(0.62, 0.42, 0.24), "mark": Color(0.42, 0.26, 0.14),
 			"pattern": 0, "pattern_scale": 4.5, "pattern_amount": 0.1},
-		{"id": "scales", "name": "Fish Scales", "tags": ["Majestic", "Elegant"], "rarity": 1,
+		{"id": "scales", "name": "Fish Scales", "tags": ["Majestic"], "rarity": 1,
 			"base": Color(0.22, 0.50, 0.48), "mark": Color(0.12, 0.28, 0.30),
 			"pattern": 3, "pattern_scale": 6.8, "pattern_amount": 0.4},
-		{"id": "slime", "name": "Toad Skin", "tags": ["Gross", "Weird"], "rarity": 2,
+		{"id": "slime", "name": "Toad Skin", "tags": ["Weird"], "rarity": 2,
 			"base": Color(0.40, 0.48, 0.22), "mark": Color(0.22, 0.28, 0.10),
 			"pattern": 4, "pattern_scale": 2.8, "pattern_amount": 0.38},
-		{"id": "spots", "name": "Leopard Spots", "tags": ["Cute", "Silly"], "rarity": 0,
+		{"id": "spots", "name": "Leopard Spots", "tags": ["Cute"], "rarity": 0,
 			"base": Color(0.82, 0.62, 0.34), "mark": Color(0.18, 0.10, 0.06),
 			"pattern": 1, "pattern_scale": 4.6, "pattern_amount": 0.72},
-		{"id": "stripes", "name": "Tiger Stripes", "tags": ["Scary", "Majestic"], "rarity": 1,
+		{"id": "stripes", "name": "Tiger Stripes", "tags": ["Scary"], "rarity": 1,
 			"base": Color(0.84, 0.48, 0.16), "mark": Color(0.08, 0.05, 0.03),
 			"pattern": 2, "pattern_scale": 3.6, "pattern_amount": 0.78},
 		{"id": "hide", "name": "Elephant Hide", "tags": ["Bulky"], "rarity": 0,
 			"base": Color(0.58, 0.52, 0.46), "mark": Color(0.38, 0.32, 0.28),
 			"pattern": 5, "pattern_scale": 3.2, "pattern_amount": 0.22},
-		{"id": "sleek", "name": "Seal Coat", "tags": ["Elegant"], "rarity": 1,
+		{"id": "sleek", "name": "Seal Coat", "tags": ["Majestic"], "rarity": 1,
 			"base": Color(0.52, 0.56, 0.60), "mark": Color(0.32, 0.34, 0.38),
 			"pattern": 0, "pattern_scale": 5.0, "pattern_amount": 0.08},
-		{"id": "patches", "name": "Piebald Patches", "tags": ["Silly"], "rarity": 0,
+		{"id": "patches", "name": "Piebald Patches", "tags": ["Weird"], "rarity": 0,
 			"base": Color(0.90, 0.88, 0.82), "mark": Color(0.12, 0.09, 0.07),
 			"pattern": 6, "pattern_scale": 1.8, "pattern_amount": 0.82},
-		{"id": "oil", "name": "Zebra Stripes", "tags": ["Weird"], "rarity": 1,
+		{"id": "oil", "name": "Zebra Stripes", "tags": ["Majestic"], "rarity": 1,
 			"base": Color(0.92, 0.90, 0.86), "mark": Color(0.06, 0.05, 0.04),
 			"pattern": 7, "pattern_scale": 4.8, "pattern_amount": 0.85},
-		{"id": "bristles", "name": "Tabby Streaks", "tags": ["Bulky", "Scary"], "rarity": 1,
+		{"id": "bristles", "name": "Tabby Streaks", "tags": ["Cute"], "rarity": 1,
 			"base": Color(0.62, 0.40, 0.20), "mark": Color(0.16, 0.10, 0.06),
 			"pattern": 8, "pattern_scale": 3.8, "pattern_amount": 0.48},
 		{"id": "mould", "name": "Toad Mottling", "tags": ["Gross"], "rarity": 1,
@@ -241,12 +252,26 @@ func visitor_sprite_paths(visitor_id: String) -> PackedStringArray:
 				"res://art/visitors/parent_mum.png",
 				"res://art/visitors/parent_dad.png",
 			])
+		"goths":
+			return PackedStringArray([
+				"res://art/visitors/goth_girl.png",
+				"res://art/visitors/goth_guy.png",
+			])
+		"tourists":
+			return PackedStringArray([
+				"res://art/visitors/tourist_girl.png",
+				"res://art/visitors/tourist_guy.png",
+			])
 		_:
 			return PackedStringArray(["res://art/visitors/patron.png"])
 
 
+func arrival_is_family() -> bool:
+	return randf() < 0.50
+
+
 func random_visitor_id() -> String:
-	if randf() < 0.76:
+	if arrival_is_family():
 		return "parents" if randf() < 0.5 else "children"
 	return random_solo_id()
 
@@ -276,19 +301,39 @@ func park_uniqueness() -> int:
 
 func park_rating() -> int:
 	var counts := zoo_tag_totals()
-	return int(counts.get("Cute", 0)) + int(counts.get("Majestic", 0)) + int(counts.get("Silly", 0)) \
+	return int(counts.get("Cute", 0)) + int(counts.get("Majestic", 0)) \
 		- int(counts.get("Scary", 0)) - int(counts.get("Gross", 0))
 
 
 func random_solo_id() -> String:
-	var pool: PackedStringArray = PackedStringArray(["tourists", "creators", "thrill"])
+	var weights: Dictionary = {
+		"tourists": 62,
+		"thrill": 20,
+		"creators": 10,
+		"goths": 6,
+	}
 	var totals := zoo_tag_totals()
 	var dark: int = int(totals.get("Scary", 0)) + int(totals.get("Gross", 0))
 	if dark >= 4 or park_rating() < 0:
-		pool.append("goths")
+		weights["goths"] = 12
 	if park_uniqueness() >= 2:
-		pool.append("scientists")
-	return pool[randi() % pool.size()]
+		weights["scientists"] = 6
+	return _pick_weighted(weights)
+
+
+func _pick_weighted(weights: Dictionary) -> String:
+	var total: int = 0
+	for key in weights.keys():
+		total += int(weights[key])
+	if total <= 0:
+		return "tourists"
+	var roll: int = randi() % total
+	var acc: int = 0
+	for key in weights.keys():
+		acc += int(weights[key])
+		if roll < acc:
+			return str(key)
+	return "tourists"
 
 
 func family_member_kinds() -> PackedStringArray:
@@ -334,8 +379,23 @@ func option_rarity(slot: String, index: int) -> int:
 
 
 func option_has_tag(slot: String, index: int, tag: String) -> bool:
+	return option_look(slot, index) == tag
+
+
+## The single look this part votes with. Empty when the option is missing.
+func option_look(slot: String, index: int) -> String:
 	var tags: Array = get_option(slot, index).get("tags", [])
-	return tags.has(tag)
+	if tags.is_empty():
+		return ""
+	return str(tags[0])
+
+
+func look_buff(tag: String) -> String:
+	return str(LOOK_BUFF.get(tag, ""))
+
+
+func overall_for_look(tag: String) -> String:
+	return str(ARCHETYPE_BY_TAG.get(tag, "Unspecialized"))
 
 
 func option_index_for_id(slot: String, option_id: String) -> int:
@@ -485,7 +545,7 @@ func tag_distance(a: Dictionary, b: Dictionary) -> float:
 ## 0 = same look, 1 = a fighting mix. Distance is soft; opposing tags (cute vs
 ## gross/scary) weigh more, matching Planet Zoo's compatible-mix bonus vs clash.
 func tag_clash(a: Dictionary, b: Dictionary) -> float:
-	var dist: float = clampf(tag_distance(a, b) / 20.0, 0.0, 1.0)
+	var dist: float = clampf(tag_distance(a, b) / 10.0, 0.0, 1.0)
 	var oppose: float = 0.0
 	for pair in OPPOSING_TAGS:
 		var left: String = str(pair[0])
@@ -526,7 +586,7 @@ func crowd_notes(counts: Dictionary) -> Dictionary:
 	return {"likes": likes, "dislikes": dislikes}
 
 
-## Highest-count look. Ties pick the name that comes first alphabetically.
+## Highest-count look. Ties pick the stronger overall look.
 func prominent_look(counts: Dictionary) -> Dictionary:
 	var best_name := ""
 	var best_amount := 0
@@ -534,7 +594,7 @@ func prominent_look(counts: Dictionary) -> Dictionary:
 		var amount: int = int(counts.get(tag, 0))
 		if amount <= 0:
 			continue
-		if amount > best_amount or (amount == best_amount and (best_name.is_empty() or tag < best_name)):
+		if amount > best_amount or (amount == best_amount and _look_outranks(tag, best_name)):
 			best_name = tag
 			best_amount = amount
 	if best_name.is_empty():
@@ -672,16 +732,24 @@ func _approval(counts: Dictionary, loves: Array, hates: Array) -> int:
 
 
 func _dominant_archetype(counts: Dictionary) -> String:
-	var best_tag := ""
-	var best_count := 0
-	for tag in ARCHETYPE_PRIORITY:
-		var n: int = int(counts.get(tag, 0))
-		if n > best_count:
-			best_count = n
-			best_tag = tag
-	if best_count <= 0:
+	var lead := prominent_look(counts)
+	if lead.is_empty():
 		return "Unspecialized"
-	return ARCHETYPE_BY_TAG.get(best_tag, "Unspecialized")
+	return overall_for_look(str(lead.get("name", "")))
+
+
+func _look_outranks(tag: String, other: String) -> bool:
+	if other.is_empty():
+		return true
+	var a: int = LOOK_PRIORITY.find(tag)
+	var b: int = LOOK_PRIORITY.find(other)
+	if a < 0:
+		a = LOOK_PRIORITY.size()
+	if b < 0:
+		b = LOOK_PRIORITY.size()
+	if a != b:
+		return a < b
+	return tag < other
 
 
 func _signed(value: int) -> String:

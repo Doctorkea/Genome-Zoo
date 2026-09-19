@@ -37,8 +37,15 @@ func _ready() -> void:
 
 
 func set_item(item_id: String) -> void:
-	if current_item_id == item_id:
-		item_id = ""
+	if item_id.is_empty():
+		clear_tool()
+		return
+	var item: Dictionary = BuildCatalog.get_item(item_id)
+	if item.is_empty() or not BuildCatalog.is_unlocked(item):
+		if not item.is_empty():
+			Events.placement_rejected.emit(BuildCatalog.unlock_hint(item))
+		clear_tool()
+		return
 	current_item_id = item_id
 	_sync_mode()
 	_ghost.visible = false
@@ -170,7 +177,10 @@ func _update_animal_ghost() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	if event is InputEventMouseButton and event.pressed:
+		var mouse := event as InputEventMouseButton
+		if mouse.button_index != MOUSE_BUTTON_LEFT:
+			return
 		match current_mode:
 			Mode.PLACE_PEN_SMALL, Mode.PLACE_PEN_LARGE:
 				_try_place_pen()
@@ -189,7 +199,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _try_place_pen() -> void:
 	var item: Dictionary = BuildCatalog.get_item(current_item_id)
-	if item.is_empty():
+	if item.is_empty() or not BuildCatalog.is_unlocked(item):
 		return
 	var size_cells: Vector2i = item.get("size_cells", Vector2i(4, 3))
 	var origin_cell := GridService.world_to_cell(get_global_mouse_position())
@@ -197,7 +207,7 @@ func _try_place_pen() -> void:
 		Events.placement_rejected.emit("That pen doesn't fit there.")
 		return
 	var cost: int = int(item.get("cost", 0))
-	if not WalletService.spend(cost):
+	if not WalletService.spend(cost, str(item.get("name", "pen"))):
 		Events.placement_rejected.emit("Need $%d for a %s." % [cost, item.get("name", "pen")])
 		clear_tool()
 		return
@@ -218,7 +228,7 @@ func _try_place_pen() -> void:
 	Events.placement_succeeded.emit(current_item_id)
 	TutorialService.on_pen_placed()
 	ZooFx.pen_poof(pen, pen.get_size_pixels())
-	_clear_if_broke(item)
+	clear_tool()
 
 
 func _try_place_animal() -> void:
@@ -240,7 +250,7 @@ func place_path_at(cell: Vector2i) -> bool:
 	if item.is_empty():
 		item = BuildCatalog.get_item("path_stone")
 	var cost: int = int(item.get("cost", 0))
-	if not WalletService.spend(cost):
+	if not WalletService.spend(cost, "Path tile"):
 		Events.placement_rejected.emit("Need $%d for a path tile." % cost)
 		clear_tool()
 		return false
@@ -293,6 +303,8 @@ func place_animal_at(world_pos: Vector2) -> bool:
 	var item: Dictionary = BuildCatalog.get_item(current_item_id)
 	if item.is_empty() or str(item.get("kind", "")) != "animal":
 		return false
+	if not BuildCatalog.is_unlocked(item):
+		return false
 	var pen := _find_pen_at(world_pos)
 	if pen == null:
 		Events.placement_rejected.emit("Drop them inside a pen.")
@@ -301,7 +313,7 @@ func place_animal_at(world_pos: Vector2) -> bool:
 		Events.placement_rejected.emit("This pen is full (%d/%d)." % [pen.occupant_count(), pen.animal_capacity()])
 		return false
 	var cost: int = int(item.get("cost", 0))
-	if not WalletService.spend(cost):
+	if not WalletService.spend(cost, str(item.get("name", "animal"))):
 		Events.placement_rejected.emit("Need $%d for a %s." % [cost, item.get("name", "animal")])
 		clear_tool()
 		return false
@@ -382,14 +394,14 @@ func _try_place_park() -> void:
 
 
 func place_park_at(cell: Vector2i) -> bool:
-	if str(BuildCatalog.get_item(current_item_id).get("kind", "")) != "park":
+	var item: Dictionary = BuildCatalog.get_item(current_item_id)
+	if str(item.get("kind", "")) != "park" or not BuildCatalog.is_unlocked(item):
 		return false
 	if not GridService.is_prop_placeable(cell):
 		Events.placement_rejected.emit("That spot is taken.")
 		return false
-	var item: Dictionary = BuildCatalog.get_item(current_item_id)
 	var cost: int = int(item.get("cost", 0))
-	if not WalletService.spend(cost):
+	if not WalletService.spend(cost, str(item.get("name", "object"))):
 		Events.placement_rejected.emit("Need $%d for a %s." % [cost, item.get("name", "object")])
 		clear_tool()
 		return false
@@ -398,7 +410,7 @@ func place_park_at(cell: Vector2i) -> bool:
 	var prop: Node2D = _park_objects.get(cell) as Node2D
 	if prop != null:
 		ZooFx.burst(prop, ZooFx.Kind.DUST, Vector2(GridService.CELL_SIZE, GridService.CELL_SIZE) * 0.5)
-	_clear_if_broke(item)
+	clear_tool()
 	return true
 
 

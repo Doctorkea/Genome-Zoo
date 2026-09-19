@@ -230,7 +230,7 @@ func _do_showtime() -> void:
 			payout = 6
 		"Showpiece":
 			payout = 7
-	WalletService.add_cash(payout)
+	WalletService.add_cash(payout, false, "%s showtime" % arch)
 	Events.showtime_performed.emit(self, arch, payout)
 	_flash_showtime(arch, payout)
 	_burst_showtime(arch)

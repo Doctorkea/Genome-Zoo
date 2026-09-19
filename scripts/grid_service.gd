@@ -4,8 +4,8 @@ extends Node
 ## Autoloaded as "GridService".
 
 const CELL_SIZE: int = 100 # one grid cell == one 100x100 floor tile (the art scale reference)
-## Path stamps are much smaller than pens so a walkway reads as cobbles, not slabs.
-const PATH_CELL_SIZE: int = 25
+## Path stamps sit at half a grass cell so a walkway reads as cobbles, not slabs.
+const PATH_CELL_SIZE: int = 50
 const WORLD_COLS: int = 16
 const WORLD_ROWS: int = 10
 ## Prison Architect-style frontage below the grass. Pens cannot be built here.

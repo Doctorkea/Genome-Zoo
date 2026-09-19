@@ -57,7 +57,17 @@ func _test_build_catalog() -> void:
 	assert(BuildCatalog.items_for(BuildCatalog.CAT_PATHS).size() == 1, "should list a path tile")
 	assert(BuildCatalog.items_for(BuildCatalog.CAT_PARK).size() == 4, "should list four park objects")
 	assert(int(BuildCatalog.get_item("path_stone").get("cost", 0)) == 1, "stone path should cost $1")
-	assert(GridService.PATH_CELL_SIZE < GridService.CELL_SIZE / 3, "path stamps should be much smaller than grass cells")
+	assert(GridService.PATH_CELL_SIZE == 50, "paths should be half a grass cell")
+	assert(GridService.PATH_CELL_SIZE == GridService.CELL_SIZE / 2, "a path tile should sit on half a grass cell")
+	assert(str(BuildCatalog.get_item("pen_large").get("unlock_quest", "")) == "expand", "large pens should wait on Another enclosure")
+	assert(str(BuildCatalog.get_item("pen_gallery").get("unlock_quest", "")) == "stay", "gallery should wait on a later quest")
+	assert(str(BuildCatalog.get_item("chimory").get("unlock_quest", "")) == "fright", "Chimory should wait on a scary quest")
+	assert(BuildCatalog.is_unlocked(BuildCatalog.get_item("pen_tiny")), "tiny pens should start unlocked")
+	assert(BuildCatalog.is_unlocked(BuildCatalog.get_item("park_bench")), "benches should start unlocked")
+	assert(not BuildCatalog.is_unlocked(BuildCatalog.get_item("pen_large")), "large pens should start locked")
+	assert(not BuildCatalog.is_unlocked(BuildCatalog.get_item("chimory")), "Chimory should start locked")
+	assert(BuildCatalog.unlock_hint(BuildCatalog.get_item("pen_large")).contains("Another enclosure"),
+		"locked tiles should name the quest that opens them")
 	assert(BuildCatalog.get_item("chimory").get("name") == "Chimory", "chimory should be a base animal")
 	assert(BuildCatalog.get_item("jimmothy").get("name") == "Jimmothy", "jimmothy should be a base animal")
 	assert(int(BuildCatalog.get_item("jimmothy").get("cost", 0)) == 25, "jimmothy should cost $25")
@@ -326,7 +336,7 @@ func _test_animal(pen: Pen) -> Animal:
 	assert(Animal.SPEED < 70.0, "animals should amble, not dash")
 	assert(Animal.MIN_PAUSE >= 5.0, "animals should loaf between walks")
 	assert((stats.get("parts") as Array).size() == 6, "expected 5 parts + color, got %s" % [stats.get("parts")])
-	assert(stats.get("archetype") == "Tanky", "default animal should be Tanky, got %s" % stats.get("archetype"))
+	assert(stats.get("archetype") == "Cuddly", "default animal should be Cuddly, got %s" % stats.get("archetype"))
 	var visitors: Dictionary = stats.get("visitors", {})
 	assert(int(visitors.get("children", 0)) > 0, "children should like the default cute stack")
 	assert(int(visitors.get("parents", 1)) == 0, "parents should stay neutral")
@@ -362,13 +372,31 @@ func _test_trait_library() -> void:
 	assert(TraitLibrary.get_option_count("back_legs") == 9, "back legs should include the artist leg set")
 	assert(TraitLibrary.get_option_count("tail") == 8, "tail should include the artist tail set")
 	assert(TraitLibrary.get_option_count("color") == 11, "coats should cover every serum tag")
+	assert(TraitLibrary.TAGS.size() == 6, "looks should be a tight set of six")
+	assert(not TraitLibrary.TAGS.has("Elegant") and not TraitLibrary.TAGS.has("Silly"),
+		"Elegant and Silly should fold into Majestic and Weird")
 	assert(TraitLibrary.slot_display_name("color") == "Coat", "color slot should display as Coat")
 	for tag in TraitLibrary.TAGS:
+		assert(TraitLibrary.ARCHETYPE_BY_TAG.has(tag), "look %s needs an overall type" % tag)
+		assert(not str(TraitLibrary.LOOK_BUFF.get(tag, "")).is_empty(), "look %s needs a buff line" % tag)
 		assert(not TraitLibrary.indices_with_tag("color", tag).is_empty(),
 			"every serum tag needs a coat, missing %s" % tag)
+	for slot in TraitLibrary.OPTIONS.keys():
+		for i in range(TraitLibrary.get_option_count(str(slot))):
+			var tags: Array = TraitLibrary.get_option(str(slot), i).get("tags", [])
+			assert(tags.size() == 1, "%s option %d should have one look, got %s" % [slot, i, tags])
+	assert(TraitLibrary.option_look("head", 1) == "Scary", "gorilla head should vote Scary")
+	assert(TraitLibrary.overall_for_look("Cute") == "Cuddly", "Cute majority should read as Cuddly")
+	assert(TraitLibrary.look_buff("Cute").to_lower().contains("kids"), "Cute buff should mention kids")
 	assert(TraitLibrary.LAB_SLOTS.has("head") and not TraitLibrary.LAB_SLOTS.has("body"),
 		"DNA Lab should mutate limbs, not the shared torso")
 	assert(TraitLibrary.get_option("head", 1).get("name") == "Gorilla Head", "gorilla head should be in the pool")
+	assert(TraitLibrary.option_has_tag("head", 1, "Scary"), "gorilla head should read as Scary")
+	assert(not TraitLibrary.option_has_tag("head", 1, "Cute"), "gorilla head should not count as Cute")
+	assert(TraitLibrary.option_has_tag("head", 2, "Weird"), "lizard head should read as Weird")
+	assert(TraitLibrary.option_has_tag("front_legs", 4, "Weird"), "T. rex arms should read as Weird")
+	assert(TraitLibrary.option_has_tag("tail", 0, "Cute"), "pig tail should stay Cute")
+	assert(TraitLibrary.option_has_tag("tail", 4, "Majestic"), "lion tail should read as Majestic")
 	assert(TraitLibrary.get_option("head", 3).get("name") == "Horse Head", "jimmothy head should be in the pool")
 	assert(TraitLibrary.get_option("head", 4).get("name") == "Cockatoo Head", "cockatoo head should be in the pool")
 	assert(TraitLibrary.get_option("head", 9).get("name") == "Lion Head", "lion head should be in the pool")
@@ -381,10 +409,16 @@ func _test_trait_library() -> void:
 	assert(seen_colors.size() == TraitLibrary.VISITORS.size(), "every visitor type needs a colour")
 	assert(TraitLibrary.visitor_sprite_paths("children").size() == 2, "children should randomise boy/girl")
 	assert(TraitLibrary.visitor_sprite_paths("parents").size() == 2, "parents should randomise mum/dad")
+	assert(TraitLibrary.visitor_sprite_paths("goths").size() == 2, "goths should randomise girl/guy")
+	assert(TraitLibrary.visitor_sprite_paths("tourists").size() == 2, "tourists should randomise girl/guy")
 	for path in TraitLibrary.visitor_sprite_paths("children"):
 		assert(load(path) != null, "missing child sprite %s" % path)
 	for path in TraitLibrary.visitor_sprite_paths("parents"):
 		assert(load(path) != null, "missing parent sprite %s" % path)
+	for path in TraitLibrary.visitor_sprite_paths("goths"):
+		assert(load(path) != null, "missing goth sprite %s" % path)
+	for path in TraitLibrary.visitor_sprite_paths("tourists"):
+		assert(load(path) != null, "missing tourist sprite %s" % path)
 	var family_kinds: PackedStringArray = TraitLibrary.family_member_kinds()
 	assert(family_kinds.has("parents") and family_kinds.has("children"),
 		"a family car should carry parents and kids")
@@ -394,12 +428,12 @@ func _test_trait_library() -> void:
 	for slot in TraitLibrary.SHAPE_SLOTS:
 		zeros[slot] = 0
 	var baseline: Dictionary = TraitLibrary.score_loadout(zeros, 0)
-	assert(baseline.get("archetype") == "Tanky", "default loadout should be Tanky, got %s" % baseline.get("archetype"))
+	assert(baseline.get("archetype") == "Cuddly", "default loadout should be Cuddly, got %s" % baseline.get("archetype"))
 	var base_visitors: Dictionary = baseline.get("visitors", {})
 	assert(int(base_visitors.get("children", 0)) > 0, "children should like the cute default")
 	assert(int(base_visitors.get("parents", 1)) == 0, "parents should stay neutral")
 	assert(int(base_visitors.get("goths", 0)) < 0, "goths should hate the cute default")
-	assert(int(base_visitors.get("scientists", 0)) < 0, "scientists should call the cute default mediocre")
+	assert(int(base_visitors.get("scientists", 1)) <= 0, "scientists should call the cute default mediocre")
 	assert(int(base_visitors.get("thrill", 0)) < 0, "thrill-seekers should hate the cute default")
 
 	var weird: Dictionary = {}
@@ -409,7 +443,7 @@ func _test_trait_library() -> void:
 	assert(novelty.get("archetype") == "Novelty", "weird loadout should be Novelty, got %s" % novelty.get("archetype"))
 	var novelty_visitors: Dictionary = novelty.get("visitors", {})
 	assert(int(novelty_visitors.get("goths", 0)) > 0, "goths should like the gross/weird stack")
-	assert(int(novelty_visitors.get("thrill", 0)) > 0, "thrill-seekers should like the scary stack")
+	assert(int(novelty_visitors.get("thrill", 0)) >= 0, "a weird stack with claws should not drive thrill-seekers away")
 	assert(int(novelty_visitors.get("scientists", 0)) > 0, "scientists should like a unique stack")
 	var crowd: Dictionary = TraitLibrary.crowd_notes(baseline.get("tags", {}))
 	var like_names: PackedStringArray = PackedStringArray()
@@ -435,10 +469,10 @@ func _test_trait_library() -> void:
 	assert(str(lead.get("name", "")) == "Cute", "default prominent look should be Cute")
 	var tied: Dictionary = {"Bulky": 4, "Cute": 4}
 	assert(str(TraitLibrary.prominent_look(tied).get("name", "")) == "Bulky",
-		"tied looks should pick the first name alphabetically")
+		"tied looks should pick the stronger overall look")
 	var chrono: Array[Dictionary] = TraitLibrary.present_looks(baseline.get("tags", {}))
-	assert(chrono.size() == 2 and str(chrono[0].get("name", "")) == "Cute",
-		"present looks should stay in tag-list order")
+	assert(chrono.size() == 1 and str(chrono[0].get("name", "")) == "Cute",
+		"default looks should be Cute only")
 	assert(TraitLibrary.slot_display_name("body") == "Torso", "body slot should display as Torso")
 	for _i in range(16):
 		var other: int = TraitLibrary.pick_other_index("head", 1)
@@ -488,6 +522,8 @@ func _test_build_mode() -> void:
 	build_mode.set_script(load("res://scripts/build_mode.gd"))
 	add_child(build_mode)
 	assert(build_mode.has_method("spawn_starter_exhibit"), "BuildMode script should attach")
+	build_mode.set_item("pen_large")
+	assert(build_mode.current_item_id == "", "locked pens should not arm the place tool")
 	build_mode.set_mode(BuildMode.Mode.PLACE_PEN_SMALL)
 	assert(build_mode.current_mode == BuildMode.Mode.PLACE_PEN_SMALL, "set_mode didn't apply")
 	var jimothy: Animal = build_mode.spawn_starter_exhibit()
@@ -542,6 +578,7 @@ func _test_build_mode() -> void:
 	build_mode.set_item("park_bench")
 	assert(build_mode.current_mode == BuildMode.Mode.PLACE_PARK, "park catalog should arm park mode")
 	assert(build_mode.place_park_at(Vector2i(10, 8)), "should place a bench on empty grass")
+	assert(build_mode.current_item_id == "", "placing a bench should drop the tool")
 	assert(GridService.has_prop(Vector2i(10, 8)), "bench should occupy its grass cell")
 	assert(GridService.prop_id(Vector2i(10, 8)) == "park_bench", "prop id should match the catalog item")
 	GridService.remove_prop(Vector2i(10, 8))
@@ -551,16 +588,24 @@ func _test_build_mode() -> void:
 
 func _test_wallet_service() -> void:
 	var start_money: int = WalletService.money
-	assert(WalletService.spend(5), "should afford spending $5")
+	assert(WalletService.spend(5, "Test buy"), "should afford spending $5")
 	assert(WalletService.money == start_money - 5, "cash didn't decrease")
+	assert(WalletService.ledger.size() > 0, "spending should log a till line")
+	assert(int(WalletService.ledger[0].get("delta", 0)) == -5, "latest till line should be the $5 spend")
+	assert(str(WalletService.ledger[0].get("reason", "")) == "Test buy", "till line should keep the spend reason")
+	assert(WalletService.ledger.size() <= WalletService.LEDGER_MAX, "till log should keep only the last five moves")
 	assert(not WalletService.spend(100000), "shouldn't afford spending $100000")
 	var before_tick: int = WalletService.money
 	assert(WalletService.collect_tickets() == 0, "empty zoo should pay nothing")
 	assert(WalletService.money == before_tick, "ticket collection should not mint cash with no guests")
+	assert(WalletService.last_tick_summary().contains("No tickets"), "empty collection should explain tickets and upkeep")
 	print("WalletService OK — money=%d" % WalletService.money)
 
 
 func _test_quests() -> void:
+	assert(GeneTree.get_vial("elegant").is_empty(), "Elegant serum should be gone")
+	assert(GeneTree.get_vial("silly").is_empty(), "Silly serum should be gone")
+	assert(GeneTree.get_vial("majestic").get("name") == "Majestic serum", "Majestic serum should keep its name")
 	assert(GeneTree.is_vial_unlocked("cute"), "Cute serum should start unlocked")
 	assert(GeneTree.stock_of("cute") >= 1, "the lab should start with one Cute charge")
 	assert(not GeneTree.is_vial_unlocked("scary"), "Scary should stay gated until a quest pays it out")
@@ -574,9 +619,18 @@ func _test_quests() -> void:
 	assert(QuestBoard.current().get("id") == "stock", "next quest should ask for an animal")
 	assert(QuestBoard.reward_text().contains("$10"), "stock quest should show its reward")
 	assert(QuestBoard.claim(), "a placed animal should complete Something to look at")
-	assert(QuestBoard.current().get("id") == "splice", "third quest should ask for a mutation")
-	assert(QuestBoard.reward_text().contains("Majestic"), "splice quest should unlock Majestic serum")
-	assert(not QuestBoard.ready_to_claim, "splice should wait for a lab drop")
+	assert(QuestBoard.current().get("id") == "gates", "third quest should ask to open the zoo")
+	assert(QuestBoard.reward_text().contains("$10"), "open-zoo quest should show its cash reward")
+	assert(not QuestBoard.ready_to_claim, "gates should wait until the zoo opens")
+	assert(str(QuestBoard.QUESTS[3].get("id", "")) == "splice", "mutation quest should follow opening the zoo")
+	assert(str(QuestBoard.QUESTS[3].get("brief", "")).contains("Cute serum"),
+		"mutation quest should name Cute serum")
+	assert(str(QuestBoard.QUESTS[4].get("brief", "")).contains("Majestic serum"),
+		"showpiece quest should name Majestic serum")
+	for quest in QuestBoard.QUESTS:
+		assert(int(quest.get("reward_charges", 0)) == 0, "quests should not grant free charges")
+		assert(not QuestBoard.reward_text(quest).to_lower().contains("charge"),
+			"quest reward copy should not mention charges")
 	var cute_before: int = GeneTree.stock_of("cute")
 	WalletService.money += 40
 	Events.money_changed.emit(WalletService.money)
@@ -601,8 +655,8 @@ func _test_title_and_save() -> void:
 	var critter: Animal = build.spawn_starter_exhibit()
 	assert(critter != null, "save test needs a starter exhibit")
 	WalletService.money += 50
-	build.set_item("park_lamp")
-	assert(build.place_park_at(Vector2i(12, 7)), "save test should place a lamp")
+	build.set_item("park_bench")
+	assert(build.place_park_at(Vector2i(12, 7)), "save test should place a bench")
 	var world: Dictionary = build.snapshot_world()
 	assert((world.get("pens") as Array).size() == 1, "snapshot should keep the pen")
 	assert((world.get("props") as Array).size() == 1, "snapshot should keep park objects")
@@ -613,7 +667,7 @@ func _test_title_and_save() -> void:
 	assert((build.get("_pens") as Array).size() == 1, "restore should rebuild the pen")
 	var restored: Pen = (build.get("_pens") as Array)[0]
 	assert(restored.occupant_count() == 1, "restore should keep the animal")
-	assert(GridService.has_prop(Vector2i(12, 7)), "restore should put the lamp back")
+	assert(GridService.has_prop(Vector2i(12, 7)), "restore should put the bench back")
 	build.delete_pen(restored)
 	for cell in (build.get("_park_objects") as Dictionary).keys():
 		var prop: Node = (build.get("_park_objects") as Dictionary)[cell]
@@ -636,6 +690,38 @@ func _test_hud(animal: Animal) -> Control:
 	hud._on_cat_pens()
 	assert(hud.get_node("%CatalogRibbon").visible, "Pens tab should open the catalog ribbon")
 	assert(hud.get_node("%CatalogRow").get_child_count() == 4, "Pens ribbon should show four priced pens")
+	assert(hud.get_node_or_null("%BuildHint") == null, "dock should not show a place hint")
+	assert(not hud.get_node("%CancelBuild").visible, "cancel stays hidden until a tool is armed")
+	var locked_large := false
+	for child in hud.get_node("%CatalogRow").get_children():
+		if child is Button and (child as Button).text.contains("Large"):
+			assert((child as Button).disabled, "large pen should stay locked until Another enclosure")
+			assert(child.get_node_or_null("Padlock") != null, "locked pens should show a padlock")
+			locked_large = true
+	assert(locked_large, "Pens ribbon should include the locked large pen")
+	hud._dismiss_open_menu()
+	assert(not hud.get_node("%CatalogRibbon").visible, "world click should close the catalog when no tool is armed")
+	hud._on_cat_pens()
+	WalletService.money += 80
+	hud._on_catalog_tile_pressed("pen_tiny")
+	assert(hud.get_node("%CatalogRibbon").visible, "catalog should stay open after picking a tool")
+	assert(build_mode.current_item_id == "pen_tiny", "picking a tile should arm that tool")
+	assert(hud.get_node("%CancelBuild").visible, "cancel should show while placing")
+	hud._dismiss_open_menu()
+	assert(hud.get_node("%CatalogRibbon").visible, "world click should not close the catalog while placing")
+	assert(build_mode.current_item_id == "pen_tiny", "world click should not drop the tool")
+	hud._on_cat_pens()
+	assert(not hud.get_node("%CatalogRibbon").visible, "clicking Pens again should hide the catalog")
+	assert(build_mode.current_item_id == "", "clicking Pens again should drop the place tool")
+	assert(not hud.get_node("%CancelBuild").visible, "cancel should hide once the tool is dropped")
+	hud._on_cat_animals()
+	var locked_chimory := false
+	for child in hud.get_node("%CatalogRow").get_children():
+		if child is Button and (child as Button).text.contains("Chimory"):
+			assert((child as Button).disabled, "Chimory should stay locked until the scary quest")
+			assert(child.get_node_or_null("Padlock") != null, "locked animals should show a padlock")
+			locked_chimory = true
+	assert(locked_chimory, "Animals ribbon should include locked Chimory")
 	hud._on_cat_paths()
 	assert(hud.get_node("%CatalogRow").get_child_count() == 1, "Paths ribbon should show the stone path")
 	hud._on_cat_park()
@@ -643,10 +729,9 @@ func _test_hud(animal: Animal) -> Control:
 	Events.animal_selected.emit(animal)
 	assert(hud.get_node("%StatsPanel").visible, "stats panel should show after select")
 	var archetype_text: String = hud.get_node("%StatsArchetype").text
-	assert(archetype_text.contains("Tanky") or archetype_text.contains(str(animal.get_stats().get("archetype"))),
+	assert(archetype_text.contains("Cuddly") or archetype_text.contains(str(animal.get_stats().get("archetype"))),
 		"stats panel should show archetype, got '%s'" % archetype_text)
-	assert(_tag_meter_names(hud.get_node("%LooksLead")).contains("Bulky") \
-		or _tag_meter_names(hud.get_node("%LooksLead")).contains("Cute"),
+	assert(_tag_meter_names(hud.get_node("%LooksLead")).contains("Cute"),
 		"collapsed looks should show the prominent trait")
 	assert(not hud.get_node("%AudienceList").visible, "audience starts closed")
 	assert(not hud.get_node("%LooksList").visible, "looks list starts closed")
@@ -664,15 +749,16 @@ func _test_hud(animal: Animal) -> Control:
 	assert(hud.get_node("%LooksList").visible, "looks dropdown should open")
 	assert(not hud.get_node("%AudienceList").visible, "opening looks should close audience")
 	assert(not hud.get_node("%LooksLead").visible, "expanded looks hides the single lead")
-	assert(hud.get_node("%LooksList").get_child_count() > 1, "expanded looks should list every present trait")
+	assert(hud.get_node("%LooksList").get_child_count() >= 1, "expanded looks should list every present trait")
 	assert(str(hud.get_node("%WalletLabel").text).begins_with("$"), "wallet chip should show cash")
-	assert(str(hud.get_node("%HoursLabel").text) == "Closed", "hours chip should start Closed")
-	assert(str(hud.get_node("%ZooHoursButton").text) == "Open zoo", "hours button should offer to open")
+	assert(str(hud.get_node("%HoursLabel").text) == "Zoo closed", "hours chip should start Zoo closed")
+	assert(str(hud.get_node("%HoursDetail").text).contains("cannot arrive"), "closed chip should say guests cannot arrive")
+	assert(str(hud.get_node("%ZooHoursButton").text) == "Open the zoo", "hours button should offer to open")
 	hud._on_toggle_zoo_hours()
 	assert(hud.get_node("%HoursPanel").visible, "opening with no exhibit should show an error popup")
 	assert(str(hud.get_node("%HoursTitle").text) == "Can't open yet", "error popup should say it can't open")
 	assert(str(hud.get_node("%HoursCopy").text).contains("pen"), "error popup should say why")
-	assert(str(hud.get_node("%HoursLabel").text) == "Closed", "open should fail until the street exists")
+	assert(str(hud.get_node("%HoursLabel").text) == "Zoo closed", "open should fail until the street exists")
 	hud._on_dismiss_hours()
 	assert(not hud.get_node("%HoursPanel").visible, "closing the error popup should hide it")
 	hud._on_mutate_pressed()
@@ -680,39 +766,45 @@ func _test_hud(animal: Animal) -> Control:
 	assert(hud.get_node_or_null("%LabShopList") == null, "DNA Lab should not embed the vial shop")
 	assert(hud.get_node_or_null("%LabUndo") == null, "DNA Lab should not have an undo button")
 	assert(not hud.get_node("%Deselect").visible, "exhibit card Close should hide while the lab is open")
-	var lab_slot_names: PackedStringArray = PackedStringArray()
+	var saw_head := false
+	var saw_coat := false
+	var saw_torso := false
+	var saw_part := false
+	var saw_look := false
 	for child in hud.get_node("%LabSlots").get_children():
 		if child is Button:
-			lab_slot_names.append((child as Button).text)
-	assert(not lab_slot_names.has("Torso"), "DNA Lab should not offer a torso picker")
-	assert(lab_slot_names.has("Head") and lab_slot_names.has("Coat"),
-		"DNA Lab should still offer head and coat")
+			var caption: String = (child as Button).text
+			if caption.contains("Torso"):
+				saw_torso = true
+			if caption.contains("Head"):
+				saw_head = true
+			if caption.contains("Coat"):
+				saw_coat = true
+			if caption.contains("\n"):
+				saw_part = true
+			if caption.contains("Cute") or caption.contains("Weird") or caption.contains("Scary"):
+				saw_look = true
+	assert(not saw_torso, "DNA Lab should not offer a torso picker")
+	assert(saw_head and saw_coat, "DNA Lab should still offer head and coat")
+	assert(saw_part, "DNA Lab slots should name the current part")
+	assert(saw_look, "DNA Lab slots should name each part's look")
+	assert(str(hud.get_node("%LabSubject").text).contains(str(animal.get_stats().get("archetype", ""))),
+		"DNA Lab should say the overall type from majority look")
 	assert(hud.get_node("%StatsPanel").get_parent() == hud.get_node("%LabCardHost"),
 		"exhibit card should sit on the right of the lab")
 	assert(hud.get_node_or_null("%HideQuests") == null, "quest popup should not have a Hide button")
-	assert(hud.get_node("%ShowQuestHint") != null, "quests tab should offer Show Quest Hint")
-	assert(hud.get_node("%CoachHideEye") != null, "quest hint should have a hide eye")
+	assert(hud.get_node_or_null("%ShowQuestHint") == null, "quests tab should not offer Show Quest Hint")
+	assert(hud.get_node_or_null("%CoachHideEye") == null, "quest hint should not have a hide eye")
+	assert(hud.get_node("%CoachPanel").get_parent().name == "TopRightOverlay",
+		"active quest hint should sit under cash in the top right")
 	hud._on_open_quests()
 	assert(not hud.get_node("%QuestPanel").visible, "quest popup should hide while the DNA Lab is open")
 	assert(not hud.get_node("%CatalogRibbon").visible, "opening quests should tuck the catalog")
 	hud._on_close_lab()
 	assert(hud.get_node("%QuestPanel").visible, "quest popup should return after the lab closes")
+	assert(not hud.get_node("%CoachPanel").visible, "quest popup should hide the journey hint")
 	assert(str(hud.get_node("%QuestName").text) != "", "quest card should show a title")
 	assert(str(hud.get_node("%QuestReward").text).begins_with("Reward:"), "quest card should show the reward")
-	TutorialService.step = TutorialService.Step.OPEN
-	TutorialService.seen = false
-	Events.tutorial_changed.emit()
-	assert(hud.get_node("%CoachPanel").visible, "active quest hint should show when menus are closed")
-	assert(str(hud.get_node("%CoachCopy").text) == "Open the zoo so guests can arrive.",
-		"quest hint should use the current tutorial line")
-	assert(not hud.get_node("%ShowQuestHint").visible, "Show Quest Hint stays tucked while the hint is up")
-	hud._on_hide_hint()
-	assert(not hud.get_node("%CoachPanel").visible, "the hint eye should hide the quest dialogue")
-	assert(hud.get_node("%ShowQuestHint").visible, "hiding the hint should reveal Show Quest Hint")
-	hud._on_show_hint()
-	assert(hud.get_node("%CoachPanel").visible, "Show Quest Hint should bring the dialogue back")
-	assert(not hud.get_node("%ShowQuestHint").visible, "Show Quest Hint should tuck once the hint is back")
-	TutorialService.skip()
 	var badge: TextureRect = hud.get_node("%QuestBadge") as TextureRect
 	assert(badge != null and badge.visible, "Quests button should show a status badge")
 	assert(badge.texture != null, "quest badge should have an icon")
@@ -733,12 +825,53 @@ func _test_hud(animal: Animal) -> Control:
 	hud._on_open_shop()
 	hud._on_close_shop()
 	assert(not hud.get_node("%QuestPanel").visible, "a hidden quest popup should stay hidden after menus close")
+	hud._on_deselect()
+	TutorialService.step = TutorialService.Step.OPEN
+	TutorialService.seen = false
+	Events.tutorial_changed.emit()
+	assert(hud.get_node("%CoachPanel").visible, "active quest hint should show when menus are closed")
+	assert(is_equal_approx(hud.get_node("%QuestButton").size.y, hud.get_node("%ShopButton").size.y),
+		"Quests should stay the same height as Vial shop")
+	assert(is_equal_approx(hud.get_node("%ZooHoursButton").size.y, hud.get_node("%ShopButton").size.y),
+		"Open the zoo should stay the same height as Vial shop")
+	assert(str(hud.get_node("%CoachTitle").text) == "Open the gates",
+		"journey title should match the current step")
+	assert(str(hud.get_node("%CoachCopy").text) == "Open the zoo so guests can arrive.",
+		"quest hint should use the current tutorial line")
+	Events.animal_selected.emit(animal)
+	assert(not hud.get_node("%CoachPanel").visible, "inspecting an animal should hide the journey hint")
+	hud._on_deselect()
+	assert(hud.get_node("%CoachPanel").visible, "closing the exhibit card should bring the journey hint back")
+	hud._on_open_shop()
+	assert(not hud.get_node("%CoachPanel").visible, "the vial shop should hide the journey hint")
+	hud._on_close_shop()
+	assert(hud.get_node("%CoachPanel").visible, "closing the shop should bring the journey hint back")
+	hud._on_open_quests()
+	assert(not hud.get_node("%CoachPanel").visible, "the journey hint stays down while quests are open")
+	hud._on_hide_quests()
+	assert(hud.get_node("%CoachPanel").visible, "closing quests should show the journey hint again")
+	var cash_click := InputEventMouseButton.new()
+	cash_click.pressed = true
+	cash_click.button_index = MOUSE_BUTTON_LEFT
+	hud._on_wallet_gui_input(cash_click)
+	assert(hud.get_node("%LedgerPanel").visible, "clicking cash should open the till log")
+	assert(not hud.get_node("%CoachPanel").visible, "the till log should hide the journey hint")
+	assert(str(hud.get_node("%LedgerSummary").text) != "", "till log should explain tickets and upkeep")
+	assert(hud.get_node("%LedgerList").get_child_count() > 0, "till log should list recent cash moves")
+	hud._close_ledger()
+	assert(hud.get_node("%CoachPanel").visible, "closing the till log should bring the journey hint back")
+	TutorialService.skip()
+	Events.animal_selected.emit(animal)
 	hud._on_mutate_pressed()
 	assert(hud.get_node("%LabPanel").visible, "DNA Lab should reopen for splice tests")
 	assert(hud.get_node("%VialRow").get_child_count() > 0, "lab tray should show unlocked serums")
 	animal.visuals.set_part_shape("head", 1)
 	var head_before: int = animal.visuals.get_current_index("head")
 	hud._on_lab_slot_pressed("head")
+	assert(str(hud.get_node("%LabHint").text).to_lower().contains("gorilla"),
+		"lab hint should name the current part")
+	assert(str(hud.get_node("%LabHint").text).to_lower().contains("scary"),
+		"lab hint should name the current look")
 	if GeneTree.stock_of("cute") <= 0:
 		GeneTree.add_stock("cute", 1)
 	hud._on_vial_dropped("cute")
@@ -773,16 +906,22 @@ func _test_hud(animal: Animal) -> Control:
 	assert(hud.get_node("%DeleteAnimal") != null, "exhibit card should have a delete animal button")
 	Events.pen_selected.emit(animal.get_pen())
 	assert(hud.get_node("%PenPanel").visible, "pen card should show after clicking a paddock")
+	assert(not hud.get_node("%CoachPanel").visible, "inspecting a pen should hide the journey hint")
 	assert(str(hud.get_node("%PenDetail").text).contains("/"), "pen card should show occupancy")
 	assert(not hud.get_node("%StatsPanel").visible, "pen card should hide the exhibit card")
 	assert(hud.get_node("%DeletePen") != null, "pen card should have a delete pen button")
-	hud._on_close_pen()
-	assert(not hud.get_node("%PenPanel").visible, "Close should hide the pen card")
+	hud._dismiss_open_menu()
+	assert(not hud.get_node("%PenPanel").visible, "clicking the world should hide the pen card")
 	var solo: Visitor = (load("res://scenes/Visitor.tscn") as PackedScene).instantiate()
 	add_child(solo)
 	solo.setup(null, "goths", Vector2(220, 180))
+	assert(TraitLibrary.visitor_sprite_paths("goths").has(str(solo.get("look_path"))),
+		"goths should use the emo sprites")
+	assert((solo.get_node("Sprite2D") as Sprite2D).modulate == Color.WHITE,
+		"goth sprites should not take a type tint")
 	Events.visitor_selected.emit(solo)
 	assert(hud.get_node("%GuestPanel").visible, "guest card should show after clicking a visitor")
+	assert(not hud.get_node("%CoachPanel").visible, "inspecting a visitor should hide the journey hint")
 	assert(not hud.get_node("%StatsPanel").visible, "guest card should hide the exhibit card")
 	assert(str(hud.get_node("%GuestName").text) == "A goth", "solo guest card should name the visitor")
 	assert(str(hud.get_node("%GuestKind").text).contains("Goth"), "guest card should say what they are")
@@ -793,8 +932,43 @@ func _test_hud(animal: Animal) -> Control:
 	assert(hud.get_node("%GuestThumbCamera") != null, "guest card should have a follow camera")
 	assert(str(hud.get_node("%GuestThought").text).contains("grim"),
 		"guest thoughts should say how they feel about the zoo, got '%s'" % hud.get_node("%GuestThought").text)
+	var parent: Visitor = (load("res://scenes/Visitor.tscn") as PackedScene).instantiate()
+	var kid: Visitor = (load("res://scenes/Visitor.tscn") as PackedScene).instantiate()
+	var tourist: Visitor = (load("res://scenes/Visitor.tscn") as PackedScene).instantiate()
+	var creator: Visitor = (load("res://scenes/Visitor.tscn") as PackedScene).instantiate()
+	add_child(parent)
+	add_child(kid)
+	add_child(tourist)
+	add_child(creator)
+	parent.setup(null, "parents", Vector2(200, 200))
+	kid.setup(null, "children", Vector2(205, 208))
+	tourist.setup(null, "tourists", Vector2(198, 196))
+	creator.setup(null, "creators", Vector2(400, 400))
+	assert(TraitLibrary.visitor_sprite_paths("tourists").has(str(tourist.get("look_path"))),
+		"tourists should use the camera-hat sprites")
+	assert((tourist.get_node("Sprite2D") as Sprite2D).modulate == Color.WHITE,
+		"tourist sprites should not take a type tint")
+	solo.position = Vector2(220, 200)
+	parent._tick_goth_scare(0.2)
+	kid._tick_goth_scare(0.2)
+	var tourist_before: float = tourist.interest
+	tourist._tick_goth_scare(1.0)
+	assert(float(parent.get("_flee_time")) > 0.0, "parents should run from goths")
+	assert(float(kid.get("_flee_time")) > 0.0, "kids should run from goths")
+	assert(tourist.interest < tourist_before, "tourists should sour when goths hang around")
+	solo.set("_leaving", true)
+	solo.set("_state", Visitor.State.HAIL)
+	assert(not solo.is_scaring(), "a goth you sent home should stop scaring people")
+	var money_before: int = WalletService.money
+	creator._post_creator_clip()
+	assert(WalletService.money == money_before + Visitor.CREATOR_CLIP_CASH, "a clip should pay the zoo")
+	assert(bool(creator.get("_creator_boosted")), "a creator should only pay once")
 	hud._on_close_guest()
 	assert(not hud.get_node("%GuestPanel").visible, "Close should hide the guest card")
+	parent.free()
+	kid.free()
+	tourist.free()
+	creator.free()
 	solo.free()
 	print("HUD OK")
 	return hud
@@ -812,7 +986,10 @@ func _test_street(hud: Control = null) -> void:
 		assert(bool(street.get("is_open")), "Open zoo should work once a pen has an animal")
 		assert(not hud.get_node("%HoursPanel").visible, "a successful open should not show the error popup")
 		assert(str(hud.get_node("%ZooHoursButton").text) == "Close zoo", "open gates should offer Close zoo")
-		assert(str(hud.get_node("%HoursLabel").text) == "Open", "hours chip should say Open")
+		assert(str(hud.get_node("%HoursLabel").text) == "Zoo open", "hours chip should say Zoo open")
+		assert(str(hud.get_node("%HoursDetail").text).contains("visiting"), "open chip should say guests are visiting")
+		assert(QuestBoard.current().get("id") == "gates", "open-zoo quest should still be active")
+		assert(QuestBoard.ready_to_claim, "opening the zoo should complete the gates quest")
 	else:
 		assert(street.set_open(true), "a stocked pen should let the zoo open")
 	assert(street.bay_count() == 6, "should mark six parallel roadside parks")
@@ -867,7 +1044,7 @@ func _test_street(hud: Control = null) -> void:
 	assert(str(family_card.get("kind", "")).contains("child"), "family card should mention the children")
 	var family_likes: PackedStringArray = family_card.get("likes", PackedStringArray())
 	var family_hates: PackedStringArray = family_card.get("dislikes", PackedStringArray())
-	assert(family_likes.has("Cute") and family_likes.has("Silly"), "family likes should union the children's tastes")
+	assert(family_likes.has("Cute"), "family likes should union the children's tastes")
 	assert(family_hates.has("Scary"), "family dislikes should union the children's tastes")
 	var kid: Visitor = null
 	for mate in party:
@@ -993,8 +1170,9 @@ func _test_street(hud: Control = null) -> void:
 		if leftover != null and is_instance_valid(leftover) and not leftover.is_queued_for_deletion():
 			assert(leftover.is_leaving(), "closing should send guests home immediately")
 	if hud != null:
-		assert(str(hud.get_node("%ZooHoursButton").text) == "Open zoo", "closed gates should offer Open zoo")
-		assert(str(hud.get_node("%HoursLabel").text) == "Closed", "hours chip should say Closed")
+		assert(str(hud.get_node("%ZooHoursButton").text) == "Open the zoo", "closed gates should offer Open the zoo")
+		assert(str(hud.get_node("%HoursLabel").text) == "Zoo closed", "hours chip should say Zoo closed")
+		assert(str(hud.get_node("%HoursDetail").text).contains("cannot arrive"), "closed chip should say guests cannot arrive")
 	print("Street OK — bays=%d visitors=%d" % [street.bay_count(), street.visitor_count()])
 
 

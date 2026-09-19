@@ -192,7 +192,7 @@ func drop_visitor(car: Car) -> void:
 	if GridService.road_rect().has_point(start):
 		start = Vector2(car.position.x, GridService.parking_rect().get_center().y)
 	start.y = minf(start.y, GridService.parking_rect().end.y - 8.0)
-	if visitor_count() <= visitor_cap() - 3 and randf() < 0.84:
+	if visitor_count() <= visitor_cap() - 3 and TraitLibrary.arrival_is_family():
 		spawn_family(start)
 	else:
 		_make_guest(TraitLibrary.random_solo_id(), start)

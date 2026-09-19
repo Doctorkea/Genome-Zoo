@@ -11,6 +11,7 @@ const SIZE: int = 48
 static var _exclaim: Texture2D
 static var _ribbon: Texture2D
 static var _eye: Texture2D
+static var _padlock: Texture2D
 
 
 static func exclaim() -> Texture2D:
@@ -29,6 +30,12 @@ static func eye() -> Texture2D:
 	if _eye == null:
 		_eye = _texture(_draw_eye())
 	return _eye
+
+
+static func padlock() -> Texture2D:
+	if _padlock == null:
+		_padlock = _texture(_draw_padlock())
+	return _padlock
 
 
 static func _texture(img: Image) -> Texture2D:
@@ -94,6 +101,26 @@ static func _draw_eye() -> Image:
 	_disk(img, c, 7.2, iris)
 	_disk(img, c, 3.4, pupil)
 	_disk(img, c + Vector2(-2.2, -2.0), 1.8, gleam)
+	return img
+
+
+static func _draw_padlock() -> Image:
+	var img := _blank()
+	var iron := Color(0.18, 0.16, 0.20, 1)
+	var face := Color(0.46, 0.42, 0.36, 1)
+	var shine := Color(0.76, 0.72, 0.64, 0.55)
+	_capsule(img, Vector2(17, 20), Vector2(17, 13), 3.4, iron)
+	_capsule(img, Vector2(31, 20), Vector2(31, 13), 3.4, iron)
+	_capsule(img, Vector2(17, 13), Vector2(31, 13), 3.4, iron)
+	_capsule(img, Vector2(16, 26), Vector2(32, 26), 9.0, iron)
+	_capsule(img, Vector2(16, 36), Vector2(32, 36), 9.0, iron)
+	_capsule(img, Vector2(16, 26), Vector2(16, 36), 9.0, iron)
+	_capsule(img, Vector2(32, 26), Vector2(32, 36), 9.0, iron)
+	_capsule(img, Vector2(17, 26), Vector2(31, 26), 7.0, face)
+	_capsule(img, Vector2(17, 35), Vector2(31, 35), 7.0, face)
+	_disk(img, Vector2(20, 26), 4.0, shine)
+	_disk(img, Vector2(24, 30), 3.4, iron)
+	_capsule(img, Vector2(24, 30), Vector2(24, 36), 1.7, iron)
 	return img
 
 

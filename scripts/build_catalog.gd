@@ -39,6 +39,7 @@ const ITEMS: Array[Dictionary] = [
 		"cost": 110,
 		"size_cells": Vector2i(6, 5),
 		"capacity": 5,
+		"unlock_quest": "expand",
 	},
 	{
 		"id": "pen_gallery",
@@ -50,6 +51,7 @@ const ITEMS: Array[Dictionary] = [
 		"size_cells": Vector2i(8, 3),
 		"capacity": 4,
 		"enjoyment_bonus": 0.06,
+		"unlock_quest": "stay",
 	},
 	{
 		"id": "jimothy",
@@ -72,6 +74,7 @@ const ITEMS: Array[Dictionary] = [
 		"parts": {"body": 0, "head": 1, "front_legs": 5, "back_legs": 0, "tail": 6},
 		"color": 0,
 		"hide": [],
+		"unlock_quest": "fright",
 	},
 	{
 		"id": "jimmothy",
@@ -89,7 +92,7 @@ const ITEMS: Array[Dictionary] = [
 		"category": CAT_PATHS,
 		"kind": "path",
 		"name": "Stone path",
-		"blurb": "Tiny cobble stamp",
+		"blurb": "Cobble walkway",
 		"cost": 1,
 	},
 	{
@@ -107,6 +110,7 @@ const ITEMS: Array[Dictionary] = [
 		"name": "Snack cart",
 		"blurb": "A dollar extra per nibble",
 		"cost": 25,
+		"unlock_quest": "till",
 	},
 	{
 		"id": "park_lamp",
@@ -115,6 +119,7 @@ const ITEMS: Array[Dictionary] = [
 		"name": "Lamp",
 		"blurb": "Guests prefer the lit grass",
 		"cost": 12,
+		"unlock_quest": "expand",
 	},
 	{
 		"id": "park_poster",
@@ -123,6 +128,7 @@ const ITEMS: Array[Dictionary] = [
 		"name": "Poster stand",
 		"blurb": "Hypes the nearest pen",
 		"cost": 20,
+		"unlock_quest": "fame",
 	},
 ]
 
@@ -140,3 +146,20 @@ static func get_item(item_id: String) -> Dictionary:
 		if str(item.get("id", "")) == item_id:
 			return item
 	return {}
+
+
+static func is_unlocked(item: Dictionary) -> bool:
+	var quest_id: String = str(item.get("unlock_quest", ""))
+	if quest_id.is_empty():
+		return true
+	return QuestBoard.has_claimed(quest_id)
+
+
+static func unlock_hint(item: Dictionary) -> String:
+	var quest_id: String = str(item.get("unlock_quest", ""))
+	if quest_id.is_empty():
+		return ""
+	var title: String = QuestBoard.title_of(quest_id)
+	if title.is_empty():
+		title = quest_id
+	return "Finish \"%s\" to unlock." % title
