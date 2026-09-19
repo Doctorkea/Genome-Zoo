@@ -6,7 +6,7 @@ class_name Pen
 ## size (a Prison-Architect-style rectangular prefab). Placeholder visuals
 ## only — see docs/ART_PIPELINE.md.
 
-const WALL_THICKNESS: float = 6.0
+const WALL_THICKNESS: float = 10.0
 const FLOOR_COLOR: Color = Color(0.36, 0.52, 0.30) # placeholder grass green
 const WALL_COLOR: Color = Color(0.42, 0.30, 0.20) # placeholder fence brown
 

@@ -105,9 +105,13 @@ parts actually stack (Body → Limbs → Neck → Head → Eyes is a reasonable 
   top-down animal silhouettes usually just look like blobs). The rig faces **right** by default; the game
   mirrors the whole creature horizontally when it walks left, so only draw the right-facing version of
   each part. Eyes are a **single eye**, not a pair — it's a profile view, not front-facing.
-- The project's base resolution is **640×360** (see [Engine version](#engine-version-godot-47) below), scaled
-  up by integer multiples. A full creature should read clearly around 100–160px wide on screen. Suggested
-  per-slot canvas sizes for the side-on rig (positions set in `scenes/Creature.tscn`):
+- **Floor tiles are 100×100** — one grid cell equals one floor tile, and this is the project's scale
+  reference (`GridService.CELL_SIZE = 100`). A Small pen is 4×3 tiles (400×300), a Large pen is 6×5
+  (600×500). Draw everything relative to a 100px tile.
+- The project's base resolution is **1280×720** (see [Engine version](#engine-version-godot-47) below), so
+  roughly 12×7 tiles are visible before panning/zooming. A full creature should read clearly around
+  120–200px wide on screen — a bit over one tile. Suggested per-slot canvas sizes for the side-on rig
+  (positions set in `scenes/Creature.tscn`, which is displayed at 2× in-game):
 
   | Slot | Canvas | Notes |
   | --- | --- | --- |
@@ -161,7 +165,7 @@ against the [4.6→4.7 migration guide](https://docs.godotengine.org/en/stable/t
   `display/window/stretch/mode = canvas_items` and `stretch/aspect = expand` (previously `disabled`/`keep`).
   Left alone, that's the wrong call for pixel art — non-integer scaling blurs/distorts grayscale part art and
   makes the palette shader's nearest-neighbor lookup look inconsistent at different window sizes.
-- **Fix, already applied in `project.godot`:** explicit `[display]` block setting a 640×360 base resolution,
+- **Fix, already applied in `project.godot`:** explicit `[display]` block setting a 1280×720 base resolution,
   `stretch/mode = "viewport"`, `stretch/aspect = "keep"`, and `stretch/scale_mode = "integer"` — the
   standard pixel-art setup, rendering at the low base resolution and only ever scaling by whole numbers.
   This makes the project's scaling behavior explicit and stable regardless of which Godot version opens it,

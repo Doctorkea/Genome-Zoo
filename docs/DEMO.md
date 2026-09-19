@@ -23,7 +23,8 @@ If the editor was already open while these files were added, use **Project → R
 ## What's implemented
 
 - **Grid + pen placement** — rectangular multi-cell prefabs (Small 4×3, Large 6×5 cells), ghost preview
-  (green = valid, red = overlapping), snapped to a 32px grid. `scripts/grid_service.gd`, `scripts/pen.gd`,
+  (green = valid, red = overlapping), snapped to a 100px grid (one cell = one 100×100 floor tile).
+  `scripts/grid_service.gd`, `scripts/pen.gd`,
   `scripts/build_mode.gd`.
 - **Solid fence collision** — each pen generates real `StaticBody2D` walls at runtime sized to its
   footprint; animals physically collide with them via `move_and_slide()`, not just a soft bounds check.

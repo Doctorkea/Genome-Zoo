@@ -52,7 +52,8 @@ func _physics_process(_delta: float) -> void:
 func _face_direction(x_velocity: float) -> void:
 	if absf(x_velocity) < 1.0:
 		return
-	visuals.scale.x = 1.0 if x_velocity > 0.0 else -1.0
+	var magnitude := absf(visuals.scale.x)
+	visuals.scale.x = magnitude if x_velocity > 0.0 else -magnitude
 
 
 func _pick_new_target() -> void:

@@ -22,8 +22,8 @@ func _ready() -> void:
 
 
 func _test_grid_service() -> void:
-	var cell := GridService.world_to_cell(Vector2(50, 40))
-	assert(cell == Vector2i(1, 1), "world_to_cell wrong: %s" % [cell])
+	var cell := GridService.world_to_cell(Vector2(250, 140))
+	assert(cell == Vector2i(2, 1), "world_to_cell wrong: %s" % [cell])
 	assert(GridService.is_area_free(Vector2i(0, 0), Vector2i(4, 3)), "area should start free")
 	GridService.occupy_area(Vector2i(0, 0), Vector2i(4, 3), self)
 	assert(not GridService.is_area_free(Vector2i(0, 0), Vector2i(4, 3)), "area should now be occupied")
@@ -43,7 +43,7 @@ func _test_pen() -> Pen:
 	var pen := pen_scene.instantiate() as Pen
 	pen.footprint_cells = Vector2i(6, 5)
 	add_child(pen)
-	assert(pen.get_size_pixels() == Vector2(192, 160), "pen size wrong: %s" % [pen.get_size_pixels()])
+	assert(pen.get_size_pixels() == Vector2(600, 500), "pen size wrong: %s" % [pen.get_size_pixels()])
 	var bounds := pen.get_interior_bounds()
 	assert(bounds.size.x > 0 and bounds.size.y > 0, "interior bounds should be positive")
 	print("Pen OK — size=%s bounds=%s" % [pen.get_size_pixels(), bounds])

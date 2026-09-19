@@ -3,7 +3,7 @@ extends Node
 ## Grid <-> world coordinate helpers, plus pen-placement occupancy tracking.
 ## Autoloaded as "GridService".
 
-const CELL_SIZE: int = 32
+const CELL_SIZE: int = 100 # one grid cell == one 100x100 floor tile (the art scale reference)
 
 var _occupied_cells: Dictionary = {} # Vector2i -> Node (the Pen occupying that cell)
 
