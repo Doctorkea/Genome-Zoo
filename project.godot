@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Evolution Zoo"
-run/main_scene="res://scenes/Main.tscn"
+run/main_scene="res://scenes/ui/Title.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 
 [autoload]
@@ -23,6 +23,8 @@ WalletService="*res://scripts/wallet_service.gd"
 TraitLibrary="*res://scripts/trait_library.gd"
 GeneTree="*res://scripts/gene_tree.gd"
 QuestBoard="*res://scripts/quest_board.gd"
+TutorialService="*res://scripts/tutorial_service.gd"
+SaveService="*res://scripts/save_service.gd"
 GodotAIBridgeRuntime="*res://addons/godot_ai_bridge/runtime_bridge.gd"
 
 [display]

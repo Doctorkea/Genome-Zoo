@@ -1,7 +1,7 @@
 extends Button
 class_name VialChip
 
-## Draggable tag or perk vial. Drop it on the empty ATGC rung.
+## Clickable tag or perk vial. Drop still works on the empty ATGC rung.
 
 var vial_id: String = ""
 
@@ -38,7 +38,7 @@ func _refresh() -> void:
 	text = "%s  ×%d" % [vial_name, count]
 	disabled = count <= 0 or not GeneTree.is_vial_unlocked(vial_id)
 	if count > 0:
-		tooltip_text = "Drag onto the empty base to apply %s." % vial_name
+		tooltip_text = "Click to apply %s." % vial_name
 	else:
 		tooltip_text = "Buy %s from the vial shop." % vial_name
 

@@ -18,7 +18,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "cute",
 		"name": "Cute serum",
 		"kind": VIAL_KIND_TAG,
-		"shop_cost": 15,
+		"shop_cost": 25,
 		"tag": "Cute",
 		"rarity_min": 0,
 	},
@@ -26,7 +26,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "silly",
 		"name": "Silly serum",
 		"kind": VIAL_KIND_TAG,
-		"shop_cost": 25,
+		"shop_cost": 40,
 		"tag": "Silly",
 		"rarity_min": 0,
 	},
@@ -34,7 +34,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "scary",
 		"name": "Scary serum",
 		"kind": VIAL_KIND_TAG,
-		"shop_cost": 20,
+		"shop_cost": 35,
 		"tag": "Scary",
 		"rarity_min": 0,
 	},
@@ -42,7 +42,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "gross",
 		"name": "Gross serum",
 		"kind": VIAL_KIND_TAG,
-		"shop_cost": 25,
+		"shop_cost": 40,
 		"tag": "Gross",
 		"rarity_min": 0,
 	},
@@ -50,7 +50,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "majestic",
 		"name": "Majestic serum",
 		"kind": VIAL_KIND_TAG,
-		"shop_cost": 20,
+		"shop_cost": 35,
 		"tag": "Majestic",
 		"rarity_min": 0,
 	},
@@ -58,7 +58,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "elegant",
 		"name": "Elegant serum",
 		"kind": VIAL_KIND_TAG,
-		"shop_cost": 25,
+		"shop_cost": 40,
 		"tag": "Elegant",
 		"rarity_min": 0,
 	},
@@ -66,7 +66,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "weird",
 		"name": "Weird serum",
 		"kind": VIAL_KIND_TAG,
-		"shop_cost": 20,
+		"shop_cost": 35,
 		"tag": "Weird",
 		"rarity_min": 0,
 	},
@@ -74,7 +74,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "bulky",
 		"name": "Bulky serum",
 		"kind": VIAL_KIND_TAG,
-		"shop_cost": 25,
+		"shop_cost": 40,
 		"tag": "Bulky",
 		"rarity_min": 0,
 	},
@@ -82,7 +82,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "apex",
 		"name": "Apex serum",
 		"kind": VIAL_KIND_EXOTIC,
-		"shop_cost": 90,
+		"shop_cost": 120,
 		"tag": "Scary",
 		"rarity_min": 2,
 		"pool": ["lion", "trex", "fire", "scorpion"],
@@ -91,7 +91,7 @@ const VIALS: Array[Dictionary] = [
 		"id": "chimera",
 		"name": "Chimera serum",
 		"kind": VIAL_KIND_EXOTIC,
-		"shop_cost": 85,
+		"shop_cost": 120,
 		"tag": "Weird",
 		"rarity_min": 2,
 		"pool": ["gorilla", "frog", "tentacle", "lizard", "slime"],
@@ -100,14 +100,14 @@ const VIALS: Array[Dictionary] = [
 		"id": "linger",
 		"name": "Linger",
 		"kind": VIAL_KIND_PERK,
-		"shop_cost": 30,
+		"shop_cost": 60,
 		"perk_id": PERK_LINGER,
 	},
 	{
 		"id": "poster",
 		"name": "Poster child",
 		"kind": VIAL_KIND_PERK,
-		"shop_cost": 35,
+		"shop_cost": 70,
 		"perk_id": PERK_POSTER,
 	},
 ]
@@ -118,6 +118,13 @@ var zoo_perks: PackedStringArray = PackedStringArray()
 
 
 func _ready() -> void:
+	reset()
+
+
+func reset() -> void:
+	unlocked.clear()
+	stock.clear()
+	zoo_perks = PackedStringArray()
 	unlock_vial("cute", 1)
 
 
@@ -203,7 +210,11 @@ func has_zoo_perk(perk_id: String) -> bool:
 
 
 func ticket_multiplier() -> float:
-	return 1.25 if has_zoo_perk(PERK_TICKET_BOOTH) else 1.0
+	return 1.15 if has_zoo_perk(PERK_TICKET_BOOTH) else 1.0
+
+
+func poster_multiplier() -> float:
+	return 1.25
 
 
 func visitor_cap() -> int:
@@ -212,3 +223,30 @@ func visitor_cap() -> int:
 
 func spawn_time_scale() -> float:
 	return 0.7 if has_zoo_perk(PERK_CROWD_PULL) else 1.0
+
+
+func snapshot() -> Dictionary:
+	return {
+		"unlocked": unlocked.keys(),
+		"stock": stock.duplicate(),
+		"zoo_perks": Array(zoo_perks),
+	}
+
+
+func apply_state(data: Dictionary) -> void:
+	unlocked.clear()
+	stock.clear()
+	zoo_perks = PackedStringArray()
+	for vial_id in data.get("unlocked", []):
+		unlocked[str(vial_id)] = true
+	var stored: Dictionary = data.get("stock", {})
+	for vial_id in stored:
+		stock[str(vial_id)] = int(stored[vial_id])
+	for perk_id in data.get("zoo_perks", []):
+		var perk := str(perk_id)
+		if not perk.is_empty() and not zoo_perks.has(perk):
+			zoo_perks.append(perk)
+	if unlocked.is_empty():
+		unlock_vial("cute", 1)
+	else:
+		Events.vials_changed.emit(stock.duplicate())

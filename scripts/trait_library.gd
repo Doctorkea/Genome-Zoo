@@ -251,11 +251,44 @@ func random_visitor_id() -> String:
 	return random_solo_id()
 
 
+func zoo_tag_totals() -> Dictionary:
+	var counts := _empty_counts()
+	if get_tree() == null:
+		return counts
+	for node in get_tree().get_nodes_in_group("animals"):
+		var animal := node as Animal
+		if animal == null or not is_instance_valid(animal):
+			continue
+		var tags: Dictionary = animal.get_stats().get("tags", {})
+		for tag in TAGS:
+			counts[tag] = int(counts.get(tag, 0)) + int(tags.get(tag, 0))
+	return counts
+
+
+func park_uniqueness() -> int:
+	var counts := zoo_tag_totals()
+	var kinds: int = 0
+	for tag in TAGS:
+		if int(counts.get(tag, 0)) > 0:
+			kinds += 1
+	return kinds - 3
+
+
+func park_rating() -> int:
+	var counts := zoo_tag_totals()
+	return int(counts.get("Cute", 0)) + int(counts.get("Majestic", 0)) + int(counts.get("Silly", 0)) \
+		- int(counts.get("Scary", 0)) - int(counts.get("Gross", 0))
+
+
 func random_solo_id() -> String:
-	var others: PackedStringArray = PackedStringArray([
-		"tourists", "goths", "creators", "thrill", "scientists"
-	])
-	return others[randi() % others.size()]
+	var pool: PackedStringArray = PackedStringArray(["tourists", "creators", "thrill"])
+	var totals := zoo_tag_totals()
+	var dark: int = int(totals.get("Scary", 0)) + int(totals.get("Gross", 0))
+	if dark >= 4 or park_rating() < 0:
+		pool.append("goths")
+	if park_uniqueness() >= 2:
+		pool.append("scientists")
+	return pool[randi() % pool.size()]
 
 
 func family_member_kinds() -> PackedStringArray:
@@ -348,6 +381,27 @@ func pick_other_from_ids(slot: String, current_index: int, option_ids: Array) ->
 	if others.is_empty():
 		return current_index
 	return others[randi() % others.size()]
+
+
+func vial_can_apply(vial: Dictionary, slot: String, current_index: int) -> bool:
+	var kind: String = str(vial.get("kind", ""))
+	if kind == GeneTree.VIAL_KIND_PERK:
+		return true
+	if slot.is_empty():
+		return false
+	if kind == GeneTree.VIAL_KIND_EXOTIC:
+		for option_id in vial.get("pool", []):
+			var index := option_index_for_id(slot, str(option_id))
+			if index >= 0 and index != current_index:
+				return true
+		return false
+	var tag: String = str(vial.get("tag", ""))
+	if tag.is_empty():
+		return false
+	for index in indices_with_tag(slot, tag, int(vial.get("rarity_min", 0))):
+		if index != current_index:
+			return true
+	return false
 
 
 func get_option_count(slot: String) -> int:

@@ -12,6 +12,7 @@ const SPEED: float = 200.0
 const GAP: float = 28.0
 const TEX_BODY: Texture2D = preload("res://art/vehicles/car.png")
 const TINT_SHADER: Shader = preload("res://scripts/shaders/car_tint.gdshader")
+const ZooFx := preload("res://scripts/fx.gd")
 
 var role: int = Role.TRAFFIC
 var direction: int = 1
@@ -25,6 +26,7 @@ var _street: Street
 var _hold: float = 0.0
 var _sprite: Sprite2D
 var _tint: ShaderMaterial
+var _exhaust: GPUParticles2D
 
 
 func _ready() -> void:
@@ -41,6 +43,7 @@ func _ready() -> void:
 		_sprite.scale = Vector2(s, s)
 	add_child(_sprite)
 	_apply_tint()
+	_exhaust = ZooFx.loop(self, ZooFx.Kind.SMOKE, Vector2(-SIZE.x * 0.42, 6.0))
 
 
 static func random_body_color() -> Color:
@@ -102,6 +105,8 @@ func _process(delta: float) -> void:
 			_drive(delta)
 	if _is_off_map():
 		_finish()
+	if _exhaust != null:
+		_exhaust.emitting = _state != State.PARKED
 
 
 func _drive(delta: float) -> void:

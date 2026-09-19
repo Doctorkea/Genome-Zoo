@@ -7,16 +7,28 @@ class_name BuildCatalog
 const CAT_PENS: String = "pens"
 const CAT_ANIMALS: String = "animals"
 const CAT_PATHS: String = "paths"
+const CAT_PARK: String = "park"
 
 const ITEMS: Array[Dictionary] = [
+	{
+		"id": "pen_tiny",
+		"category": CAT_PENS,
+		"kind": "pen",
+		"name": "Tiny pen",
+		"blurb": "3×2 paddock, holds 1",
+		"cost": 30,
+		"size_cells": Vector2i(3, 2),
+		"capacity": 1,
+	},
 	{
 		"id": "pen_small",
 		"category": CAT_PENS,
 		"kind": "pen",
 		"name": "Small pen",
 		"blurb": "4×3 paddock, holds 2",
-		"cost": 40,
+		"cost": 50,
 		"size_cells": Vector2i(4, 3),
+		"capacity": 2,
 	},
 	{
 		"id": "pen_large",
@@ -24,8 +36,20 @@ const ITEMS: Array[Dictionary] = [
 		"kind": "pen",
 		"name": "Large pen",
 		"blurb": "6×5 paddock, holds 5",
-		"cost": 75,
+		"cost": 110,
 		"size_cells": Vector2i(6, 5),
+		"capacity": 5,
+	},
+	{
+		"id": "pen_gallery",
+		"category": CAT_PENS,
+		"kind": "pen",
+		"name": "Gallery",
+		"blurb": "8×3 viewing edge, holds 4",
+		"cost": 90,
+		"size_cells": Vector2i(8, 3),
+		"capacity": 4,
+		"enjoyment_bonus": 0.06,
 	},
 	{
 		"id": "jimothy",
@@ -33,7 +57,7 @@ const ITEMS: Array[Dictionary] = [
 		"kind": "animal",
 		"name": "Jimothy",
 		"blurb": "Soft, bulky starter stock",
-		"cost": 30,
+		"cost": 40,
 		"parts": {"body": 0, "head": 0, "front_legs": 0, "back_legs": 0, "tail": 0},
 		"color": 0,
 		"hide": [],
@@ -44,7 +68,7 @@ const ITEMS: Array[Dictionary] = [
 		"kind": "animal",
 		"name": "Chimory",
 		"blurb": "Gorilla, frog, sheep, stinger",
-		"cost": 55,
+		"cost": 80,
 		"parts": {"body": 0, "head": 1, "front_legs": 5, "back_legs": 0, "tail": 6},
 		"color": 0,
 		"hide": [],
@@ -55,7 +79,7 @@ const ITEMS: Array[Dictionary] = [
 		"kind": "animal",
 		"name": "Jimmothy",
 		"blurb": "Horse face, curly tail",
-		"cost": 20,
+		"cost": 25,
 		"parts": {"body": 0, "head": 3, "front_legs": 1, "back_legs": 1, "tail": 7},
 		"color": 0,
 		"hide": [],
@@ -67,6 +91,38 @@ const ITEMS: Array[Dictionary] = [
 		"name": "Stone path",
 		"blurb": "Tiny cobble stamp",
 		"cost": 1,
+	},
+	{
+		"id": "park_bench",
+		"category": CAT_PARK,
+		"kind": "park",
+		"name": "Bench",
+		"blurb": "Guests sit and linger",
+		"cost": 15,
+	},
+	{
+		"id": "park_snack",
+		"category": CAT_PARK,
+		"kind": "park",
+		"name": "Snack cart",
+		"blurb": "A dollar extra per nibble",
+		"cost": 25,
+	},
+	{
+		"id": "park_lamp",
+		"category": CAT_PARK,
+		"kind": "park",
+		"name": "Lamp",
+		"blurb": "Guests prefer the lit grass",
+		"cost": 12,
+	},
+	{
+		"id": "park_poster",
+		"category": CAT_PARK,
+		"kind": "park",
+		"name": "Poster stand",
+		"blurb": "Hypes the nearest pen",
+		"cost": 20,
 	},
 ]
 

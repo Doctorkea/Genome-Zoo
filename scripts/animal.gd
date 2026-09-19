@@ -14,6 +14,7 @@ const MAX_PERKS: int = 2
 
 const ANIMAL_LAYER: int = 2
 const FENCE_LAYER: int = 4
+const ZooFx := preload("res://scripts/fx.gd")
 
 @onready var visuals: CreatureVisuals = $Creature
 @onready var _wander_timer: Timer = $WanderTimer
@@ -21,6 +22,7 @@ const FENCE_LAYER: int = 4
 var _pen: Pen = null
 var _target: Vector2 = Vector2.ZERO
 var creature_name: String = "Unnamed"
+var catalog_id: String = ""
 var perks: PackedStringArray = PackedStringArray()
 var _pausing: bool = false
 var _facing: float = 1.0
@@ -30,6 +32,7 @@ var _move_time: float = 0.0
 var _walk_rate: float = 8.0
 var _idle_rate: float = 2.1
 var _bob_height: float = 4.5
+var _prev_hop: float = 1.0
 
 
 func _ready() -> void:
@@ -70,6 +73,12 @@ func add_perk(perk_id: String) -> bool:
 		return false
 	perks.append(perk_id)
 	return true
+
+
+func remove_perk(perk_id: String) -> void:
+	var idx: int = perks.find(perk_id)
+	if idx >= 0:
+		perks.remove_at(idx)
 
 
 func _physics_process(delta: float) -> void:
@@ -115,6 +124,9 @@ func _animate(delta: float, moving: bool) -> void:
 		var squash: float = 1.0 + hop * 0.055
 		var stretch: float = 1.0 - hop * 0.045
 		visuals.scale = Vector2(_facing * squash, stretch)
+		if hop < 0.14 and _prev_hop >= 0.14:
+			ZooFx.burst(self, ZooFx.Kind.DUST, Vector2(0.0, 22.0))
+		_prev_hop = hop
 	else:
 		_idle_phase += delta * _idle_rate
 		visuals.position.y = sin(_idle_phase) * 1.4
@@ -184,6 +196,23 @@ func get_stats() -> Dictionary:
 		"archetype": score.get("archetype", "Unspecialized"),
 		"tags": score.get("tags", {}),
 		"visitors": score.get("visitors", {}),
+		"perks": Array(perks),
+	}
+
+
+func snapshot() -> Dictionary:
+	var parts: Dictionary = {}
+	if visuals != null:
+		for slot in visuals.get_slots():
+			parts[slot] = visuals.get_current_index(slot)
+	return {
+		"catalog_id": catalog_id,
+		"name": creature_name,
+		"parts": parts,
+		"color": visuals.get_current_palette_index() if visuals != null else 0,
+		"perks": Array(perks),
+		"x": position.x,
+		"y": position.y,
 	}
 
 

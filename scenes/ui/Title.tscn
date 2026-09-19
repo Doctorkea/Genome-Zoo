@@ -1,0 +1,93 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://art/ui/zoo_theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/title.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="paper"]
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 28.0
+content_margin_bottom = 24.0
+bg_color = Color(0.937, 0.894, 0.769, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.769, 0.639, 0.353, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+shadow_color = Color(0.05, 0.04, 0.02, 0.4)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[node name="Title" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Fill" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.42, 0.62, 0.28, 1)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(420, 360)
+layout_mode = 2
+theme_override_styles/panel = SubResource("paper")
+
+[node name="Column" type="VBoxContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="TitleLabel" type="Label" parent="Center/Panel/Column"]
+layout_mode = 2
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 36
+text = "Evolution Zoo"
+horizontal_alignment = 1
+
+[node name="Tag" type="Label" parent="Center/Panel/Column"]
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+text = "Mutate the stock. Fill the park."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="NewButton" type="Button" parent="Center/Panel/Column"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "New zoo"
+
+[node name="ContinueButton" type="Button" parent="Center/Panel/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Continue"
+
+[node name="QuitButton" type="Button" parent="Center/Panel/Column"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Quit"
+
+[connection signal="pressed" from="Center/Panel/Column/NewButton" to="." method="_on_new_zoo"]
+[connection signal="pressed" from="Center/Panel/Column/ContinueButton" to="." method="_on_continue"]
+[connection signal="pressed" from="Center/Panel/Column/QuitButton" to="." method="_on_quit"]

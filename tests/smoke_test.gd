@@ -4,14 +4,18 @@ extends Node
 ## mouse/window input, so it can run via CLI: see docs/DEMO.md for the
 ## exact command. Not part of the game; safe to delete or ignore in-editor.
 
+const ZooFx := preload("res://scripts/fx.gd")
+
 
 func _ready() -> void:
 	print("=== SMOKE TEST START ===")
+	TutorialService.skip()
 
 	_test_grid_service()
 	_test_build_catalog()
 	_test_floor_tiles()
 	_test_placeholder_art()
+	_test_fx()
 	_test_trait_library()
 	_test_zoo_hours_empty()
 	var pen := _test_pen()
@@ -20,11 +24,12 @@ func _ready() -> void:
 	_test_build_mode()
 	_test_wallet_service()
 	_test_quests()
+	_test_title_and_save()
 	var hud := _test_hud(animal)
 	_test_street(hud)
 
 	print("=== SMOKE TEST PASSED ===")
-	get_tree().quit()
+	get_tree().quit(0)
 
 
 func _test_grid_service() -> void:
@@ -47,20 +52,39 @@ func _test_grid_service() -> void:
 
 
 func _test_build_catalog() -> void:
-	assert(BuildCatalog.items_for(BuildCatalog.CAT_PENS).size() == 2, "should list two pens")
+	assert(BuildCatalog.items_for(BuildCatalog.CAT_PENS).size() == 4, "should list four pens")
 	assert(BuildCatalog.items_for(BuildCatalog.CAT_ANIMALS).size() == 3, "should list three base animals")
 	assert(BuildCatalog.items_for(BuildCatalog.CAT_PATHS).size() == 1, "should list a path tile")
+	assert(BuildCatalog.items_for(BuildCatalog.CAT_PARK).size() == 4, "should list four park objects")
 	assert(int(BuildCatalog.get_item("path_stone").get("cost", 0)) == 1, "stone path should cost $1")
 	assert(GridService.PATH_CELL_SIZE < GridService.CELL_SIZE / 3, "path stamps should be much smaller than grass cells")
 	assert(BuildCatalog.get_item("chimory").get("name") == "Chimory", "chimory should be a base animal")
 	assert(BuildCatalog.get_item("jimmothy").get("name") == "Jimmothy", "jimmothy should be a base animal")
-	assert(int(BuildCatalog.get_item("jimmothy").get("cost", 0)) == 20, "jimmothy should cost $20")
+	assert(int(BuildCatalog.get_item("jimmothy").get("cost", 0)) == 25, "jimmothy should cost $25")
+	assert(int(BuildCatalog.get_item("pen_tiny").get("capacity", 0)) == 1, "tiny pen should hold one")
+	assert(int(BuildCatalog.get_item("pen_gallery").get("capacity", 0)) == 4, "gallery should hold four")
+	var rewarded: Dictionary = {"cute": true}
+	for quest in QuestBoard.QUESTS:
+		var vial_id: String = str(quest.get("reward_vial", ""))
+		if not vial_id.is_empty():
+			rewarded[vial_id] = true
+		var perk_id: String = str(quest.get("reward_perk", ""))
+		if not perk_id.is_empty():
+			rewarded[perk_id] = true
+	for vial in GeneTree.VIALS:
+		var id: String = str(vial.get("id", ""))
+		assert(bool(rewarded.get(id, false)), "serum %s needs a quest unlock" % id)
+	assert(bool(rewarded.get(GeneTree.PERK_OPEN_LONGER, false)), "open longer should be a quest perk")
+	assert(bool(rewarded.get(GeneTree.PERK_TICKET_BOOTH, false)), "ticket booth should be a quest perk")
+	assert(bool(rewarded.get(GeneTree.PERK_CROWD_PULL, false)), "crowd pull should be a quest perk")
 	var jimothy: Dictionary = BuildCatalog.get_item("jimothy")
 	assert(jimothy.get("name") == "Jimothy", "jimothy should be in the catalog")
 	assert(int(jimothy.get("cost", 0)) > 0, "jimothy should cost cash")
 	assert(BuildCatalog.get_item("horse").is_empty(), "placeholder horse should be gone")
 	assert(BuildCatalog.get_item("gloop").is_empty(), "placeholder gloop should be gone")
 	assert(BuildCatalog.get_item("spikeback").is_empty(), "placeholder spikeback should be gone")
+	assert(Visitor.TICKET_MAX == 2, "tickets should cap at $2 before multipliers")
+	assert(WalletService.starting_money == 80, "new zoos should start with $80")
 	print("BuildCatalog OK")
 
 
@@ -198,6 +222,49 @@ func _test_placeholder_art() -> void:
 		assert(part.get_width() >= canvas,
 			"%s is %dpx, expected at least %d" % [path, part.get_width(), canvas])
 	print("PlaceholderArt OK — all parts %dx%d" % [canvas, canvas])
+
+
+func _test_fx() -> void:
+	assert(ZooFx.cloud_tex() != null, "smoke needs a puff texture")
+	var host := Node2D.new()
+	add_child(host)
+	var dust := ZooFx.burst(host, ZooFx.Kind.DUST)
+	assert(dust is GPUParticles2D, "dust should be a GPUParticles2D burst")
+	assert(dust.process_material != null, "2D particles need a ParticleProcessMaterial")
+	assert(dust.one_shot, "footfall/placement dust should be a one-shot burst")
+	var cloud := ZooFx.pen_poof(host, Vector2(400.0, 300.0))
+	assert(cloud is GPUParticles2D, "pens should poof with rising smoke")
+	var cloud_mat := cloud.process_material as ParticleProcessMaterial
+	assert(cloud_mat != null and cloud_mat.color.r >= 0.99 and cloud_mat.color.g >= 0.99,
+		"pen smoke should stay white")
+	assert(cloud_mat.scale_curve != null, "smoke should billow over its life")
+	assert(cloud_mat.gravity.y < 0.0, "smoke should rise")
+	assert(cloud_mat.scale_max >= 2.0, "stylized puffs should read as big cotton balls")
+	assert(cloud.explosiveness >= 0.99, "pen smoke should burst all at once")
+	assert(cloud.one_shot, "pen smoke should be a one-shot poof")
+	assert(cloud.lifetime >= 1.4, "smoke should hang and fade, not pop")
+	assert(cloud.texture.get_width() > cloud.texture.get_height(),
+		"stylized smoke should use a puff flipbook")
+	var cloud_draw := cloud.material as CanvasItemMaterial
+	assert(cloud_draw != null and cloud_draw.particles_animation,
+		"stylized smoke should animate its puff sheet")
+	var puff_id: int = cloud.get_instance_id()
+	cloud.free()
+	ZooFx._free_id(puff_id)
+	var revealed := {"ok": false}
+	ZooFx.conceal_change(host, func() -> void:
+		revealed["ok"] = true
+	)
+	assert(bool(revealed["ok"]), "headless serum poofs should apply the change immediately")
+	var steam := ZooFx.loop(host, ZooFx.Kind.STEAM)
+	assert(steam != null and steam.emitting, "snack steam should keep emitting")
+	var snack := ParkObject.new()
+	add_child(snack)
+	snack.setup("park_snack", Vector2i(4, 4))
+	assert(snack.get_node_or_null("AmbientFx") != null, "snack carts should steam")
+	snack.queue_free()
+	host.queue_free()
+	print("FX OK")
 
 
 func _test_zoo_hours_empty() -> void:
@@ -420,6 +487,7 @@ func _test_build_mode() -> void:
 	var build_mode := Node2D.new()
 	build_mode.set_script(load("res://scripts/build_mode.gd"))
 	add_child(build_mode)
+	assert(build_mode.has_method("spawn_starter_exhibit"), "BuildMode script should attach")
 	build_mode.set_mode(BuildMode.Mode.PLACE_PEN_SMALL)
 	assert(build_mode.current_mode == BuildMode.Mode.PLACE_PEN_SMALL, "set_mode didn't apply")
 	var jimothy: Animal = build_mode.spawn_starter_exhibit()
@@ -470,6 +538,13 @@ func _test_build_mode() -> void:
 			saw_other = true
 	assert(BuildMode.PATH_TEXTURES.size() == 4, "path tool should shuffle among the four rock drawings")
 	assert(saw_other, "successive stamps should pick different rock drawings")
+	WalletService.money += 20
+	build_mode.set_item("park_bench")
+	assert(build_mode.current_mode == BuildMode.Mode.PLACE_PARK, "park catalog should arm park mode")
+	assert(build_mode.place_park_at(Vector2i(10, 8)), "should place a bench on empty grass")
+	assert(GridService.has_prop(Vector2i(10, 8)), "bench should occupy its grass cell")
+	assert(GridService.prop_id(Vector2i(10, 8)) == "park_bench", "prop id should match the catalog item")
+	GridService.remove_prop(Vector2i(10, 8))
 	GridService.clear_paths()
 	print("BuildMode OK")
 
@@ -490,14 +565,14 @@ func _test_quests() -> void:
 	assert(GeneTree.stock_of("cute") >= 1, "the lab should start with one Cute charge")
 	assert(not GeneTree.is_vial_unlocked("scary"), "Scary should stay gated until a quest pays it out")
 	assert(QuestBoard.current().get("id") == "fence", "first quest should ask for a pen")
-	assert(QuestBoard.reward_text().contains("$15"), "quest should show a cash reward")
+	assert(QuestBoard.reward_text().contains("$10"), "quest should show a cash reward")
 	QuestBoard.evaluate()
 	assert(QuestBoard.ready_to_claim, "a placed pen should complete Fence it in")
 	var money_before: int = WalletService.money
 	assert(QuestBoard.claim(), "should claim the pen quest")
-	assert(WalletService.money == money_before + 15, "claiming should pay the cash reward")
+	assert(WalletService.money == money_before + 10, "claiming should pay the cash reward")
 	assert(QuestBoard.current().get("id") == "stock", "next quest should ask for an animal")
-	assert(QuestBoard.reward_text().contains("$20"), "stock quest should show its reward")
+	assert(QuestBoard.reward_text().contains("$10"), "stock quest should show its reward")
 	assert(QuestBoard.claim(), "a placed animal should complete Something to look at")
 	assert(QuestBoard.current().get("id") == "splice", "third quest should ask for a mutation")
 	assert(QuestBoard.reward_text().contains("Majestic"), "splice quest should unlock Majestic serum")
@@ -512,6 +587,44 @@ func _test_quests() -> void:
 	print("Quests OK — current=%s" % QuestBoard.current().get("id"))
 
 
+func _test_title_and_save() -> void:
+	var title_scene: PackedScene = load("res://scenes/ui/Title.tscn")
+	var title := title_scene.instantiate() as Control
+	add_child(title)
+	assert(title.get_node("%ContinueButton") != null, "title should have a Continue button")
+	assert(str(title.get_node("Center/Panel/Column/TitleLabel").text).contains("Evolution"),
+		"title should name the game")
+	title.free()
+	var build := Node2D.new()
+	build.set_script(load("res://scripts/build_mode.gd"))
+	add_child(build)
+	var critter: Animal = build.spawn_starter_exhibit()
+	assert(critter != null, "save test needs a starter exhibit")
+	WalletService.money += 50
+	build.set_item("park_lamp")
+	assert(build.place_park_at(Vector2i(12, 7)), "save test should place a lamp")
+	var world: Dictionary = build.snapshot_world()
+	assert((world.get("pens") as Array).size() == 1, "snapshot should keep the pen")
+	assert((world.get("props") as Array).size() == 1, "snapshot should keep park objects")
+	build.clear_world()
+	assert((build.get("_pens") as Array).is_empty(), "clear_world should remove pens")
+	assert(not GridService.has_prop(Vector2i(12, 7)), "clear_world should free park cells")
+	build.restore_world(world)
+	assert((build.get("_pens") as Array).size() == 1, "restore should rebuild the pen")
+	var restored: Pen = (build.get("_pens") as Array)[0]
+	assert(restored.occupant_count() == 1, "restore should keep the animal")
+	assert(GridService.has_prop(Vector2i(12, 7)), "restore should put the lamp back")
+	build.delete_pen(restored)
+	for cell in (build.get("_park_objects") as Dictionary).keys():
+		var prop: Node = (build.get("_park_objects") as Dictionary)[cell]
+		if prop != null and is_instance_valid(prop):
+			prop.queue_free()
+	(build.get("_park_objects") as Dictionary).clear()
+	GridService.remove_prop(Vector2i(12, 7))
+	build.queue_free()
+	print("Title/Save OK")
+
+
 func _test_hud(animal: Animal) -> Control:
 	var hud_scene: PackedScene = load("res://scenes/ui/HUD.tscn")
 	var hud := hud_scene.instantiate() as Control
@@ -522,9 +635,11 @@ func _test_hud(animal: Animal) -> Control:
 	hud.set_build_mode(build_mode)
 	hud._on_cat_pens()
 	assert(hud.get_node("%CatalogRibbon").visible, "Pens tab should open the catalog ribbon")
-	assert(hud.get_node("%CatalogRow").get_child_count() == 2, "Pens ribbon should show two priced pens")
+	assert(hud.get_node("%CatalogRow").get_child_count() == 4, "Pens ribbon should show four priced pens")
 	hud._on_cat_paths()
 	assert(hud.get_node("%CatalogRow").get_child_count() == 1, "Paths ribbon should show the stone path")
+	hud._on_cat_park()
+	assert(hud.get_node("%CatalogRow").get_child_count() == 4, "Park ribbon should show four objects")
 	Events.animal_selected.emit(animal)
 	assert(hud.get_node("%StatsPanel").visible, "stats panel should show after select")
 	var archetype_text: String = hud.get_node("%StatsArchetype").text
@@ -562,6 +677,9 @@ func _test_hud(animal: Animal) -> Control:
 	assert(not hud.get_node("%HoursPanel").visible, "closing the error popup should hide it")
 	hud._on_mutate_pressed()
 	assert(hud.get_node("%LabPanel").visible, "DNA Lab should open from the exhibit card")
+	assert(hud.get_node_or_null("%LabShopList") == null, "DNA Lab should not embed the vial shop")
+	assert(hud.get_node_or_null("%LabUndo") == null, "DNA Lab should not have an undo button")
+	assert(not hud.get_node("%Deselect").visible, "exhibit card Close should hide while the lab is open")
 	var lab_slot_names: PackedStringArray = PackedStringArray()
 	for child in hud.get_node("%LabSlots").get_children():
 		if child is Button:
@@ -571,10 +689,30 @@ func _test_hud(animal: Animal) -> Control:
 		"DNA Lab should still offer head and coat")
 	assert(hud.get_node("%StatsPanel").get_parent() == hud.get_node("%LabCardHost"),
 		"exhibit card should sit on the right of the lab")
+	assert(hud.get_node_or_null("%HideQuests") == null, "quest popup should not have a Hide button")
+	assert(hud.get_node("%ShowQuestHint") != null, "quests tab should offer Show Quest Hint")
+	assert(hud.get_node("%CoachHideEye") != null, "quest hint should have a hide eye")
 	hud._on_open_quests()
-	assert(hud.get_node("%QuestPanel").visible, "quest overlay should open")
+	assert(not hud.get_node("%QuestPanel").visible, "quest popup should hide while the DNA Lab is open")
+	assert(not hud.get_node("%CatalogRibbon").visible, "opening quests should tuck the catalog")
+	hud._on_close_lab()
+	assert(hud.get_node("%QuestPanel").visible, "quest popup should return after the lab closes")
 	assert(str(hud.get_node("%QuestName").text) != "", "quest card should show a title")
 	assert(str(hud.get_node("%QuestReward").text).begins_with("Reward:"), "quest card should show the reward")
+	TutorialService.step = TutorialService.Step.OPEN
+	TutorialService.seen = false
+	Events.tutorial_changed.emit()
+	assert(hud.get_node("%CoachPanel").visible, "active quest hint should show when menus are closed")
+	assert(str(hud.get_node("%CoachCopy").text) == "Open the zoo so guests can arrive.",
+		"quest hint should use the current tutorial line")
+	assert(not hud.get_node("%ShowQuestHint").visible, "Show Quest Hint stays tucked while the hint is up")
+	hud._on_hide_hint()
+	assert(not hud.get_node("%CoachPanel").visible, "the hint eye should hide the quest dialogue")
+	assert(hud.get_node("%ShowQuestHint").visible, "hiding the hint should reveal Show Quest Hint")
+	hud._on_show_hint()
+	assert(hud.get_node("%CoachPanel").visible, "Show Quest Hint should bring the dialogue back")
+	assert(not hud.get_node("%ShowQuestHint").visible, "Show Quest Hint should tuck once the hint is back")
+	TutorialService.skip()
 	var badge: TextureRect = hud.get_node("%QuestBadge") as TextureRect
 	assert(badge != null and badge.visible, "Quests button should show a status badge")
 	assert(badge.texture != null, "quest badge should have an icon")
@@ -585,10 +723,18 @@ func _test_hud(animal: Animal) -> Control:
 	var status_icon: TextureRect = hud.get_node("%QuestStatusIcon") as TextureRect
 	assert(status_icon != null and status_icon.visible, "quest card should repeat the status icon")
 	assert(str(status_icon.get_meta("kind")) == str(badge.get_meta("kind")), "button and card badges should match")
-	hud._on_close_quests()
 	hud._on_open_shop()
+	assert(not hud.get_node("%QuestPanel").visible, "quest popup should hide while the shop is open")
 	assert(hud.get_node("%ShopList").get_child_count() > 0, "shop should list unlocked serums")
 	hud._on_close_shop()
+	assert(hud.get_node("%QuestPanel").visible, "quest popup should return after the shop closes")
+	hud._on_hide_quests()
+	assert(not hud.get_node("%QuestPanel").visible, "Close should tuck the quest popup")
+	hud._on_open_shop()
+	hud._on_close_shop()
+	assert(not hud.get_node("%QuestPanel").visible, "a hidden quest popup should stay hidden after menus close")
+	hud._on_mutate_pressed()
+	assert(hud.get_node("%LabPanel").visible, "DNA Lab should reopen for splice tests")
 	assert(hud.get_node("%VialRow").get_child_count() > 0, "lab tray should show unlocked serums")
 	animal.visuals.set_part_shape("head", 1)
 	var head_before: int = animal.visuals.get_current_index("head")
@@ -614,6 +760,16 @@ func _test_hud(animal: Animal) -> Control:
 	hud._on_vial_dropped("linger")
 	assert(animal.has_perk(GeneTree.PERK_LINGER), "Linger graft should attach without swapping a part")
 	assert(animal.get_pen().has_animal_perk(GeneTree.PERK_LINGER), "the pen should expose the graft")
+	assert(str(hud.get_node("%StatsPerks").text).contains("Linger"), "exhibit card should list grafts")
+	assert(not hud.get_node("%PauseScrim").visible, "pause overlay starts hidden")
+	hud.handle_escape()
+	assert(not hud.get_node("%LabPanel").visible, "ESC should close the DNA Lab first")
+	hud.handle_escape()
+	assert(hud.get_node("%PauseScrim").visible, "ESC with no overlay should pause")
+	assert(get_tree().paused, "pause overlay should pause the tree")
+	hud._on_resume()
+	assert(not get_tree().paused, "Resume should unpause")
+	assert(not hud.get_node("%PauseScrim").visible, "Resume should hide the pause overlay")
 	assert(hud.get_node("%DeleteAnimal") != null, "exhibit card should have a delete animal button")
 	Events.pen_selected.emit(animal.get_pen())
 	assert(hud.get_node("%PenPanel").visible, "pen card should show after clicking a paddock")
@@ -786,12 +942,17 @@ func _test_street(hud: Control = null) -> void:
 	var start_y: float = walker.position.y
 	walker.hail()
 	assert(walker._state == Visitor.State.HAIL, "hail should send the guest walking home")
+	var sway: float = 0.0
+	var walk_sprite: Sprite2D = walker.get_node("Sprite2D") as Sprite2D
 	for _i in range(1600):
 		walker._process(1.0 / 60.0)
+		if walk_sprite != null:
+			sway = maxf(sway, absf(walk_sprite.rotation))
 		if walker._state == Visitor.State.WAIT:
 			break
 		if walker.position.y >= GridService.parking_rect().position.y:
 			break
+	assert(sway > 0.03, "walking guests should sway on a walk cycle, got %s" % sway)
 	assert(
 		walker.position.y > start_y + 180.0 or walker._state == Visitor.State.WAIT,
 		"leaving guests should walk around pens instead of freezing, stayed at %s" % walker.position

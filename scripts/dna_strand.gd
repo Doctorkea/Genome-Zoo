@@ -95,7 +95,7 @@ func _draw_empty_rung(rung: Rect2) -> void:
 	var accent := Color(0.91, 0.64, 0.09, 1) if (_hovering_empty and can_accept_drop) else Color(0.55, 0.46, 0.28, 1)
 	draw_rect(rung.grow(-2.0), Color(0.91, 0.64, 0.09, 0.10 if can_accept_drop else 0.04), true)
 	_draw_dashed_rect(rung, accent)
-	var label: String = "Drop vial" if can_accept_drop else "Pick a part"
+	var label: String = "Click a vial" if can_accept_drop else "Pick a part"
 	var font: Font = get_theme_default_font()
 	var font_size: int = 12
 	var text_size: Vector2 = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)

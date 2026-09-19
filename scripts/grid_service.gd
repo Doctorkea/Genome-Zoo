@@ -14,6 +14,7 @@ const ROAD_HEIGHT: int = 148
 
 var _occupied_cells: Dictionary = {} # Vector2i -> Node (the Pen occupying that cell)
 var _path_cells: Dictionary = {} # path-grid Vector2i -> true
+var _prop_cells: Dictionary = {} # grass Vector2i -> item_id
 
 
 func world_size() -> Vector2:
@@ -128,7 +129,7 @@ func is_path_placeable(cell: Vector2i) -> bool:
 	if not is_path_cell_in_world(cell) or has_path_cell(cell):
 		return false
 	var grass := world_to_cell(path_cell_center(cell))
-	return is_area_in_world(grass, Vector2i.ONE) and not is_cell_occupied(grass)
+	return is_area_in_world(grass, Vector2i.ONE) and not is_cell_occupied(grass) and not has_prop(grass)
 
 
 func add_path(cell: Vector2i) -> void:
@@ -198,7 +199,7 @@ func is_area_free(origin_cell: Vector2i, size_cells: Vector2i) -> bool:
 	for x in range(size_cells.x):
 		for y in range(size_cells.y):
 			var cell := origin_cell + Vector2i(x, y)
-			if _occupied_cells.has(cell):
+			if _occupied_cells.has(cell) or _prop_cells.has(cell):
 				return false
 	return true
 
@@ -210,6 +211,7 @@ func is_area_placeable(origin_cell: Vector2i, size_cells: Vector2i) -> bool:
 ## Marks every cell in the `size_cells` rectangle as occupied by `by`.
 func occupy_area(origin_cell: Vector2i, size_cells: Vector2i, by: Node) -> void:
 	take_paths_in_area(origin_cell, size_cells)
+	take_props_in_area(origin_cell, size_cells)
 	for x in range(size_cells.x):
 		for y in range(size_cells.y):
 			_occupied_cells[origin_cell + Vector2i(x, y)] = by
@@ -221,3 +223,84 @@ func free_area(origin_cell: Vector2i, size_cells: Vector2i, by: Node) -> void:
 			var cell := origin_cell + Vector2i(x, y)
 			if _occupied_cells.get(cell) == by:
 				_occupied_cells.erase(cell)
+
+
+func reset() -> void:
+	_occupied_cells.clear()
+	_path_cells.clear()
+	_prop_cells.clear()
+
+
+func is_prop_placeable(cell: Vector2i) -> bool:
+	return is_area_in_world(cell, Vector2i.ONE) and not is_cell_occupied(cell) and not _prop_cells.has(cell)
+
+
+func has_prop(cell: Vector2i) -> bool:
+	return _prop_cells.has(cell)
+
+
+func prop_id(cell: Vector2i) -> String:
+	return str(_prop_cells.get(cell, ""))
+
+
+func add_prop(cell: Vector2i, item_id: String) -> void:
+	if is_prop_placeable(cell) and not item_id.is_empty():
+		_prop_cells[cell] = item_id
+
+
+func remove_prop(cell: Vector2i) -> void:
+	_prop_cells.erase(cell)
+
+
+func take_props_in_area(origin_cell: Vector2i, size_cells: Vector2i) -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+	for x in range(size_cells.x):
+		for y in range(size_cells.y):
+			var cell := origin_cell + Vector2i(x, y)
+			if _prop_cells.has(cell):
+				_prop_cells.erase(cell)
+				found.append(cell)
+	return found
+
+
+func prop_points(item_id: String) -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	for cell in _prop_cells.keys():
+		if str(_prop_cells[cell]) == item_id:
+			points.append(cell_center(cell))
+	return points
+
+
+func nearest_prop(item_id: String, from: Vector2, max_dist: float = 220.0) -> Vector2:
+	var best := Vector2.INF
+	var best_d: float = max_dist
+	for point in prop_points(item_id):
+		var d: float = from.distance_to(point)
+		if d < best_d:
+			best_d = d
+			best = point
+	return best
+
+
+func has_lamp(cell: Vector2i) -> bool:
+	return prop_id(cell) == "park_lamp"
+
+
+func has_bench(cell: Vector2i) -> bool:
+	return prop_id(cell) == "park_bench"
+
+
+func snapshot_props() -> Array:
+	var rows: Array = []
+	for cell in _prop_cells.keys():
+		var c: Vector2i = cell
+		rows.append({"x": c.x, "y": c.y, "id": str(_prop_cells[cell])})
+	return rows
+
+
+func snapshot_paths() -> Array:
+	var rows: Array = []
+	for cell in _path_cells.keys():
+		var c: Vector2i = cell
+		rows.append({"x": c.x, "y": c.y})
+	return rows

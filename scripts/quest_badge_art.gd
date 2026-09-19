@@ -10,6 +10,7 @@ const SIZE: int = 48
 
 static var _exclaim: Texture2D
 static var _ribbon: Texture2D
+static var _eye: Texture2D
 
 
 static func exclaim() -> Texture2D:
@@ -22,6 +23,12 @@ static func ribbon() -> Texture2D:
 	if _ribbon == null:
 		_ribbon = _texture(_draw_ribbon())
 	return _ribbon
+
+
+static func eye() -> Texture2D:
+	if _eye == null:
+		_eye = _texture(_draw_eye())
+	return _eye
 
 
 static func _texture(img: Image) -> Texture2D:
@@ -64,6 +71,29 @@ static func _draw_ribbon() -> Image:
 	_disk(img, c + Vector2(-4.5, -5.0), 6.5, Color(1.0, 0.96, 0.72, 0.4))
 	_disk(img, c, 6.2, gold_dark)
 	_disk(img, c, 4.4, cream)
+	return img
+
+
+static func _draw_eye() -> Image:
+	var img := _blank()
+	var ink := Color(0.18, 0.14, 0.09, 0.72)
+	var lid := Color(0.93, 0.88, 0.74, 0.22)
+	var iris := Color(0.32, 0.42, 0.28, 0.7)
+	var pupil := Color(0.08, 0.06, 0.04, 0.78)
+	var gleam := Color(1.0, 0.98, 0.92, 0.55)
+	var c := Vector2(SIZE * 0.5, SIZE * 0.5)
+	for y in range(SIZE):
+		for x in range(SIZE):
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			var e: float = pow((p.x - c.x) / 18.0, 2.0) + pow((p.y - c.y) / 9.0, 2.0)
+			if e <= 1.0:
+				_put(img, x, y, lid, clampf(1.0 - e * 0.35, 0.15, 1.0))
+			var ring: float = absf(e - 1.0)
+			if ring < 0.12:
+				_put(img, x, y, ink, clampf(1.0 - ring / 0.12, 0.0, 1.0))
+	_disk(img, c, 7.2, iris)
+	_disk(img, c, 3.4, pupil)
+	_disk(img, c + Vector2(-2.2, -2.0), 1.8, gleam)
 	return img
 
 

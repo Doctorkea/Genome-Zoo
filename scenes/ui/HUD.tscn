@@ -24,6 +24,7 @@ shadow_size = 6
 shadow_offset = Vector2(0, 3)
 
 [node name="HUD" type="Control"]
+process_mode = 3
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -146,6 +147,14 @@ theme_override_font_sizes/font_size = 26
 text = "$80"
 vertical_alignment = 1
 
+[node name="WalletDrip" type="Label" parent="Safe/Column/TopRow/WalletChip/WalletRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+theme_override_font_sizes/font_size = 12
+text = ""
+vertical_alignment = 1
+
 [node name="Body" type="HBoxContainer" parent="Safe/Column"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -194,10 +203,12 @@ theme_override_font_sizes/font_size = 12
 text = "Exhibit card"
 
 [node name="Deselect" type="Button" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/CardHeader"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Close"
 
 [node name="ThumbContainer" type="SubViewportContainer" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(232, 120)
 layout_mode = 2
 stretch = true
@@ -270,6 +281,15 @@ layout_mode = 2
 theme_override_constants/separation = 8
 
 [node name="StatsParts" type="Label" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+theme_type_variation = &"PaperMuted"
+theme_override_font_sizes/font_size = 12
+text = ""
+autowrap_mode = 3
+
+[node name="StatsPerks" type="Label" parent="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
@@ -515,6 +535,13 @@ layout_mode = 2
 toggle_mode = true
 text = "Paths"
 
+[node name="CatPark" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+toggle_mode = true
+text = "Park"
+
 [node name="DockSpacer" type="Control" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -543,7 +570,7 @@ mouse_filter = 2
 [node name="LabPanel" type="PanelContainer" parent="LabCenter"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(1040, 560)
+custom_minimum_size = Vector2(920, 580)
 layout_mode = 2
 theme_type_variation = &"ExhibitCard"
 theme_override_styles/panel = SubResource("paper_panel")
@@ -568,10 +595,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PaperMuted"
 text = ""
-
-[node name="OpenShopFromLab" type="Button" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
-layout_mode = 2
-text = "Vial shop"
 
 [node name="CloseLab" type="Button" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
 layout_mode = 2
@@ -612,7 +635,7 @@ script = ExtResource("3_strand")
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
-text = "Pick a body part, then drag a vial onto the empty base."
+text = "Pick a body part, then click a vial."
 autowrap_mode = 3
 
 [node name="VialRow" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
@@ -625,7 +648,7 @@ theme_override_constants/v_separation = 6
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PaperMuted"
-text = "Drag a serum onto the empty ATGC rung. One base always stays open."
+text = "Click a serum to splice it into the selected part. One base always stays open."
 autowrap_mode = 3
 
 [node name="LabCardHost" type="VBoxContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit"]
@@ -683,7 +706,7 @@ text = "Close"
 [node name="ShopCopy" type="Label" parent="ShopCenter/ShopPanel/ShopVBox"]
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
-text = "Unlocked serums only. Buy a charge, then drop it in the DNA Lab."
+text = "Unlocked serums only. Buy a charge, then click it in the DNA Lab."
 autowrap_mode = 3
 
 [node name="ShopStock" type="Label" parent="ShopCenter/ShopPanel/ShopVBox"]
@@ -763,6 +786,15 @@ theme_type_variation = &"PaperMuted"
 text = "One job at a time. Finish it, claim the reward, the next one shows up."
 autowrap_mode = 3
 
+[node name="ShowQuestHint" type="Button" parent="QuestCenter/QuestPanel/QuestVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"PaperChoice"
+flat = true
+text = "Show Quest Hint"
+alignment = 0
+
 [node name="QuestNameRow" type="HBoxContainer" parent="QuestCenter/QuestPanel/QuestVBox"]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -803,7 +835,7 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PaperLabel"
 theme_override_font_sizes/font_size = 16
-text = "Reward: $15"
+text = "Reward: $10"
 autowrap_mode = 3
 
 [node name="ClaimQuest" type="Button" parent="QuestCenter/QuestPanel/QuestVBox"]
@@ -870,6 +902,107 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "OK"
 
+[node name="CoachPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -248.0
+offset_top = -168.0
+offset_right = 248.0
+offset_bottom = -112.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("paper_panel")
+
+[node name="CoachRow" type="HBoxContainer" parent="CoachPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CoachCopy" type="Label" parent="CoachPanel/CoachRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 16
+text = "Open Pens and place a paddock."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="CoachHideEye" type="TextureButton" parent="CoachPanel/CoachRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_default_cursor_shape = 2
+modulate = Color(1, 1, 1, 0.48)
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="PauseScrim" type="ColorRect" parent="."]
+unique_name_in_owner = true
+process_mode = 3
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.04, 0.02, 0.55)
+
+[node name="PauseCenter" type="CenterContainer" parent="PauseScrim"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PausePanel" type="PanelContainer" parent="PauseScrim/PauseCenter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 280)
+layout_mode = 2
+theme_override_styles/panel = SubResource("paper_panel")
+
+[node name="PauseVBox" type="VBoxContainer" parent="PauseScrim/PauseCenter/PausePanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PauseTitle" type="Label" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
+layout_mode = 2
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 26
+text = "Paused"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resume"
+
+[node name="SaveButton" type="Button" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save zoo"
+
+[node name="TitleButton" type="Button" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Title"
+
+[node name="QuitButton" type="Button" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Quit"
+
 [connection signal="pressed" from="Safe/Column/TopRow/ZooHoursButton" to="." method="_on_toggle_zoo_hours"]
 [connection signal="pressed" from="Safe/Column/TopRow/QuestButton" to="." method="_on_open_quests"]
 [connection signal="pressed" from="Safe/Column/TopRow/ShopButton" to="." method="_on_open_shop"]
@@ -885,11 +1018,18 @@ text = "OK"
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPens" to="." method="_on_cat_pens"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatAnimals" to="." method="_on_cat_animals"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPaths" to="." method="_on_cat_paths"]
+[connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPark" to="." method="_on_cat_park"]
+[connection signal="gui_input" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/ThumbContainer" to="." method="_on_thumb_gui_input"]
 [connection signal="vial_dropped" from="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft/StrandWrap/DnaStrand" to="." method="_on_vial_dropped"]
-[connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/OpenShopFromLab" to="." method="_on_open_shop"]
 [connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/CloseLab" to="." method="_on_close_lab"]
 [connection signal="pressed" from="ShopCenter/ShopPanel/ShopVBox/ShopHeader/CloseShop" to="." method="_on_close_shop"]
 [connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/QuestHeader/CloseQuests" to="." method="_on_close_quests"]
+[connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/ShowQuestHint" to="." method="_on_show_hint"]
 [connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/ClaimQuest" to="." method="_on_claim_quest"]
+[connection signal="pressed" from="CoachPanel/CoachRow/CoachHideEye" to="." method="_on_hide_hint"]
 [connection signal="pressed" from="HoursCenter/HoursPanel/HoursVBox/HoursHeader/CloseHours" to="." method="_on_dismiss_hours"]
 [connection signal="pressed" from="HoursCenter/HoursPanel/HoursVBox/HoursConfirm" to="." method="_on_confirm_hours"]
+[connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/ResumeButton" to="." method="_on_resume"]
+[connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/SaveButton" to="." method="_on_pause_save"]
+[connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/TitleButton" to="." method="_on_pause_title"]
+[connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/QuitButton" to="." method="_on_pause_quit"]

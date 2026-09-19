@@ -16,3 +16,6 @@ signal build_tool_changed(item_id: String)
 signal placement_rejected(reason: String)
 signal placement_succeeded(item_id: String)
 signal zoo_hours_changed(is_open: bool)
+signal showtime_performed(pen: Node, archetype: String, payout: int)
+signal game_paused(is_paused: bool)
+signal tutorial_changed

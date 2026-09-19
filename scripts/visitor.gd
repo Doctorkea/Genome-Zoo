@@ -14,7 +14,7 @@ const VIEW_BONUS: float = 14.0
 const DECAY_IDLE: float = 0.58
 const DECAY_BORED: float = 1.45
 const DECAY_EMPTY: float = 2.05
-const TICKET_MAX: int = 4
+const TICKET_MAX: int = 2
 ## Planet Zoo: unhappy guests stop spending. Below this interest ratio, $0.
 const TICKET_PAY_FLOOR: float = 0.28
 const TEX_CHILD_BOY: Texture2D = preload("res://art/visitors/child_boy.png")
@@ -22,6 +22,7 @@ const TEX_CHILD_GIRL: Texture2D = preload("res://art/visitors/child_girl.png")
 const TEX_PARENT_MUM: Texture2D = preload("res://art/visitors/parent_mum.png")
 const TEX_PARENT_DAD: Texture2D = preload("res://art/visitors/parent_dad.png")
 const TEX_PATRON: Texture2D = preload("res://art/visitors/patron.png")
+const ZooFx := preload("res://scripts/fx.gd")
 
 var visitor_id: String = "tourists"
 var fill_color: Color = Color.WHITE
@@ -43,6 +44,13 @@ var _look_pen: Pen = null
 var _seen_poster: bool = false
 var _via: Vector2 = Vector2.ZERO
 var _has_via: bool = false
+var _snack_used: bool = false
+var _merch_paid: bool = false
+var _thought_label: Label = null
+var _thought_time: float = 0.0
+var _gait_phase: float = 0.0
+var _body_scale: float = 1.0
+var _rest_pos: Vector2 = Vector2(0.0, -DISPLAY_HEIGHT * 0.5)
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _hit: CollisionShape2D = $CollisionShape2D
@@ -58,6 +66,7 @@ func setup(street: Street, kind: String, start: Vector2) -> void:
 	interest = MAX_INTEREST
 	add_to_group("visitors")
 	_speed = randf_range(58.0, 82.0)
+	_gait_phase = randf() * TAU
 	if _street != null:
 		_target = _street.gate_point()
 	_apply_look()
@@ -84,9 +93,45 @@ func ticket_value() -> int:
 	var t: float = (ratio - TICKET_PAY_FLOOR) / (1.0 - TICKET_PAY_FLOOR)
 	var payout: float = float(clampi(int(round(t * float(TICKET_MAX))), 1, TICKET_MAX))
 	payout *= GeneTree.ticket_multiplier()
-	if _seen_poster:
-		payout *= 1.5
+	payout *= _approval_factor()
+	if _seen_poster or _near_poster_stand():
+		payout *= GeneTree.poster_multiplier()
+	if visitor_id == "children" and _seen_scary() >= TraitLibrary.CHILD_CRY_SCARY:
+		payout *= 0.5
 	return maxi(1, int(round(payout)))
+
+
+func _approval_factor() -> float:
+	if not is_inside_tree():
+		return 1.0
+	var score: int = TraitLibrary.visitor_approval(visitor_id, _party_seen_tags())
+	return clampf(1.0 + float(clampi(score, -4, 4)) * 0.125, 0.5, 1.5)
+
+
+func _seen_scary() -> int:
+	if not is_inside_tree():
+		return 0
+	return int(_party_seen_tags().get("Scary", 0))
+
+
+func _near_poster_stand() -> bool:
+	if not is_inside_tree():
+		return false
+	return GridService.nearest_prop("park_poster", position, 180.0) != Vector2.INF
+
+
+func on_roar() -> void:
+	if visitor_id == "thrill":
+		interest = minf(MAX_INTEREST, interest + 4.0)
+		_say("That roar!")
+		return
+	if visitor_id == "children" or _party_has_kind("children"):
+		interest = maxf(0.0, interest - 6.0)
+		_say("Too loud!")
+		if interest <= MAX_INTEREST * TICKET_PAY_FLOOR:
+			hail()
+	else:
+		interest = maxf(0.0, interest - 2.0)
 
 
 func is_leader() -> bool:
@@ -111,6 +156,7 @@ func hail() -> void:
 		crush()
 		return
 	_leaving = true
+	_pay_merch()
 	var dest := _street.hail_visitor(self)
 	go_to(dest)
 	if _street != null:
@@ -581,39 +627,45 @@ func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> vo
 
 
 func _process(delta: float) -> void:
+	var from := position
+	_tick_thought(delta)
+	_use_park_props()
+	var steer: bool = true
 	if _state == State.ENTER or _state == State.WANDER or _state == State.LOOK:
 		_notice_exhibits()
 		_drain_interest(delta)
 		if interest <= 0.0:
 			hail()
-			return
-	if not is_leader() and _state != State.HAIL and _state != State.WAIT:
-		_follow_leader(delta)
-		return
-	match _state:
-		State.ENTER:
-			_move_toward(_target, delta)
-			if position.distance_to(_target) <= 4.0:
-				_state = State.WANDER
-				_pick_wander_target()
-		State.WANDER:
-			_move_toward(_target, delta)
-			if position.distance_to(_target) <= 6.0:
-				_start_look()
-		State.LOOK:
-			_look_time -= delta
-			_face_pen()
-			if _look_time <= 0.0:
-				_pick_wander_target()
-		State.HAIL:
-			_move_toward(_target, delta)
-			if position.distance_to(_target) <= 8.0:
-				if pickup_bay >= 0:
-					_state = State.WAIT
-				else:
-					board()
-		State.WAIT:
-			pass
+			steer = false
+	if steer:
+		if not is_leader() and _state != State.HAIL and _state != State.WAIT:
+			_follow_leader(delta)
+		else:
+			match _state:
+				State.ENTER:
+					_move_toward(_target, delta)
+					if position.distance_to(_target) <= 4.0:
+						_state = State.WANDER
+						_pick_wander_target()
+				State.WANDER:
+					_move_toward(_target, delta)
+					if position.distance_to(_target) <= 6.0:
+						_start_look()
+				State.LOOK:
+					_look_time -= delta
+					_face_pen()
+					if _look_time <= 0.0:
+						_pick_wander_target()
+				State.HAIL:
+					_move_toward(_target, delta)
+					if position.distance_to(_target) <= 8.0:
+						if pickup_bay >= 0:
+							_state = State.WAIT
+						else:
+							board()
+				State.WAIT:
+					pass
+	_animate_gait(delta, position.distance_squared_to(from) > 0.08)
 
 
 func _drain_interest(delta: float) -> void:
@@ -628,6 +680,16 @@ func _drain_interest(delta: float) -> void:
 		rate *= lerpf(0.52, 1.06, clampf((1.0 - quality) / 0.30, 0.0, 1.0))
 		if _look_pen.has_animal_perk(GeneTree.PERK_LINGER):
 			rate *= 0.55
+		var look_arch: String = ""
+		var herd := _look_pen.living_animals()
+		if not herd.is_empty():
+			look_arch = str(herd[0].get_stats().get("archetype", ""))
+		if look_arch == "Novelty":
+			rate *= 0.85
+	if GridService.has_bench(GridService.world_to_cell(position)):
+		rate *= 0.62
+	if visitor_id == "children" and _seen_scary() >= TraitLibrary.CHILD_CRY_SCARY:
+		rate *= 1.35
 	interest = maxf(0.0, interest - rate * delta)
 
 
@@ -667,8 +729,13 @@ func _notice_exhibits() -> void:
 		_seen[signature] = true
 		if pen.has_animal_perk(GeneTree.PERK_POSTER):
 			_seen_poster = true
+		if GridService.nearest_prop("park_poster", pen.world_rect().get_center(), 180.0) != Vector2.INF:
+			_seen_poster = true
 		var quality: float = pen.enjoyment_factor() * pen.occupancy_factor()
 		interest = minf(MAX_INTEREST, interest + VIEW_BONUS * quality)
+		_say(party_thought())
+		if visitor_id == "creators" and _street != null:
+			_street.add_hype(15.0)
 
 
 func _move_toward(target: Vector2, delta: float) -> void:
@@ -734,9 +801,14 @@ func _apply_look() -> void:
 			look_path = "res://art/visitors/patron.png"
 	_sprite.texture = tex
 	if tex.get_height() > 0:
-		var s: float = DISPLAY_HEIGHT / float(tex.get_height())
-		_sprite.scale = Vector2(s, s)
-		_sprite.position = Vector2(0.0, -DISPLAY_HEIGHT * 0.5)
+		_body_scale = DISPLAY_HEIGHT / float(tex.get_height())
+		_sprite.centered = true
+		# Pivot near the head so a walk sway reads as stepping, not hovering.
+		_sprite.offset = Vector2(0.0, float(tex.get_height()) * 0.32)
+		_rest_pos = Vector2(0.0, -DISPLAY_HEIGHT * 0.82)
+		_sprite.scale = Vector2(_body_scale, _body_scale)
+		_sprite.position = _rest_pos
+		_sprite.rotation = 0.0
 	if visitor_id == "children" or visitor_id == "parents":
 		_sprite.modulate = Color.WHITE
 	else:
@@ -811,7 +883,7 @@ func _path_next(goal: Vector2) -> Vector2:
 
 
 func _step_cost(cell: Vector2i) -> int:
-	if GridService.has_path(cell):
+	if GridService.has_path(cell) or GridService.has_lamp(cell) or GridService.has_bench(cell):
 		return 1
 	if GridService.is_area_in_world(cell, Vector2i.ONE) and GridService.has_any_path():
 		return 5
@@ -842,6 +914,9 @@ func _start_look() -> void:
 	if _look_pen != null and is_instance_valid(_look_pen) \
 			and _look_pen.has_animal_perk(GeneTree.PERK_LINGER):
 		_look_time *= 1.65
+	if visitor_id == "children" and _seen_scary() >= TraitLibrary.CHILD_CRY_SCARY:
+		_look_time *= 0.45
+		_say("Too scary!")
 
 
 func _follow_leader(delta: float) -> void:
@@ -870,3 +945,75 @@ func _distance_to_rect(rect: Rect2) -> float:
 		clampf(position.y, rect.position.y, rect.end.y)
 	)
 	return position.distance_to(closest)
+
+
+func _pay_merch() -> void:
+	if _merch_paid or visitor_id != "tourists":
+		return
+	if int(_party_seen_tags().get("Majestic", 0)) <= 0:
+		return
+	_merch_paid = true
+	WalletService.add_cash(1)
+	_say("Souvenir!")
+
+
+func _use_park_props() -> void:
+	if not _snack_used:
+		var snack := GridService.nearest_prop("park_snack", position, 42.0)
+		if snack != Vector2.INF:
+			_snack_used = true
+			WalletService.add_cash(1)
+			_say("Snack run")
+			ZooFx.burst(self, ZooFx.Kind.STEAM, Vector2(0.0, -DISPLAY_HEIGHT * 0.35))
+	if GridService.has_bench(GridService.world_to_cell(position)) and _state == State.LOOK:
+		_look_time = maxf(_look_time, 0.8)
+
+
+func _say(line: String) -> void:
+	var text := line.strip_edges()
+	if text.is_empty():
+		return
+	if _thought_label == null:
+		_thought_label = Label.new()
+		_thought_label.z_index = 12
+		_thought_label.position = Vector2(-36.0, -DISPLAY_HEIGHT - 10.0)
+		_thought_label.add_theme_font_size_override("font_size", 11)
+		_thought_label.add_theme_color_override("font_color", Color(0.12, 0.09, 0.06, 1))
+		add_child(_thought_label)
+	_thought_label.text = text
+	_thought_label.visible = true
+	_thought_time = 2.2
+
+
+func _tick_thought(delta: float) -> void:
+	if _thought_label == null:
+		return
+	_thought_time -= delta
+	if _thought_time <= 0.0:
+		_thought_label.visible = false
+
+
+func _animate_gait(delta: float, moving: bool) -> void:
+	if _sprite == null:
+		return
+	if moving:
+		var cadence: float = clampf(_speed * 0.09, 4.0, 7.4)
+		if visitor_id == "children":
+			cadence *= 1.18
+		_gait_phase += delta * cadence
+		var step: float = sin(_gait_phase)
+		# sin² bounce: two footfalls per cycle, smooth troughs instead of a tick.
+		var bounce: float = step * step
+		_sprite.position = _rest_pos + Vector2(0.0, -bounce * 2.4)
+		_sprite.rotation = step * 0.075
+		var squash: float = 1.0 + bounce * 0.035
+		var stretch: float = 1.0 - bounce * 0.03
+		_sprite.scale = Vector2(_body_scale * squash, _body_scale * stretch)
+	else:
+		_gait_phase += delta * 1.7
+		var idle: float = sin(_gait_phase)
+		_sprite.position = _sprite.position.lerp(_rest_pos + Vector2(0.0, idle * 0.7), clampf(delta * 9.0, 0.0, 1.0))
+		_sprite.rotation = lerp_angle(_sprite.rotation, idle * 0.02, clampf(delta * 8.0, 0.0, 1.0))
+		var breathe: float = 1.0 + idle * 0.018
+		var rest := Vector2(_body_scale, _body_scale * breathe)
+		_sprite.scale = _sprite.scale.lerp(rest, clampf(delta * 8.0, 0.0, 1.0))

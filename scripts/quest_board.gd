@@ -9,33 +9,33 @@ const QUESTS: Array[Dictionary] = [
 		"title": "Fence it in",
 		"brief": "Place a pen on the grass.",
 		"goal": "place_pen",
-		"reward_cash": 15,
+		"reward_cash": 10,
 	},
 	{
 		"id": "stock",
 		"title": "Something to look at",
 		"brief": "Put an animal in a pen.",
 		"goal": "place_animal",
-		"reward_cash": 20,
+		"reward_cash": 10,
 	},
 	{
 		"id": "splice",
 		"title": "Tweak the DNA",
-		"brief": "Open the DNA Lab and drop a serum on a body part.",
+		"brief": "Open the DNA Lab and click a serum onto a body part.",
 		"goal": "mutate",
-		"reward_cash": 25,
+		"reward_cash": 0,
 		"reward_vial": "majestic",
 		"reward_charges": 3,
 	},
 	{
 		"id": "parade",
 		"title": "A proper showpiece",
-		"brief": "Turn one animal into a Showpiece — Majestic on the body, head, and coat.",
+		"brief": "Turn one animal into a Showpiece — Majestic on the head, coat, and tail.",
 		"goal": "committed",
 		"tag": "Majestic",
 		"amount": 3,
 		"archetype": "Showpiece",
-		"reward_cash": 50,
+		"reward_cash": 10,
 		"reward_vial": "scary",
 		"reward_charges": 2,
 	},
@@ -45,7 +45,7 @@ const QUESTS: Array[Dictionary] = [
 		"brief": "Build a second pen and put an animal in it.",
 		"goal": "pens",
 		"amount": 2,
-		"reward_cash": 45,
+		"reward_cash": 0,
 		"reward_perk": "open_longer",
 	},
 	{
@@ -56,7 +56,7 @@ const QUESTS: Array[Dictionary] = [
 		"tag": "Scary",
 		"amount": 3,
 		"archetype": "Predator",
-		"reward_cash": 55,
+		"reward_cash": 10,
 		"reward_vial": "weird",
 		"reward_charges": 2,
 	},
@@ -68,7 +68,7 @@ const QUESTS: Array[Dictionary] = [
 		"tag": "Weird",
 		"amount": 3,
 		"archetype": "Novelty",
-		"reward_cash": 55,
+		"reward_cash": 10,
 		"reward_vial": "silly",
 		"reward_charges": 1,
 	},
@@ -78,8 +78,96 @@ const QUESTS: Array[Dictionary] = [
 		"brief": "Earn $40 from guest tickets.",
 		"goal": "tickets",
 		"amount": 40,
-		"reward_cash": 60,
+		"reward_cash": 0,
 		"reward_perk": "ticket_booth",
+	},
+	{
+		"id": "grace",
+		"title": "On their toes",
+		"brief": "Stack Elegant until an animal is Nimble.",
+		"goal": "committed",
+		"tag": "Elegant",
+		"amount": 2,
+		"archetype": "Nimble",
+		"reward_cash": 5,
+		"reward_vial": "elegant",
+		"reward_charges": 2,
+	},
+	{
+		"id": "heft",
+		"title": "Built like a tank",
+		"brief": "Keep an animal Tanky with plenty of Bulky.",
+		"goal": "committed",
+		"tag": "Bulky",
+		"amount": 3,
+		"archetype": "Tanky",
+		"reward_cash": 5,
+		"reward_vial": "bulky",
+		"reward_charges": 2,
+	},
+	{
+		"id": "ick",
+		"title": "A little icky",
+		"brief": "Put Gross on a creature — tail or coat works.",
+		"goal": "tag",
+		"tag": "Gross",
+		"amount": 1,
+		"reward_cash": 5,
+		"reward_vial": "gross",
+		"reward_charges": 2,
+	},
+	{
+		"id": "stay",
+		"title": "Stay a while",
+		"brief": "Keep three pens stocked at once.",
+		"goal": "pens",
+		"amount": 3,
+		"reward_cash": 0,
+		"reward_vial": "linger",
+		"reward_charges": 1,
+	},
+	{
+		"id": "fame",
+		"title": "Face of the park",
+		"brief": "Earn $80 from guest tickets.",
+		"goal": "tickets",
+		"amount": 80,
+		"reward_cash": 0,
+		"reward_vial": "poster",
+		"reward_charges": 1,
+	},
+	{
+		"id": "mix",
+		"title": "Impossible animal",
+		"brief": "Push Weird high enough that a Novelty looks chimeric.",
+		"goal": "committed",
+		"tag": "Weird",
+		"amount": 4,
+		"archetype": "Novelty",
+		"reward_cash": 0,
+		"reward_vial": "chimera",
+		"reward_charges": 1,
+	},
+	{
+		"id": "king",
+		"title": "Apex of the chain",
+		"brief": "A Predator stacked to Scary ×4.",
+		"goal": "committed",
+		"tag": "Scary",
+		"amount": 4,
+		"archetype": "Predator",
+		"reward_cash": 0,
+		"reward_vial": "apex",
+		"reward_charges": 1,
+	},
+	{
+		"id": "draw",
+		"title": "Word of mouth",
+		"brief": "Keep three pens stocked so the crowds hear about you.",
+		"goal": "pens",
+		"amount": 3,
+		"reward_cash": 0,
+		"reward_perk": "crowd_pull",
 	},
 ]
 
@@ -93,6 +181,29 @@ func _ready() -> void:
 	Events.creature_mutated.connect(_on_mutated)
 	Events.money_changed.connect(_on_money)
 	call_deferred("evaluate")
+
+
+func reset() -> void:
+	index = 0
+	mutated = false
+	ready_to_claim = false
+	evaluate()
+	Events.quest_changed.emit()
+
+
+func snapshot() -> Dictionary:
+	return {
+		"index": index,
+		"mutated": mutated,
+		"ready_to_claim": ready_to_claim,
+	}
+
+
+func apply_state(data: Dictionary) -> void:
+	index = int(data.get("index", 0))
+	mutated = bool(data.get("mutated", false))
+	ready_to_claim = bool(data.get("ready_to_claim", false))
+	Events.quest_changed.emit()
 
 
 func current() -> Dictionary:

@@ -12,6 +12,7 @@ const STALL_GAP: float = 28.0
 const MAX_VISITORS: int = 16
 
 var is_open: bool = false
+var hype_time: float = 0.0
 var _bays: Array[Dictionary] = []
 var _hail_queue: Array[Visitor] = []
 var _pickup_claimed: Dictionary = {} # bay index -> true while a pickup car is coming
@@ -50,6 +51,7 @@ func set_open(want: bool) -> bool:
 			return true
 		is_open = true
 		Events.zoo_hours_changed.emit(true)
+		TutorialService.on_zoo_opened()
 		return true
 	if not is_open:
 		return true
@@ -107,6 +109,10 @@ func exit_point() -> Vector2:
 
 
 func wander_point(visitor: Visitor = null) -> Vector2:
+	if visitor != null:
+		var benches: Array[Vector2] = GridService.prop_points("park_bench")
+		if not benches.is_empty() and randf() < 0.28:
+			return _prefer_clear_spot(visitor, benches)
 	var unseen: Array[Pen] = _unseen_pens(visitor)
 	var pool: Array[Pen] = unseen if not unseen.is_empty() else _stocked_pens()
 	if pool.is_empty():
@@ -317,25 +323,34 @@ func spawn_pickup() -> Car:
 	return _spawn_kerb_car(Car.Role.PICKUP, guest.pickup_bay)
 
 
+func add_hype(seconds: float = 15.0) -> void:
+	hype_time = maxf(hype_time, seconds)
+
+
 func _process(delta: float) -> void:
+	if hype_time > 0.0:
+		hype_time = maxf(0.0, hype_time - delta)
 	if is_open and not has_exhibit():
 		set_open(false)
 	_assign_waiting_bays()
 	_traffic_timer -= delta
 	_east_timer -= delta
 	_kerb_timer -= delta
+	var scale: float = GeneTree.spawn_time_scale()
+	if hype_time > 0.0:
+		scale *= 0.7
 	if _traffic_timer <= 0.0:
 		spawn_traffic(-1)
-		_traffic_timer = randf_range(2.0, 3.4) * GeneTree.spawn_time_scale()
+		_traffic_timer = randf_range(2.0, 3.4) * scale
 	if _east_timer <= 0.0:
 		spawn_traffic(1)
-		_east_timer = randf_range(2.0, 3.4) * GeneTree.spawn_time_scale()
+		_east_timer = randf_range(2.0, 3.4) * scale
 	if _kerb_timer <= 0.0:
 		if _next_waiting_guest() != null:
 			spawn_pickup()
 		else:
 			spawn_dropoff()
-		_kerb_timer = randf_range(3.5, 6.5) * GeneTree.spawn_time_scale()
+		_kerb_timer = randf_range(3.5, 6.5) * scale
 
 
 func _spawn_kerb_car(role: int, bay_index: int) -> Car:
@@ -427,9 +442,10 @@ func _prefer_clear_spot(visitor: Visitor, spots: Array[Vector2]) -> Vector2:
 	if visitor == null:
 		return spots[randi() % spots.size()]
 	var path_spots: Array[Vector2] = []
-	if GridService.has_any_path():
+	if GridService.has_any_path() or not GridService.prop_points("park_lamp").is_empty():
 		for spot in spots:
-			if GridService.has_path(GridService.world_to_cell(spot)):
+			var cell := GridService.world_to_cell(spot)
+			if GridService.has_path(cell) or GridService.has_lamp(cell) or GridService.has_bench(cell):
 				path_spots.append(spot)
 	var pool: Array[Vector2] = path_spots if not path_spots.is_empty() else spots
 	var open: Array[Vector2] = []

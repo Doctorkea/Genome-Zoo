@@ -10,6 +10,7 @@ const ZOOM_LEVELS: Array[float] = [1.0, 2.0]
 @onready var _build_mode: BuildMode = $BuildMode
 @onready var _hud: Control = $HUDLayer/HUD
 @onready var _camera: Camera2D = $Camera2D
+@onready var _street: Street = $Street
 
 var _panning: bool = false
 var _pan_start_mouse: Vector2 = Vector2.ZERO
@@ -27,6 +28,9 @@ func _ready() -> void:
 	var view: Vector2 = get_viewport().get_visible_rect().size / _camera.zoom
 	var map := GridService.map_size()
 	_camera.position = _clamped_camera_position(Vector2(map.x * 0.5, map.y - view.y * 0.36))
+	if SaveService.pending_load:
+		SaveService.pending_load = false
+		SaveService.load_into(_build_mode)
 
 
 func _fit_window_to_hud() -> void:
@@ -40,6 +44,8 @@ func _fit_window_to_hud() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if get_tree().paused:
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			_panning = event.pressed

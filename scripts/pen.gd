@@ -12,16 +12,23 @@ const TEX_FLAT: Texture2D = preload("res://art/tiles/pen/brick_flat.png")
 const TEX_UP: Texture2D = preload("res://art/tiles/pen/brick_up.png")
 const TEX_TOP_CORNER: Texture2D = preload("res://art/tiles/pen/brick_top_corner.png")
 const TEX_BOTTOM_CORNER: Texture2D = preload("res://art/tiles/pen/brick_bottom_corner.png")
+const ZooFx := preload("res://scripts/fx.gd")
 
 @export var footprint_cells: Vector2i = Vector2i(4, 3)
 
 var origin_cell: Vector2i = Vector2i.ZERO
+var catalog_id: String = ""
+var listed_capacity: int = -1
+var enjoyment_bonus: float = 0.0
 var animals: Array[Node] = []
+var _showtime_cd: float = 18.0
+var _show_label: Label = null
 
 
 func _ready() -> void:
 	add_to_group("pens")
 	_build_walls()
+	_showtime_cd = randf_range(16.0, 26.0)
 
 
 func get_size_pixels() -> Vector2:
@@ -36,6 +43,12 @@ func wall_thickness() -> float:
 
 
 func animal_capacity() -> int:
+	if listed_capacity > 0:
+		return listed_capacity
+	if not catalog_id.is_empty():
+		var item: Dictionary = BuildCatalog.get_item(catalog_id)
+		if not item.is_empty() and item.has("capacity"):
+			return int(item.get("capacity", 2))
 	return 5 if footprint_cells.x >= 6 else 2
 
 
@@ -71,10 +84,11 @@ const MIN_ENJOYMENT: float = 0.78
 
 func enjoyment_factor() -> float:
 	var clash: float = trait_clash()
-	if clash <= COMPATIBLE_CLASH:
-		return 1.0
-	var t: float = clampf((clash - COMPATIBLE_CLASH) / (1.0 - COMPATIBLE_CLASH), 0.0, 1.0)
-	return lerpf(1.0, MIN_ENJOYMENT, t * t)
+	var base: float = 1.0
+	if clash > COMPATIBLE_CLASH:
+		var t: float = clampf((clash - COMPATIBLE_CLASH) / (1.0 - COMPATIBLE_CLASH), 0.0, 1.0)
+		base = lerpf(1.0, MIN_ENJOYMENT, t * t)
+	return clampf(base + enjoyment_bonus, MIN_ENJOYMENT, 1.2)
 
 
 ## Sparse pens are a tad less exciting (Planet Zoo appeal / social-group size).
@@ -183,6 +197,102 @@ func register_animal(animal: Node) -> void:
 
 func unregister_animal(animal: Node) -> void:
 	animals.erase(animal)
+
+
+func _process(delta: float) -> void:
+	if occupant_count() <= 0:
+		return
+	var street := get_tree().get_first_node_in_group("street") as Street
+	if street == null or not street.is_open:
+		return
+	_showtime_cd -= delta
+	if _showtime_cd <= 0.0:
+		_showtime_cd = randf_range(22.0, 32.0)
+		_do_showtime()
+
+
+func _do_showtime() -> void:
+	var herd := living_animals()
+	if herd.is_empty():
+		return
+	var animal: Animal = herd[0]
+	var arch: String = str(animal.get_stats().get("archetype", "Unspecialized"))
+	if arch == "Tanky" or arch == "Unspecialized":
+		return
+	var payout: int = 6
+	match arch:
+		"Nimble":
+			payout = 7
+		"Predator":
+			payout = 8
+			_scare_nearby_families()
+		"Novelty":
+			payout = 6
+		"Showpiece":
+			payout = 7
+	WalletService.add_cash(payout)
+	Events.showtime_performed.emit(self, arch, payout)
+	_flash_showtime(arch, payout)
+	_burst_showtime(arch)
+
+
+func _scare_nearby_families() -> void:
+	for node in get_tree().get_nodes_in_group("visitors"):
+		var guest := node as Visitor
+		if guest == null or not is_instance_valid(guest):
+			continue
+		if guest.position.distance_to(world_rect().get_center()) > 140.0:
+			continue
+		guest.on_roar()
+
+
+func _flash_showtime(arch: String, payout: int) -> void:
+	if _show_label == null:
+		_show_label = Label.new()
+		_show_label.z_index = 8
+		add_child(_show_label)
+	_show_label.position = Vector2(get_size_pixels().x * 0.5 - 70.0, 8.0)
+	_show_label.text = "%s  +$%d" % [arch, payout]
+	_show_label.add_theme_font_size_override("font_size", 16)
+	_show_label.add_theme_color_override("font_color", Color(0.98, 0.94, 0.72, 1))
+	_show_label.visible = true
+	var tween := create_tween()
+	tween.tween_interval(1.6)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(_show_label):
+			_show_label.visible = false
+	)
+
+
+func _burst_showtime(arch: String) -> void:
+	var mid: Vector2 = get_size_pixels() * 0.5
+	match arch:
+		"Predator":
+			ZooFx.burst(self, ZooFx.Kind.SHOCK, mid)
+		"Showpiece":
+			ZooFx.burst(self, ZooFx.Kind.GOLD, mid)
+		"Novelty":
+			ZooFx.burst(self, ZooFx.Kind.SPARK, mid, Color(0.72, 0.42, 0.86, 1))
+		"Nimble":
+			ZooFx.burst(self, ZooFx.Kind.SPARK, mid, Color(0.95, 0.95, 0.9, 1))
+		_:
+			ZooFx.burst(self, ZooFx.Kind.DUST, mid)
+
+
+func snapshot() -> Dictionary:
+	var occupants: Array = []
+	for animal in living_animals():
+		occupants.append(animal.snapshot())
+	return {
+		"id": catalog_id,
+		"x": origin_cell.x,
+		"y": origin_cell.y,
+		"sx": footprint_cells.x,
+		"sy": footprint_cells.y,
+		"capacity": animal_capacity(),
+		"bonus": enjoyment_bonus,
+		"animals": occupants,
+	}
 
 
 func _build_walls() -> void:

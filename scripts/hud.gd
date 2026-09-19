@@ -9,8 +9,10 @@ const TAG_BAR_MAX: int = 6
 const INK := Color(0.11, 0.09, 0.063, 1)
 const MUTED := Color(0.42, 0.36, 0.26, 1)
 const QuestBadges := preload("res://scripts/quest_badge_art.gd")
+const ZooFx := preload("res://scripts/fx.gd")
 
 @onready var _wallet_label: Label = %WalletLabel
+@onready var _wallet_drip: Label = %WalletDrip
 @onready var _hours_label: Label = %HoursLabel
 @onready var _hours_button: Button = %ZooHoursButton
 @onready var _hours_scrim: ColorRect = %HoursScrim
@@ -39,9 +41,11 @@ const QuestBadges := preload("res://scripts/quest_badge_art.gd")
 @onready var _looks_lead: VBoxContainer = %LooksLead
 @onready var _looks_list: VBoxContainer = %LooksList
 @onready var _stats_parts_label: Label = %StatsParts
+@onready var _stats_perks: Label = %StatsPerks
 @onready var _thumb_viewport: SubViewport = %ThumbViewport
 @onready var _thumb_camera: Camera2D = %ThumbCamera
 @onready var _edit_dna_btn: Button = %EditDNA
+@onready var _deselect_btn: Button = %Deselect
 @onready var _lab_scrim: ColorRect = %LabScrim
 @onready var _lab_panel: PanelContainer = %LabPanel
 @onready var _lab_card_host: Control = %LabCardHost
@@ -69,7 +73,13 @@ const QuestBadges := preload("res://scripts/quest_badge_art.gd")
 @onready var _cat_pens: Button = %CatPens
 @onready var _cat_animals: Button = %CatAnimals
 @onready var _cat_paths: Button = %CatPaths
+@onready var _cat_park: Button = %CatPark
 @onready var _dock: Control = %Dock
+@onready var _coach_panel: PanelContainer = %CoachPanel
+@onready var _coach_copy: Label = %CoachCopy
+@onready var _coach_hide_eye: TextureButton = %CoachHideEye
+@onready var _show_hint_btn: Button = %ShowQuestHint
+@onready var _pause_scrim: ColorRect = %PauseScrim
 
 var _selected_animal: Animal = null
 var _selected_pen: Pen = null
@@ -83,9 +93,14 @@ var _open_card_section: String = ""
 var _quest_badge_kind: String = ""
 var _quest_badge_tween: Tween
 var _hours_closing: bool = false
+var _quest_open: bool = false
+var _hint_hidden: bool = false
+var _paused: bool = false
+var _mutation_busy: bool = false
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_thumb_viewport.world_2d = get_tree().root.world_2d
@@ -113,11 +128,14 @@ func _ready() -> void:
 	Events.build_tool_changed.connect(_on_build_tool_changed)
 	Events.placement_succeeded.connect(_on_placement_succeeded)
 	Events.zoo_hours_changed.connect(_on_zoo_hours_changed)
+	Events.tutorial_changed.connect(_refresh_coach)
 	_on_money_changed(WalletService.money)
 	_on_vials_changed(GeneTree.stock)
 	_refresh_quest()
 	_refresh_lab_tray()
 	_refresh_hours()
+	_wire_hint_eyes()
+	_refresh_coach()
 	set_process(false)
 
 
@@ -174,12 +192,14 @@ func _show_hours_dialog(title: String, copy: String, confirm: String, closing: b
 	_hours_confirm.text = confirm
 	_hours_scrim.visible = true
 	_hours_panel.visible = true
+	_sync_quest_popup()
 
 
 func _on_dismiss_hours() -> void:
 	_hours_closing = false
 	_hours_scrim.visible = false
 	_hours_panel.visible = false
+	_sync_quest_popup()
 
 
 func _on_confirm_hours() -> void:
@@ -221,6 +241,10 @@ func _on_cat_paths() -> void:
 	_toggle_category(BuildCatalog.CAT_PATHS)
 
 
+func _on_cat_park() -> void:
+	_toggle_category(BuildCatalog.CAT_PARK)
+
+
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse := event as InputEventMouseButton
@@ -234,16 +258,8 @@ func _dismiss_open_menu() -> void:
 		_on_dismiss_hours()
 		_eat_world_click(hovered)
 		return
-	if _quest_panel.visible and not _is_on_panel(hovered, _quest_panel):
-		_on_close_quests()
-		_eat_world_click(hovered)
-		return
 	if _shop_panel.visible and not _is_on_panel(hovered, _shop_panel):
 		_on_close_shop()
-		_eat_world_click(hovered)
-		return
-	if _lab_panel.visible and not _is_on_panel(hovered, _lab_panel):
-		_on_close_lab()
 		_eat_world_click(hovered)
 		return
 	if _catalog_ribbon.visible and not _is_on_panel(hovered, _dock):
@@ -274,6 +290,8 @@ func _toggle_category(category: String) -> void:
 	_cat_pens.set_pressed_no_signal(category == BuildCatalog.CAT_PENS)
 	_cat_animals.set_pressed_no_signal(category == BuildCatalog.CAT_ANIMALS)
 	_cat_paths.set_pressed_no_signal(category == BuildCatalog.CAT_PATHS)
+	_cat_park.set_pressed_no_signal(category == BuildCatalog.CAT_PARK)
+	_sync_quest_popup()
 
 
 func _clear_catalog_tiles() -> void:
@@ -289,7 +307,9 @@ func _close_catalog() -> void:
 	_cat_pens.set_pressed_no_signal(false)
 	_cat_animals.set_pressed_no_signal(false)
 	_cat_paths.set_pressed_no_signal(false)
+	_cat_park.set_pressed_no_signal(false)
 	_clear_catalog_tiles()
+	_sync_quest_popup()
 
 
 func _rebuild_catalog() -> void:
@@ -369,6 +389,17 @@ func _refresh_catalog_selection() -> void:
 
 func _on_money_changed(amount: int) -> void:
 	_wallet_label.text = "$%d" % amount
+	if _wallet_drip != null:
+		var net: int = WalletService.last_payout - WalletService.last_upkeep
+		if WalletService.last_payout > 0 or WalletService.last_upkeep > 0:
+			if net >= 0:
+				_wallet_drip.text = "+$%d" % net
+				_wallet_drip.add_theme_color_override("font_color", FILL_GOOD)
+			else:
+				_wallet_drip.text = "−$%d" % (-net)
+				_wallet_drip.add_theme_color_override("font_color", FILL_BAD)
+		else:
+			_wallet_drip.text = ""
 	_refresh_shop()
 	_refresh_quest()
 	_refresh_catalog_tiles()
@@ -383,22 +414,27 @@ func _on_quest_changed() -> void:
 	_refresh_quest()
 	_refresh_shop()
 	_refresh_lab_tray()
+	_refresh_coach()
 
 
 func _refresh_shop() -> void:
 	var unlocked: Array[Dictionary] = GeneTree.unlocked_shop_vials()
 	_shop_stock.text = _bench_summary(unlocked)
-	for child in _shop_list.get_children():
+	_fill_shop_list(_shop_list, unlocked)
+
+
+func _fill_shop_list(host: Container, unlocked: Array[Dictionary]) -> void:
+	for child in host.get_children():
 		child.queue_free()
 	if unlocked.is_empty():
 		var empty := Label.new()
 		empty.theme_type_variation = "PaperMuted"
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		empty.text = "Unlock a serum on the gene tree first."
-		_shop_list.add_child(empty)
+		host.add_child(empty)
 		return
 	for vial in unlocked:
-		_shop_list.add_child(_make_shop_row(vial))
+		host.add_child(_make_shop_row(vial))
 
 
 func _bench_summary(unlocked: Array[Dictionary]) -> String:
@@ -440,8 +476,11 @@ func _refresh_lab_tray() -> void:
 		child.queue_free()
 	for vial in GeneTree.unlocked_shop_vials():
 		var chip := VialChip.new()
-		chip.setup(str(vial.get("id", "")))
+		var vial_id: String = str(vial.get("id", ""))
+		chip.setup(vial_id)
+		chip.pressed.connect(_on_vial_clicked.bind(vial_id))
 		_vial_row.add_child(chip)
+		_paint_vial_chip(chip, vial)
 
 
 func _refresh_quest() -> void:
@@ -454,6 +493,7 @@ func _refresh_quest() -> void:
 		_quest_reward.text = "Reward: —"
 		_claim_quest.disabled = true
 		_claim_quest.text = "All claimed"
+		_refresh_coach()
 		return
 	var quest: Dictionary = QuestBoard.current()
 	_quest_name.text = str(quest.get("title", "Quest"))
@@ -462,6 +502,7 @@ func _refresh_quest() -> void:
 	_quest_reward.text = "Reward: %s" % QuestBoard.reward_text(quest)
 	_claim_quest.disabled = not QuestBoard.ready_to_claim
 	_claim_quest.text = "Claim reward" if QuestBoard.ready_to_claim else "Not yet"
+	_refresh_coach()
 
 
 func _refresh_quest_badge() -> void:
@@ -563,6 +604,17 @@ func _refresh_inspect() -> void:
 	_refresh_audience(tags)
 	_refresh_looks(tags)
 	_stats_parts_label.text = ", ".join(stats.get("parts", []))
+	var perk_names: PackedStringArray = PackedStringArray()
+	for perk in stats.get("perks", []):
+		match str(perk):
+			GeneTree.PERK_LINGER:
+				perk_names.append("Linger")
+			GeneTree.PERK_POSTER:
+				perk_names.append("Poster child")
+			_:
+				perk_names.append(str(perk).capitalize())
+	if _stats_perks != null:
+		_stats_perks.text = "Grafts: %s" % (", ".join(perk_names) if not perk_names.is_empty() else "none")
 	_follow_thumbnail()
 
 
@@ -880,6 +932,10 @@ func _on_mutate_pressed() -> void:
 	_dna_strand.arm("")
 	_refresh_slot_toggles()
 	_refresh_lab_hint()
+	_refresh_lab_tray()
+	_refresh_shop()
+	TutorialService.on_lab_opened()
+	_sync_quest_popup()
 
 
 func _on_close_lab() -> void:
@@ -889,7 +945,7 @@ func _on_close_lab() -> void:
 	_dna_strand.arm("")
 	_refresh_slot_toggles()
 	_dock_card(false)
-	_on_close_shop()
+	_sync_quest_popup()
 
 
 func _dock_card(in_lab: bool) -> void:
@@ -899,6 +955,8 @@ func _dock_card(in_lab: bool) -> void:
 		host.add_child(_stats_panel)
 		_restore_owner(_stats_panel)
 	_edit_dna_btn.visible = not in_lab
+	if _deselect_btn != null:
+		_deselect_btn.visible = not in_lab
 
 
 func _restore_owner(node: Node) -> void:
@@ -916,11 +974,11 @@ func _refresh_lab_header() -> void:
 
 func _refresh_lab_hint() -> void:
 	if _active_lab_slot.is_empty():
-		_lab_hint.text = "Pick a body part, then drag a vial onto the empty base."
+		_lab_hint.text = "Pick a body part, then click a vial."
 		return
 	var current := _current_index_for_slot(_active_lab_slot)
 	var option: Dictionary = TraitLibrary.get_option(_active_lab_slot, current)
-	_lab_hint.text = "Editing %s — now %s. Drop a serum." % [
+	_lab_hint.text = "Editing %s — now %s. Click a serum." % [
 		TraitLibrary.slot_display_name(_active_lab_slot).to_lower(),
 		option.get("name", "?"),
 	]
@@ -949,6 +1007,7 @@ func _on_lab_slot_pressed(slot: String) -> void:
 	_dna_strand.arm(slot)
 	_refresh_slot_toggles()
 	_refresh_lab_hint()
+	_refresh_lab_tray()
 
 
 func _refresh_slot_toggles() -> void:
@@ -959,12 +1018,23 @@ func _refresh_slot_toggles() -> void:
 
 
 func _on_vial_dropped(vial_id: String) -> void:
+	_apply_vial(vial_id)
+
+
+func _on_vial_clicked(vial_id: String) -> void:
+	_apply_vial(vial_id)
+
+
+func _apply_vial(vial_id: String) -> void:
 	var vial: Dictionary = GeneTree.get_vial(vial_id)
 	if vial.is_empty():
 		return
 	var vial_name: String = str(vial.get("name", "serum"))
 	if _selected_animal == null:
 		_lab_hint.text = "Select an animal before using a vial."
+		return
+	if _mutation_busy:
+		_lab_hint.text = "Wait for the smoke to clear."
 		return
 	if not GeneTree.is_usable_vial(vial_id):
 		_lab_hint.text = "No %s left. Buy one from the vial shop." % vial_name
@@ -996,16 +1066,20 @@ func _on_vial_dropped(vial_id: String) -> void:
 			return
 	if not GeneTree.consume_vial(vial_id):
 		return
-	_apply_slot(_active_lab_slot, next_index)
-	Events.creature_mutated.emit(_selected_animal, _active_lab_slot)
-	_refresh_inspect()
-	_refresh_quest()
-	_dna_strand.arm(_active_lab_slot)
-	var option: Dictionary = TraitLibrary.get_option(_active_lab_slot, next_index)
-	_lab_hint.text = "%s is now %s." % [
-		TraitLibrary.slot_display_name(_active_lab_slot),
-		option.get("name", "?"),
-	]
+	var animal: Animal = _selected_animal
+	var slot: String = _active_lab_slot
+	var index: int = next_index
+	var animal_id: int = animal.get_instance_id()
+	_mutation_busy = true
+	_lab_hint.text = "The serum is taking."
+	_refresh_lab_tray()
+	ZooFx.conceal_change(animal.visuals, func() -> void:
+		var node := instance_from_id(animal_id)
+		if node is Animal:
+			_finish_serum(node as Animal, slot, index)
+		else:
+			_mutation_busy = false
+	)
 
 
 func _apply_perk_vial(vial_id: String, vial: Dictionary) -> void:
@@ -1019,8 +1093,48 @@ func _apply_perk_vial(vial_id: String, vial: Dictionary) -> void:
 		return
 	if not GeneTree.consume_vial(vial_id):
 		return
-	_selected_animal.add_perk(perk_id)
-	_lab_hint.text = "%s grafted onto %s." % [vial_name, _selected_animal.creature_name]
+	var animal: Animal = _selected_animal
+	var animal_id: int = animal.get_instance_id()
+	_mutation_busy = true
+	_lab_hint.text = "The graft is taking."
+	_refresh_lab_tray()
+	ZooFx.conceal_change(animal.visuals, func() -> void:
+		var node := instance_from_id(animal_id)
+		if node is Animal:
+			_finish_perk(node as Animal, perk_id, vial_name)
+		else:
+			_mutation_busy = false
+	)
+
+
+func _finish_serum(animal: Animal, slot: String, index: int) -> void:
+	_mutation_busy = false
+	if animal == null or not is_instance_valid(animal):
+		return
+	if slot == TraitLibrary.COLOR_SLOT:
+		animal.visuals.set_skin(index)
+	else:
+		animal.visuals.set_part_shape(slot, index)
+	Events.creature_mutated.emit(animal, slot)
+	_refresh_inspect()
+	_refresh_quest()
+	_dna_strand.arm(slot)
+	_refresh_lab_tray()
+	var option: Dictionary = TraitLibrary.get_option(slot, index)
+	_lab_hint.text = "%s is now %s." % [
+		TraitLibrary.slot_display_name(slot),
+		option.get("name", "?"),
+	]
+
+
+func _finish_perk(animal: Animal, perk_id: String, vial_name: String) -> void:
+	_mutation_busy = false
+	if animal == null or not is_instance_valid(animal):
+		return
+	animal.add_perk(perk_id)
+	_lab_hint.text = "%s grafted onto %s." % [vial_name, animal.creature_name]
+	_refresh_inspect()
+	_refresh_lab_tray()
 
 
 func _apply_slot(slot: String, index: int) -> void:
@@ -1039,31 +1153,52 @@ func _current_index_for_slot(slot: String) -> int:
 
 
 func _on_open_quests() -> void:
-	_quest_scrim.visible = true
-	_quest_panel.visible = true
+	if _quest_open and _quest_panel.visible:
+		_on_hide_quests()
+		return
+	_close_catalog()
+	_quest_open = true
 	_refresh_quest()
+	_sync_quest_popup()
+
+
+func _on_hide_quests() -> void:
+	_quest_open = false
+	_sync_quest_popup()
 
 
 func _on_close_quests() -> void:
-	_quest_scrim.visible = false
-	_quest_panel.visible = false
+	_on_hide_quests()
+
+
+func _on_hide_hint() -> void:
+	_hint_hidden = true
+	_refresh_coach()
+
+
+func _on_show_hint() -> void:
+	_hint_hidden = false
+	_refresh_coach()
 
 
 func _on_claim_quest() -> void:
 	QuestBoard.claim()
 	_refresh_quest()
+	SaveService.save_from_tree()
 
 
 func _on_open_shop() -> void:
 	_shop_scrim.visible = true
 	_shop_panel.visible = true
 	_refresh_shop()
+	_sync_quest_popup()
 
 
 func _on_close_shop() -> void:
 	_shop_scrim.visible = false
 	_shop_panel.visible = false
 	_shop_hint.text = ""
+	_sync_quest_popup()
 
 
 func _on_buy_vial(vial_id: String) -> void:
@@ -1077,3 +1212,143 @@ func _on_buy_vial(vial_id: String) -> void:
 	else:
 		_shop_hint.text = "Need $%d for %s." % [cost, vial_name]
 	_refresh_shop()
+	_refresh_lab_tray()
+
+
+func _paint_vial_chip(chip: VialChip, vial: Dictionary) -> void:
+	chip.modulate = Color.WHITE
+	var kind: String = str(vial.get("kind", ""))
+	if kind == GeneTree.VIAL_KIND_PERK:
+		chip.tooltip_text = "Click to graft %s." % vial.get("name", "perk")
+		return
+	var current := _current_index_for_slot(_active_lab_slot)
+	if not TraitLibrary.vial_can_apply(vial, _active_lab_slot, current):
+		chip.disabled = true
+		chip.modulate = Color(1, 1, 1, 0.4)
+		var tag: String = str(vial.get("tag", "that"))
+		chip.tooltip_text = "This part has no %s form yet." % tag.to_lower()
+	else:
+		chip.tooltip_text = "Click to apply %s." % vial.get("name", "serum")
+
+
+func _on_thumb_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse := event as InputEventMouseButton
+	if not mouse.pressed or mouse.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if not _lab_panel.visible or _selected_animal == null:
+		return
+	var wrap: Control = %ThumbContainer
+	var size: Vector2 = wrap.size
+	if size.y <= 0.0:
+		return
+	var local: Vector2 = wrap.get_local_mouse_position()
+	var t: float = local.y / size.y
+	if t < 0.32:
+		_on_lab_slot_pressed("head")
+	elif t < 0.55:
+		_on_lab_slot_pressed(TraitLibrary.COLOR_SLOT)
+	elif t < 0.78:
+		_on_lab_slot_pressed("front_legs" if local.x > size.x * 0.5 else "back_legs")
+	else:
+		_on_lab_slot_pressed("tail")
+
+
+func _wire_hint_eyes() -> void:
+	var eye: Texture2D = QuestBadges.eye()
+	if _coach_hide_eye != null:
+		_coach_hide_eye.texture_normal = eye
+		_coach_hide_eye.tooltip_text = "Hide quest hint"
+	if _show_hint_btn != null:
+		_show_hint_btn.icon = eye
+		_show_hint_btn.expand_icon = true
+		_show_hint_btn.add_theme_constant_override("icon_max_width", 22)
+		_show_hint_btn.tooltip_text = "Show quest hint"
+
+
+func _quest_hint_copy() -> String:
+	if TutorialService.is_active():
+		return TutorialService.copy()
+	if QuestBoard.is_finished():
+		return ""
+	return str(QuestBoard.current().get("brief", ""))
+
+
+func _refresh_coach() -> void:
+	if _coach_panel == null:
+		return
+	var line := _quest_hint_copy()
+	if _coach_copy != null:
+		_coach_copy.text = line
+	var blocked: bool = _menu_blocks_popups()
+	_coach_panel.visible = not line.is_empty() and not _hint_hidden and not blocked
+	if _show_hint_btn != null:
+		_show_hint_btn.visible = not line.is_empty() and _hint_hidden
+
+
+func _menu_blocks_popups() -> bool:
+	return _lab_panel.visible or _shop_panel.visible or _hours_panel.visible \
+		or _paused or _catalog_ribbon.visible
+
+
+func _sync_quest_popup() -> void:
+	var show: bool = _quest_open and not _menu_blocks_popups()
+	_quest_panel.visible = show
+	_quest_scrim.visible = false
+	_refresh_coach()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		handle_escape()
+		get_viewport().set_input_as_handled()
+
+
+func handle_escape() -> void:
+	if _paused:
+		_on_resume()
+		return
+	if _build_mode != null and not _build_mode.current_item_id.is_empty():
+		_build_mode.clear_tool()
+		return
+	if _hours_panel.visible:
+		_on_dismiss_hours()
+		return
+	if _quest_panel.visible:
+		_on_close_quests()
+		return
+	if _shop_panel.visible:
+		_on_close_shop()
+		return
+	if _lab_panel.visible:
+		_on_close_lab()
+		return
+	_set_paused(true)
+
+
+func _set_paused(want: bool) -> void:
+	_paused = want
+	get_tree().paused = want
+	if _pause_scrim != null:
+		_pause_scrim.visible = want
+	Events.game_paused.emit(want)
+	_sync_quest_popup()
+
+
+func _on_resume() -> void:
+	_set_paused(false)
+
+
+func _on_pause_save() -> void:
+	SaveService.save_from_tree()
+
+
+func _on_pause_title() -> void:
+	_set_paused(false)
+	SaveService.return_to_title()
+
+
+func _on_pause_quit() -> void:
+	SaveService.save_from_tree()
+	get_tree().quit()
