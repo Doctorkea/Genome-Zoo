@@ -1,8 +1,9 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Theme" path="res://art/ui/zoo_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="2_script"]
 [ext_resource type="Script" path="res://scripts/dna_strand.gd" id="3_strand"]
+[ext_resource type="PackedScene" path="res://scenes/ui/SavePicker.tscn" id="4_picker"]
 
 [sub_resource type="StyleBoxFlat" id="paper_panel"]
 content_margin_left = 14.0
@@ -38,6 +39,8 @@ corner_radius_top_left = 2
 corner_radius_top_right = 2
 corner_radius_bottom_right = 2
 corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxEmpty" id="name_flat"]
 
 [node name="HUD" type="Control"]
 process_mode = 3
@@ -85,11 +88,35 @@ layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_right = 8
 
-[node name="PlaqueLabel" type="Label" parent="Safe/Column/TopRow/Plaque/PlaquePad"]
+[node name="ZooName" type="Label" parent="Safe/Column/TopRow/Plaque/PlaquePad"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 32)
 layout_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 1
 theme_override_font_sizes/font_size = 22
 text = "Evolution Zoo"
 vertical_alignment = 1
+tooltip_text = "Click to name your zoo"
+
+[node name="ZooNameEdit" type="LineEdit" parent="Safe/Column/TopRow/Plaque/PlaquePad"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(240, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937, 0.894, 0.769, 1)
+theme_override_colors/font_placeholder_color = Color(0.937, 0.894, 0.769, 0.55)
+theme_override_colors/caret_color = Color(0.937, 0.894, 0.769, 1)
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("name_flat")
+theme_override_styles/focus = SubResource("name_flat")
+theme_override_styles/read_only = SubResource("name_flat")
+placeholder_text = "Name your zoo"
+max_length = 20
+caret_blink = true
+select_all_on_focus = true
+context_menu_enabled = false
+tooltip_text = "Click to name your zoo"
 
 [node name="HoursChip" type="PanelContainer" parent="Safe/Column/TopRow"]
 unique_name_in_owner = true
@@ -692,13 +719,6 @@ layout_mode = 2
 toggle_mode = true
 text = "Paths"
 
-[node name="CatPark" type="Button" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(108, 42)
-layout_mode = 2
-toggle_mode = true
-text = "Park"
-
 [node name="DockSpacer" type="Control" parent="Safe/Column/Dock/CategoryBar/CategoryRow"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -722,7 +742,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.05, 0.04, 0.02, 0.55)
 
-[node name="LabCenter" type="CenterContainer" parent="."]
+[node name="LabCenter" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -730,12 +750,18 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
 
 [node name="LabPanel" type="PanelContainer" parent="LabCenter"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(920, 580)
+clip_contents = true
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_type_variation = &"ExhibitCard"
 theme_override_styles/panel = SubResource("paper_panel")
 
@@ -753,12 +779,43 @@ theme_type_variation = &"PaperLabel"
 theme_override_font_sizes/font_size = 26
 text = "DNA Lab"
 
+[node name="LabName" type="Label" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 1
+theme_type_variation = &"PaperLabel"
+theme_override_font_sizes/font_size = 22
+text = "Unnamed"
+tooltip_text = "Click to name this animal"
+
+[node name="LabNameEdit" type="LineEdit" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(160, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.11, 0.09, 0.063, 1)
+theme_override_colors/caret_color = Color(0.11, 0.09, 0.063, 1)
+theme_override_font_sizes/font_size = 22
+placeholder_text = "Name this animal"
+max_length = 20
+caret_blink = true
+select_all_on_focus = true
+context_menu_enabled = false
+
 [node name="LabSubject" type="Label" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PaperMuted"
 text = ""
+
+[node name="CloneAnimal" type="Button" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clone animal"
+tooltip_text = "Add a copy to Animals."
 
 [node name="CloseLab" type="Button" parent="LabCenter/LabPanel/LabVBox/LabHeader"]
 layout_mode = 2
@@ -774,32 +831,28 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="PartCaption" type="Label" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
+[node name="StrandWrap" type="Control" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
 layout_mode = 2
-theme_type_variation = &"PaperMuted"
-text = "Current parts"
-
-[node name="LabSlots" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/h_separation = 6
-theme_override_constants/v_separation = 6
-
-[node name="StrandWrap" type="CenterContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
-layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
+mouse_filter = 2
 
 [node name="DnaStrand" type="Control" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft/StrandWrap"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 340)
-layout_mode = 2
+custom_minimum_size = Vector2(420, 200)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("3_strand")
 
 [node name="LabHint" type="Label" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
-text = "Each part has one look. The majority look sets the overall type."
+text = "Hover a pair to inspect it. Drag a serum onto the limb you want to change."
 autowrap_mode = 3
 
 [node name="VialRow" type="HFlowContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
@@ -808,16 +861,10 @@ layout_mode = 2
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 6
 
-[node name="VialHint" type="Label" parent="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"PaperMuted"
-text = "Click a serum to splice it into the selected part. One base always stays open."
-autowrap_mode = 3
-
 [node name="LabCardHost" type="VBoxContainer" parent="LabCenter/LabPanel/LabVBox/LabSplit"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(272, 0)
+clip_contents = true
+custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -870,7 +917,7 @@ text = "Close"
 [node name="ShopCopy" type="Label" parent="ShopCenter/ShopPanel/ShopVBox"]
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
-text = "Unlocked serums only. Buy a charge, then click it in the DNA Lab."
+text = "Unlocked serums only. Buy a charge, then drag it onto a DNA pair in the lab."
 autowrap_mode = 3
 
 [node name="ShopStock" type="Label" parent="ShopCenter/ShopPanel/ShopVBox"]
@@ -1070,6 +1117,7 @@ grow_vertical = 2
 color = Color(0.05, 0.04, 0.02, 0.55)
 
 [node name="PauseCenter" type="CenterContainer" parent="PauseScrim"]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -1079,7 +1127,7 @@ grow_vertical = 2
 
 [node name="PausePanel" type="PanelContainer" parent="PauseScrim/PauseCenter"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(360, 280)
+custom_minimum_size = Vector2(360, 320)
 layout_mode = 2
 theme_override_styles/panel = SubResource("paper_panel")
 
@@ -1102,17 +1150,33 @@ text = "Resume"
 [node name="SaveButton" type="Button" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Save zoo"
+text = "Save Zoo"
+
+[node name="LoadSaveButton" type="Button" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Load Save"
 
 [node name="TitleButton" type="Button" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Title"
+text = "Exit To Menu"
 
-[node name="QuitButton" type="Button" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
+[node name="PauseNote" type="Label" parent="PauseScrim/PauseCenter/PausePanel/PauseVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Quit"
+theme_type_variation = &"PaperMuted"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="SavePicker" parent="." instance=ExtResource("4_picker")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [connection signal="pressed" from="Safe/Column/TopRow/ZooHoursButton" to="." method="_on_toggle_zoo_hours"]
 [connection signal="pressed" from="Safe/Column/TopRow/QuestButton" to="." method="_on_open_quests"]
@@ -1130,10 +1194,10 @@ text = "Quit"
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPens" to="." method="_on_cat_pens"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatAnimals" to="." method="_on_cat_animals"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPaths" to="." method="_on_cat_paths"]
-[connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CatPark" to="." method="_on_cat_park"]
 [connection signal="pressed" from="Safe/Column/Dock/CategoryBar/CategoryRow/CancelBuild" to="." method="_on_cancel_build"]
 [connection signal="gui_input" from="Safe/Column/Body/StatsPanel/CardScroll/StatsVBox/ThumbContainer" to="." method="_on_thumb_gui_input"]
 [connection signal="vial_dropped" from="LabCenter/LabPanel/LabVBox/LabSplit/LabLeft/StrandWrap/DnaStrand" to="." method="_on_vial_dropped"]
+[connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/CloneAnimal" to="." method="_on_clone_animal"]
 [connection signal="pressed" from="LabCenter/LabPanel/LabVBox/LabHeader/CloseLab" to="." method="_on_close_lab"]
 [connection signal="pressed" from="ShopCenter/ShopPanel/ShopVBox/ShopHeader/CloseShop" to="." method="_on_close_shop"]
 [connection signal="pressed" from="QuestCenter/QuestPanel/QuestVBox/QuestHeader/CloseQuests" to="." method="_on_close_quests"]
@@ -1142,5 +1206,5 @@ text = "Quit"
 [connection signal="pressed" from="HoursCenter/HoursPanel/HoursVBox/HoursConfirm" to="." method="_on_confirm_hours"]
 [connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/ResumeButton" to="." method="_on_resume"]
 [connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/SaveButton" to="." method="_on_pause_save"]
+[connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/LoadSaveButton" to="." method="_on_pause_load"]
 [connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/TitleButton" to="." method="_on_pause_title"]
-[connection signal="pressed" from="PauseScrim/PauseCenter/PausePanel/PauseVBox/QuitButton" to="." method="_on_pause_quit"]

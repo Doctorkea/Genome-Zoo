@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c8hohd0brddun"
-path="res://.godot/imported/head_jimothy.png-c21892a8b52339b42c6e9f28b43e94a2.ctex"
+uid="uid://cjy5ccf737trv"
+path="res://.godot/imported/helix_preview.png-a4bdfe4a8e0ae84a2039062c8e6747d4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/creatures/parts/head_jimothy.png"
-dest_files=["res://.godot/imported/head_jimothy.png-c21892a8b52339b42c6e9f28b43e94a2.ctex"]
+source_file="res://_tmp_art/helix_preview.png"
+dest_files=["res://.godot/imported/helix_preview.png-a4bdfe4a8e0ae84a2039062c8e6747d4.ctex"]
 
 [params]
 

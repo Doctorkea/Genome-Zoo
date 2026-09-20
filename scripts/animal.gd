@@ -18,6 +18,7 @@ const ZooFx := preload("res://scripts/fx.gd")
 
 @onready var visuals: CreatureVisuals = $Creature
 @onready var _wander_timer: Timer = $WanderTimer
+@onready var _shadow: Sprite2D = $Shadow
 
 var _pen: Pen = null
 var _target: Vector2 = Vector2.ZERO
@@ -33,6 +34,8 @@ var _walk_rate: float = 8.0
 var _idle_rate: float = 2.1
 var _bob_height: float = 4.5
 var _prev_hop: float = 1.0
+var _shadow_base: Vector2 = Vector2(1.7, 1.12)
+var _busy: String = ""
 
 
 func _ready() -> void:
@@ -52,6 +55,7 @@ func _ready() -> void:
 	_bob_height = randf_range(3.4, 5.6)
 	_target = position
 	_start_pause()
+	_layout_shadow()
 
 
 func set_pen(pen: Pen) -> void:
@@ -62,6 +66,49 @@ func set_pen(pen: Pen) -> void:
 
 func get_pen() -> Pen:
 	return _pen
+
+
+func set_creature_name(value: String) -> void:
+	var cleaned: String = SaveService.clean_name(value, "Unnamed")
+	if creature_name == cleaned:
+		Events.creature_renamed.emit(self)
+		return
+	creature_name = cleaned
+	Events.creature_renamed.emit(self)
+
+
+func steer_to(point: Vector2) -> void:
+	_busy = "mate"
+	_pausing = false
+	_move_time = 0.0
+	if _wander_timer != null:
+		_wander_timer.stop()
+	_target = _clamped_to_wander(point)
+
+
+func clear_busy() -> void:
+	_busy = ""
+	_start_pause()
+
+
+func has_arrived() -> bool:
+	return position.distance_to(_target) < ARRIVE_DISTANCE + 10.0
+
+
+func _layout_shadow() -> void:
+	if _shadow == null:
+		_shadow = get_node_or_null("Shadow") as Sprite2D
+	if _shadow == null:
+		return
+	_shadow.texture = ZooFx.ground_shadow_tex()
+	_shadow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_shadow.centered = true
+	_shadow.position = Vector2(0.0, 36.0)
+	_shadow.z_index = 0
+	_shadow_base = Vector2(1.7, 1.12)
+	_shadow.scale = _shadow_base
+	_shadow.modulate = Color(1, 1, 1, 1)
+	_shadow.visible = true
 
 
 func has_perk(perk_id: String) -> bool:
@@ -93,10 +140,10 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity = Vector2.ZERO
 		_move_time = 0.0
-		if not _pausing and to_target.length() < ARRIVE_DISTANCE:
+		if not _pausing and _busy.is_empty() and to_target.length() < ARRIVE_DISTANCE:
 			_start_pause()
 	move_and_slide()
-	if moving and get_slide_collision_count() > 0:
+	if moving and _busy.is_empty() and get_slide_collision_count() > 0:
 		velocity = Vector2.ZERO
 		_target = position
 		_start_pause()
@@ -127,32 +174,51 @@ func _animate(delta: float, moving: bool) -> void:
 		if hop < 0.14 and _prev_hop >= 0.14:
 			ZooFx.burst(self, ZooFx.Kind.DUST, Vector2(0.0, 22.0))
 		_prev_hop = hop
+		if _shadow != null:
+			_shadow.scale = Vector2(_shadow_base.x * (1.0 + hop * 0.08), _shadow_base.y * (1.0 - hop * 0.18))
+			_shadow.modulate = Color(1, 1, 1, 1.0 - hop * 0.22)
 	else:
 		_idle_phase += delta * _idle_rate
 		visuals.position.y = sin(_idle_phase) * 1.4
 		visuals.rotation = sin(_idle_phase * 0.65) * 0.035
 		visuals.scale = Vector2(_facing * (1.0 + sin(_idle_phase) * 0.02), 1.0 + sin(_idle_phase) * 0.03)
+		if _shadow != null:
+			_shadow.scale = _shadow.scale.lerp(_shadow_base, clampf(delta * 8.0, 0.0, 1.0))
+			_shadow.modulate = _shadow.modulate.lerp(Color(1, 1, 1, 1), clampf(delta * 8.0, 0.0, 1.0))
 
 
 func _start_pause() -> void:
+	if _busy == "mate":
+		return
 	_pausing = true
-	_wander_timer.wait_time = randf_range(MIN_PAUSE, MAX_PAUSE)
+	var area := _wander_rect()
+	var span: float = minf(area.size.x, area.size.y)
+	if span < 80.0:
+		_wander_timer.wait_time = randf_range(1.6, 4.2)
+	else:
+		_wander_timer.wait_time = randf_range(MIN_PAUSE, MAX_PAUSE)
 	_wander_timer.start()
 
 
 func _pick_new_target() -> void:
+	if _busy == "mate":
+		return
 	_pausing = false
 	_move_time = 0.0
 	var area := _wander_rect()
 	var picked := area.get_center()
-	for _i in range(10):
+	var min_dist: float = minf(48.0, maxf(10.0, minf(area.size.x, area.size.y) * 0.42))
+	for _i in range(14):
 		var candidate := Vector2(
 			randf_range(area.position.x, area.end.x),
 			randf_range(area.position.y, area.end.y)
 		)
-		if candidate.distance_to(position) >= 48.0:
+		if candidate.distance_to(position) >= min_dist:
 			picked = candidate
 			break
+	if picked.distance_to(position) < min_dist and area.size.x > 8.0:
+		picked.x = area.position.x if position.x > area.get_center().x else area.end.x
+		picked.y = clampf(position.y + randf_range(-area.size.y * 0.35, area.size.y * 0.35), area.position.y, area.end.y)
 	_target = _clamped_to_wander(picked)
 
 
@@ -202,13 +268,17 @@ func get_stats() -> Dictionary:
 
 func snapshot() -> Dictionary:
 	var parts: Dictionary = {}
+	var hidden: Array = []
 	if visuals != null:
 		for slot in visuals.get_slots():
 			parts[slot] = visuals.get_current_index(slot)
+			if not visuals.is_slot_visible(slot):
+				hidden.append(slot)
 	return {
 		"catalog_id": catalog_id,
 		"name": creature_name,
 		"parts": parts,
+		"hidden": hidden,
 		"color": visuals.get_current_palette_index() if visuals != null else 0,
 		"perks": Array(perks),
 		"x": position.x,

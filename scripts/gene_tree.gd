@@ -9,9 +9,10 @@ const VIAL_KIND_PERK := "perk"
 
 const PERK_LINGER := "linger"
 const PERK_POSTER := "poster_child"
-const PERK_OPEN_LONGER := "open_longer"
 const PERK_TICKET_BOOTH := "ticket_booth"
 const PERK_CROWD_PULL := "crowd_pull"
+const PERK_MORE_PARKING := "more_parking"
+const PERK_MORE_ADS := "more_ads"
 
 const VIALS: Array[Dictionary] = [
 	{
@@ -92,6 +93,7 @@ const VIALS: Array[Dictionary] = [
 		"kind": VIAL_KIND_PERK,
 		"shop_cost": 60,
 		"perk_id": PERK_LINGER,
+		"hint": "Guests stay longer at this exhibit and lose interest more slowly.",
 	},
 	{
 		"id": "poster",
@@ -99,6 +101,7 @@ const VIALS: Array[Dictionary] = [
 		"kind": VIAL_KIND_PERK,
 		"shop_cost": 70,
 		"perk_id": PERK_POSTER,
+		"hint": "Guests who see this animal pay 25% more on their ticket.",
 	},
 ]
 
@@ -208,11 +211,19 @@ func poster_multiplier() -> float:
 
 
 func visitor_cap() -> int:
-	return 22 if has_zoo_perk(PERK_OPEN_LONGER) else 16
+	var cap: int = 16
+	if has_zoo_perk(PERK_MORE_PARKING):
+		cap += 8
+	return cap
 
 
 func spawn_time_scale() -> float:
-	return 0.7 if has_zoo_perk(PERK_CROWD_PULL) else 1.0
+	var scale: float = 1.0
+	if has_zoo_perk(PERK_CROWD_PULL):
+		scale *= 0.7
+	if has_zoo_perk(PERK_MORE_ADS):
+		scale *= 0.62
+	return scale
 
 
 func snapshot() -> Dictionary:

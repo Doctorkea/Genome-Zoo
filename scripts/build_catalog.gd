@@ -7,7 +7,6 @@ class_name BuildCatalog
 const CAT_PENS: String = "pens"
 const CAT_ANIMALS: String = "animals"
 const CAT_PATHS: String = "paths"
-const CAT_PARK: String = "park"
 
 const ITEMS: Array[Dictionary] = [
 	{
@@ -54,38 +53,39 @@ const ITEMS: Array[Dictionary] = [
 		"unlock_quest": "stay",
 	},
 	{
-		"id": "jimothy",
+		"id": "horse",
 		"category": CAT_ANIMALS,
 		"kind": "animal",
-		"name": "Jimothy",
-		"blurb": "Soft, bulky starter stock",
-		"cost": 40,
-		"parts": {"body": 0, "head": 0, "front_legs": 0, "back_legs": 0, "tail": 0},
-		"color": 0,
-		"hide": [],
-	},
-	{
-		"id": "chimory",
-		"category": CAT_ANIMALS,
-		"kind": "animal",
-		"name": "Chimory",
-		"blurb": "Gorilla, frog, sheep, stinger",
-		"cost": 80,
-		"parts": {"body": 0, "head": 1, "front_legs": 5, "back_legs": 0, "tail": 6},
-		"color": 0,
-		"hide": [],
-		"unlock_quest": "fright",
-	},
-	{
-		"id": "jimmothy",
-		"category": CAT_ANIMALS,
-		"kind": "animal",
-		"name": "Jimmothy",
-		"blurb": "Horse face, curly tail",
+		"name": "Horse",
+		"blurb": "Horse legs and head, no tail",
 		"cost": 25,
-		"parts": {"body": 0, "head": 3, "front_legs": 1, "back_legs": 1, "tail": 7},
+		"parts": {"body": "jimmothy", "head": "jimmothy", "front_legs": "horse", "back_legs": "horse"},
+		"color": 0,
+		"hide": ["tail"],
+	},
+	{
+		"id": "loin",
+		"category": CAT_ANIMALS,
+		"kind": "animal",
+		"name": "Loin",
+		"blurb": "All lion parts",
+		"cost": 50,
+		"parts": {"body": "jimmothy", "head": "lion", "front_legs": "lion", "back_legs": "lion", "tail": "lion"},
 		"color": 0,
 		"hide": [],
+		"unlock_quest": "stock",
+	},
+	{
+		"id": "gorllia",
+		"category": CAT_ANIMALS,
+		"kind": "animal",
+		"name": "Gorllia",
+		"blurb": "Gorilla with a sheep tail",
+		"cost": 70,
+		"parts": {"body": "jimmothy", "head": "gorilla", "front_legs": "turtle", "back_legs": "gorilla", "tail": "sheep"},
+		"color": 0,
+		"hide": [],
+		"unlock_quest": "gates",
 	},
 	{
 		"id": "path_stone",
@@ -96,39 +96,12 @@ const ITEMS: Array[Dictionary] = [
 		"cost": 1,
 	},
 	{
-		"id": "park_bench",
-		"category": CAT_PARK,
-		"kind": "park",
-		"name": "Bench",
-		"blurb": "Guests sit and linger",
-		"cost": 15,
-	},
-	{
-		"id": "park_snack",
-		"category": CAT_PARK,
-		"kind": "park",
-		"name": "Snack cart",
-		"blurb": "A dollar extra per nibble",
-		"cost": 25,
-		"unlock_quest": "till",
-	},
-	{
-		"id": "park_lamp",
-		"category": CAT_PARK,
-		"kind": "park",
-		"name": "Lamp",
-		"blurb": "Guests prefer the lit grass",
-		"cost": 12,
-		"unlock_quest": "expand",
-	},
-	{
-		"id": "park_poster",
-		"category": CAT_PARK,
-		"kind": "park",
-		"name": "Poster stand",
-		"blurb": "Hypes the nearest pen",
-		"cost": 20,
-		"unlock_quest": "fame",
+		"id": "path_delete",
+		"category": CAT_PATHS,
+		"kind": "delete_path",
+		"name": "Delete path",
+		"blurb": "Clear a walkway",
+		"cost": 0,
 	},
 ]
 
@@ -138,6 +111,10 @@ static func items_for(category: String) -> Array[Dictionary]:
 	for item in ITEMS:
 		if str(item.get("category", "")) == category:
 			found.append(item)
+	if category == CAT_ANIMALS:
+		for clone in SaveService.clones:
+			if clone is Dictionary:
+				found.append(clone)
 	return found
 
 
@@ -145,6 +122,9 @@ static func get_item(item_id: String) -> Dictionary:
 	for item in ITEMS:
 		if str(item.get("id", "")) == item_id:
 			return item
+	for clone in SaveService.clones:
+		if clone is Dictionary and str(clone.get("id", "")) == item_id:
+			return clone
 	return {}
 
 

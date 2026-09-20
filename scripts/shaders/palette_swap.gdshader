@@ -1,17 +1,18 @@
-// Coat fill + ink lines.
+// Coat wash + ink lines.
 //
-// Midtones get a realistic animal pattern as darker pigment in the same
-// palette. Markings use the part texture UVs so hop, squash, and facing
-// keep the coat planted on the drawing. The darkest texels (outlines)
-// are composited on top so the linework stays readable.
+// The drawing stays in charge: original luminance is the form, coat color
+// is a light wash, and pattern is a ghost overlay. Only the sprite's own
+// dark strokes become ink — no offset copies or outline bags.
 
 shader_type canvas_item;
 
 uniform sampler2D palette : filter_nearest;
+uniform sampler2D pattern_map : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform vec4 mark_color : source_color = vec4(0.18, 0.10, 0.06, 1.0);
-uniform int pattern : hint_range(0, 8) = 0;
+uniform int pattern : hint_range(0, 10) = 0;
 uniform float pattern_amount : hint_range(0.0, 1.0) = 0.35;
 uniform float pattern_scale : hint_range(0.5, 24.0) = 4.0;
+uniform float coat_opacity : hint_range(0.0, 1.0) = 0.52;
 
 float hash21(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -102,6 +103,16 @@ float tabby(vec2 uv) {
 	return smoothstep(0.15, 0.7, streak) * (0.45 + fbm(w * 3.0) * 0.55);
 }
 
+float texture_mark(vec2 uv, bool bright) {
+	vec3 rgb = texture(pattern_map, uv * pattern_scale).rgb;
+	float lum = dot(rgb, vec3(0.299, 0.587, 0.114));
+	if (bright) {
+		return smoothstep(0.16, 0.78, lum);
+	}
+	return smoothstep(0.22, 0.58, 1.0 - lum);
+}
+
+
 float coat_mark(vec2 uv) {
 	if (pattern == 1) {
 		return leopard(uv);
@@ -127,19 +138,32 @@ float coat_mark(vec2 uv) {
 	if (pattern == 8) {
 		return tabby(uv);
 	}
+	if (pattern == 9) {
+		return texture_mark(uv, false);
+	}
+	if (pattern == 10) {
+		return texture_mark(uv, true);
+	}
 	return fbm(uv * pattern_scale * 5.0) * 0.22;
 }
 
 void fragment() {
 	vec4 source = texture(TEXTURE, UV);
 	float lum = dot(source.rgb, vec3(0.299, 0.587, 0.114));
-	float ink = (1.0 - smoothstep(0.06, 0.28, lum)) * source.a;
+	float ink = (1.0 - smoothstep(0.05, 0.2, lum)) * source.a;
 	float mark = coat_mark(UV) * (1.0 - ink);
-	float fill_base = clamp(mix(lum, 0.72, 0.2), 0.16, 0.94);
-	float look = mix(fill_base, 0.08, mark * pattern_amount);
-	vec4 mapped = texture(palette, vec2(look, 0.5));
-	vec3 coat = mix(mapped.rgb, mark_color.rgb, mark * pattern_amount * 0.4);
-	vec3 line_col = vec3(0.07, 0.05, 0.04);
+	float pattern_vis = mark * pattern_amount * 0.4;
+	float look = clamp(mix(lum, pattern == 10 ? 0.94 : 0.18, pattern_vis), 0.08, 0.92);
+	vec3 mapped = texture(palette, vec2(look, 0.5)).rgb;
+	vec3 drawing = vec3(lum);
+	vec3 coat = mix(drawing, mapped, coat_opacity);
+	coat = mix(coat, mark_color.rgb, pattern_vis * (pattern == 10 ? 0.7 : 0.45));
+	if (pattern == 10) {
+		vec3 spark = texture(pattern_map, UV * pattern_scale).rgb;
+		coat = mix(coat, max(coat, spark), pattern_amount * 0.45);
+	}
+	coat *= mix(0.88, 1.06, lum);
+	vec3 line_col = vec3(0.05, 0.04, 0.03);
 	vec3 rgb = mix(coat, line_col, ink);
 	COLOR = vec4(rgb, source.a);
 }

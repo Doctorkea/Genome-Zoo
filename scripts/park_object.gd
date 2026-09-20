@@ -4,6 +4,7 @@ class_name ParkObject
 ## One-cell park furniture. Guests can walk the cell; pens cannot.
 
 const ZooFx := preload("res://scripts/fx.gd")
+const TEX_BENCH: Texture2D = preload("res://art/park/bench.png")
 
 var catalog_id: String = "park_bench"
 var origin_cell: Vector2i = Vector2i.ZERO
@@ -16,9 +17,7 @@ func _ready() -> void:
 	z_index = 1
 	if _sprite.get_parent() == null:
 		add_child(_sprite)
-	_sprite.centered = true
-	_sprite.position = Vector2(GridService.CELL_SIZE, GridService.CELL_SIZE) * 0.5
-	_sprite.texture = _make_texture()
+	_apply_look()
 
 
 func setup(item_id: String, cell: Vector2i) -> void:
@@ -26,17 +25,36 @@ func setup(item_id: String, cell: Vector2i) -> void:
 	origin_cell = cell
 	position = GridService.cell_to_world(cell)
 	if is_inside_tree():
-		_sprite.texture = _make_texture()
+		_apply_look()
 		_attach_fx()
 
 
+func _apply_look() -> void:
+	_sprite.centered = true
+	_sprite.position = Vector2(GridService.CELL_SIZE, GridService.CELL_SIZE) * 0.5
+	_sprite.texture = _make_texture()
+	_fit_art()
+
+
+func _fit_art() -> void:
+	if catalog_id != "park_bench" or _sprite.texture == null:
+		_sprite.scale = Vector2.ONE
+		return
+	var tex_w: int = _sprite.texture.get_width()
+	if tex_w <= 0:
+		_sprite.scale = Vector2.ONE
+		return
+	var s: float = float(GridService.CELL_SIZE) / float(tex_w)
+	_sprite.scale = Vector2(s, s)
+
+
 func _make_texture() -> Texture2D:
+	if catalog_id == "park_bench":
+		return TEX_BENCH
 	var image := Image.create(48, 48, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0, 0, 0, 0))
 	var fill := Color(0.55, 0.38, 0.22, 1)
 	match catalog_id:
-		"park_bench":
-			fill = Color(0.62, 0.42, 0.22, 1)
 		"park_snack":
 			fill = Color(0.86, 0.36, 0.28, 1)
 		"park_lamp":

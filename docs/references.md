@@ -2,6 +2,10 @@
 
 Sources used to put together `ART_PIPELINE.md`.
 
+Guest mood marks (heart, tear, bang, sweat, spark) use [Twemoji](https://github.com/jdecked/twemoji) PNGs (CC-BY 4.0).
+
+Serum flasks, beakers, and bottles use [Kenney Generic Items](https://kenney.nl/assets/generic-items) (CC0). Liquid colours are re-tinted per serum.
+
 For the full fetched Godot 4.7 / forum / skill pack used by later chats, see [`godot-context/INDEX.md`](./godot-context/INDEX.md).
 
 ## Layered "paper doll" sprite parts

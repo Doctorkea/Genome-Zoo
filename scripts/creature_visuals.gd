@@ -4,11 +4,15 @@ class_name CreatureVisuals
 ## Runtime trait renderer for a single creature.
 ##
 ## Every part texture is the same canvas size (100×100 = one grass tile) with
-## the silhouette already posed in-place. Sprites all sit at the origin and
-## stack by draw order — no per-slot offsets. Skin/color uses a shared
-## palette-swap ShaderMaterial. See docs/ART_PIPELINE.md.
+## the silhouette already posed in-place. Legs and arms sit under the body;
+## matching far copies sit further back, shifted toward the tail. Skin uses
+## a shared palette-swap ShaderMaterial. See docs/ART_PIPELINE.md.
 
 const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head"]
+const FAR_LIMB_OFFSETS: Dictionary = {
+	"back_legs": Vector2(6.0, -3.0),
+	"front_legs": Vector2(-4.0, -3.0),
+}
 
 @onready var _slot_nodes: Dictionary = {
 	"tail": $Tail,
@@ -16,6 +20,10 @@ const SLOTS: Array[String] = ["tail", "back_legs", "front_legs", "body", "head"]
 	"front_legs": $FrontLegs,
 	"body": $Body,
 	"head": $Head,
+}
+@onready var _far_limb_nodes: Dictionary = {
+	"back_legs": $FarBackLegs,
+	"front_legs": $FarFrontLegs,
 }
 
 var _options: Dictionary = {} # slot (String) -> Array[Texture2D]
@@ -39,6 +47,7 @@ func _ready() -> void:
 		sprite.material = _skin_material
 		if not _options[slot].is_empty():
 			_apply_slot_texture(sprite, _options[slot][0])
+		_sync_far_limb(slot)
 
 	set_skin(0)
 
@@ -72,30 +81,46 @@ func set_part_shape(slot: String, option_index: int) -> void:
 	_apply_slot_texture(sprite, options[index])
 	sprite.visible = true
 	_current_index[slot] = index
+	_sync_far_limb(slot)
 
 
 ## Map any square part texture onto one grass cell. High-res Fresco PNGs
-## keep their pixels and are scaled down; 100×100 pixel art stays 1:1.
+## keep their pixels and are scaled down with mipmaps so the ink stays smooth.
 func _apply_slot_texture(sprite: Sprite2D, tex: Texture2D) -> void:
 	sprite.texture = tex
 	var display := float(PlaceholderArt.get_canvas_size())
 	var width := maxf(float(tex.get_width()), 1.0)
 	var height := maxf(float(tex.get_height()), 1.0)
 	sprite.scale = Vector2(display / width, display / height)
-	if width > display or height > display:
-		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	else:
-		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 
-## Hide a slot without changing its option index. Used by the Jimothy demo so
-## the procedural tail doesn't sit on top of the real part art.
+func _sync_far_limb(slot: String) -> void:
+	var far: Sprite2D = _far_limb_nodes.get(slot)
+	if far == null:
+		return
+	var near: Sprite2D = _slot_nodes.get(slot)
+	if near == null or near.texture == null:
+		far.visible = false
+		return
+	far.material = _skin_material
+	_apply_slot_texture(far, near.texture)
+	far.position = FAR_LIMB_OFFSETS.get(slot, Vector2(4.0, -3.0))
+	far.modulate = Color(0.72, 0.7, 0.68, 1.0)
+	far.visible = near.visible
+
+
+## Hide a slot without changing its option index. Used so a Horse can spawn
+## without a tail, and so the DNA Lab can hide a part the player stripped.
 func set_slot_visible(slot: String, slot_visible: bool) -> void:
 	var sprite: Sprite2D = _slot_nodes.get(slot)
 	if sprite == null:
 		push_warning("CreatureVisuals: unknown slot '%s'" % slot)
 		return
 	sprite.visible = slot_visible
+	var far: Sprite2D = _far_limb_nodes.get(slot)
+	if far != null:
+		far.visible = slot_visible
 
 
 func is_slot_visible(slot: String) -> bool:
@@ -123,3 +148,6 @@ func set_skin(option_index: int) -> void:
 	_skin_material.set_shader_parameter("pattern", int(look.get("pattern", 0)))
 	_skin_material.set_shader_parameter("pattern_amount", float(look.get("pattern_amount", 0.25)))
 	_skin_material.set_shader_parameter("pattern_scale", float(look.get("pattern_scale", 4.0)))
+	var pattern_tex: Texture2D = TraitLibrary.coat_pattern_texture(look)
+	if pattern_tex != null:
+		_skin_material.set_shader_parameter("pattern_map", pattern_tex)

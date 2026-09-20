@@ -1,14 +1,16 @@
 extends Area2D
 class_name Visitor
 
-## Park guest. Parents, children, goths, and tourists use dedicated sprites;
-## everyone else uses the generic patron with a type tint.
+## Park guest. Families, goths, tourists, creators, thrill-seekers, and the
+## camera operator use dedicated sprites; everyone else uses the generic
+## patron with a type tint.
 ## Interest drains until they see a new exhibit; boredom sends them home,
 ## and remaining interest is what their ticket is worth.
 
 enum State { ENTER, WANDER, LOOK, HAIL, WAIT }
 
 const DISPLAY_HEIGHT: float = 51.0
+const CHILD_HEIGHT: float = 42.0
 const MAX_INTEREST: float = 22.0
 const VIEW_BONUS: float = 14.0
 const DECAY_IDLE: float = 0.58
@@ -17,8 +19,11 @@ const DECAY_EMPTY: float = 2.05
 const TICKET_MAX: int = 2
 ## Planet Zoo: unhappy guests stop spending. Below this interest ratio, $0.
 const TICKET_PAY_FLOOR: float = 0.28
-const GOTH_SCARE_RANGE: float = 108.0
+const GOTH_SCARE_RANGE: float = 300.0
+const MOOD_SIZE: float = 22.0
 const CREATOR_CLIP_CASH: int = 3
+const CREATOR_HYPE_SECONDS: float = 18.0
+const PANIC_SPEED: float = 138.0
 const TEX_CHILD_BOY: Texture2D = preload("res://art/visitors/child_boy.png")
 const TEX_CHILD_GIRL: Texture2D = preload("res://art/visitors/child_girl.png")
 const TEX_PARENT_MUM: Texture2D = preload("res://art/visitors/parent_mum.png")
@@ -27,8 +32,32 @@ const TEX_GOTH_GIRL: Texture2D = preload("res://art/visitors/goth_girl.png")
 const TEX_GOTH_GUY: Texture2D = preload("res://art/visitors/goth_guy.png")
 const TEX_TOURIST_GIRL: Texture2D = preload("res://art/visitors/tourist_girl.png")
 const TEX_TOURIST_GUY: Texture2D = preload("res://art/visitors/tourist_guy.png")
+const TEX_CREATOR_GIRL: Texture2D = preload("res://art/visitors/creator_girl.png")
+const TEX_CREATOR_GUY: Texture2D = preload("res://art/visitors/creator_guy.png")
+const TEX_THRILL_GIRL: Texture2D = preload("res://art/visitors/thrill_girl.png")
+const TEX_THRILL_GUY: Texture2D = preload("res://art/visitors/thrill_guy.png")
+const TEX_CAMERA_MAN: Texture2D = preload("res://art/visitors/camera_man.png")
 const TEX_PATRON: Texture2D = preload("res://art/visitors/patron.png")
+const TalkFont := preload("res://art/ui/fonts/Acme-Regular.ttf")
 const ZooFx := preload("res://scripts/fx.gd")
+const USED_HEIGHTS := {
+	"res://art/visitors/child_boy.png": 344.0,
+	"res://art/visitors/child_girl.png": 334.0,
+	"res://art/visitors/goth_girl.png": 329.0,
+	"res://art/visitors/goth_guy.png": 334.0,
+	"res://art/visitors/parent_dad.png": 319.0,
+	"res://art/visitors/parent_mum.png": 334.0,
+	"res://art/visitors/patron.png": 304.0,
+	"res://art/visitors/tourist_girl.png": 342.0,
+	"res://art/visitors/tourist_guy.png": 342.0,
+	"res://art/visitors/creator_girl.png": 348.0,
+	"res://art/visitors/creator_guy.png": 348.0,
+	"res://art/visitors/thrill_girl.png": 341.0,
+	"res://art/visitors/thrill_guy.png": 347.0,
+	"res://art/visitors/camera_man.png": 342.0,
+}
+
+static var _used_height: Dictionary = {}
 
 var visitor_id: String = "tourists"
 var fill_color: Color = Color.WHITE
@@ -52,17 +81,31 @@ var _via: Vector2 = Vector2.ZERO
 var _has_via: bool = false
 var _snack_used: bool = false
 var _merch_paid: bool = false
-var _thought_label: Label = null
 var _thought_time: float = 0.0
+var _thought_key: String = ""
+var _thought_line: String = ""
+var _mood_time: float = 0.0
+var _mood_persist: bool = false
+var _mood_bob: float = 0.0
 var _gait_phase: float = 0.0
 var _body_scale: float = 1.0
+var _draw_height: float = DISPLAY_HEIGHT
 var _rest_pos: Vector2 = Vector2(0.0, -DISPLAY_HEIGHT * 0.5)
+var _shadow_base: Vector2 = Vector2(0.42, 0.42)
 var _flee_time: float = 0.0
+var _panic: bool = false
 var _goth_said: bool = false
 var _creator_boosted: bool = false
+var _sight_paid: Dictionary = {}
 
 @onready var _sprite: Sprite2D = $Sprite2D
+@onready var _shadow: Sprite2D = $Shadow
 @onready var _hit: CollisionShape2D = $CollisionShape2D
+@onready var _overhead: Node2D = $Overhead
+@onready var _mood: Sprite2D = $Overhead/Mood
+@onready var _bubble: PanelContainer = $Overhead/Bubble
+@onready var _talk: Label = $Overhead/Bubble/Talk
+@onready var _tail: Polygon2D = $Overhead/Tail
 
 
 func setup(street: Street, kind: String, start: Vector2) -> void:
@@ -79,6 +122,7 @@ func setup(street: Street, kind: String, start: Vector2) -> void:
 	if _street != null:
 		_target = _street.gate_point()
 	_apply_look()
+	_style_talk()
 
 
 func is_waiting() -> bool:
@@ -132,11 +176,17 @@ func _near_poster_stand() -> bool:
 func on_roar() -> void:
 	if visitor_id == "thrill":
 		interest = minf(MAX_INTEREST, interest + 4.0)
-		_say("That roar!")
+		_set_mood(GuestMoodArt.spark())
+		_say(GuestTalk.blurt("roar_thrill", get_instance_id()))
 		return
 	if visitor_id == "children" or _party_has_kind("children"):
 		interest = maxf(0.0, interest - 6.0)
-		_say("Too loud!")
+		if visitor_id == "children":
+			_set_mood(GuestMoodArt.tear())
+			_say(GuestTalk.blurt("roar_kid", get_instance_id()))
+		else:
+			_set_mood(GuestMoodArt.bang())
+			_say(GuestTalk.blurt("roar_parent", get_instance_id()))
 		if interest <= MAX_INTEREST * TICKET_PAY_FLOOR:
 			hail()
 	else:
@@ -145,6 +195,23 @@ func on_roar() -> void:
 
 func is_leader() -> bool:
 	return family_leader == null or family_leader == self or not is_instance_valid(family_leader)
+
+
+func is_family_party() -> bool:
+	if family_id < 0:
+		return false
+	return _party_has_kind("parents") or _party_has_kind("children")
+
+
+func is_creator_crew() -> bool:
+	return visitor_id == "creators" or visitor_id == "camera" or _party_has_kind("creators")
+
+
+func likes_exhibit(tags: Dictionary) -> bool:
+	for tag in TraitLibrary.loved_tags_for(visitor_id, is_family_party()):
+		if int(tags.get(tag, 0)) > 0:
+			return true
+	return false
 
 
 func is_leaving() -> bool:
@@ -166,6 +233,11 @@ func hail() -> void:
 		return
 	_leaving = true
 	_pay_merch()
+	if not _panic:
+		var voice: String = "family" if is_family_party() else visitor_id
+		var speaker := _family_speaker()
+		if speaker != null and is_instance_valid(speaker):
+			speaker._say(GuestTalk.line(voice, "leaving", "", speaker.get_instance_id()))
 	var dest := _street.hail_visitor(self)
 	go_to(dest)
 	if _street != null:
@@ -204,11 +276,23 @@ func _leader() -> Visitor:
 
 
 func party() -> Array[Visitor]:
+	var found: Array[Visitor] = []
+	if family_id < 0:
+		found.append(self)
+		return found
 	if _street != null:
 		return _street.family_of(self)
-	var alone: Array[Visitor] = []
-	alone.append(self)
-	return alone
+	var root := get_parent()
+	if root == null:
+		found.append(self)
+		return found
+	for child in root.get_children():
+		var guest := child as Visitor
+		if guest != null and is_instance_valid(guest) and guest.family_id == family_id:
+			found.append(guest)
+	if found.is_empty():
+		found.append(self)
+	return found
 
 
 func party_center() -> Vector2:
@@ -262,7 +346,7 @@ func inspect_party() -> Dictionary:
 				dislikes.append(word)
 		if str(spec.get("effect", "")) == "uniqueness" and not likes.has("Unusual exhibits"):
 			likes.append("Unusual exhibits")
-	var is_family: bool = family_id >= 0 and living > 1
+	var is_family: bool = is_family_party()
 	var interest_avg: float = interest_sum / float(maxi(living, 1))
 	return {
 		"title": _party_title(is_family),
@@ -278,8 +362,8 @@ func inspect_party() -> Dictionary:
 
 func party_thought() -> String:
 	var members: Array[Visitor] = party()
-	var is_family: bool = family_id >= 0 and members.size() > 1
-	var voice: String = "family" if is_family else visitor_id
+	var is_family: bool = is_family_party()
+	var voice: String = "family" if is_family else _crew_voice()
 	if is_leaving():
 		return _thought_for(voice, "leaving", "")
 	var exhibits: int = _exhibit_count() if is_inside_tree() else 0
@@ -312,9 +396,17 @@ func party_thought() -> String:
 	return _thought_for(voice, "wait", _want_word())
 
 
+func _crew_voice() -> String:
+	if is_creator_crew():
+		return "creators"
+	return visitor_id
+
+
 func _party_title(is_family: bool) -> String:
 	if is_family:
 		return "A family"
+	if is_creator_crew():
+		return "A content creator"
 	match visitor_id:
 		"tourists":
 			return "A tourist"
@@ -335,6 +427,8 @@ func _party_title(is_family: bool) -> String:
 
 
 func _party_kind_line(counts: Dictionary, is_family: bool) -> String:
+	if is_creator_crew():
+		return "Content creator — a liked clip sends extra guests"
 	if is_family:
 		var parents: int = int(counts.get("parents", 0))
 		var kids: int = int(counts.get("children", 0))
@@ -353,7 +447,7 @@ func _party_kind_line(counts: Dictionary, is_family: bool) -> String:
 		"goths":
 			return "Goth — send them home if they spook families"
 		"creators":
-			return "Content creator — a clip pays the zoo $%d" % CREATOR_CLIP_CASH
+			return "Content creator — a liked clip sends extra guests"
 		"thrill":
 			return "Thrill-seeker — here for a scare"
 		"scientists":
@@ -367,142 +461,11 @@ func _party_kind_line(counts: Dictionary, is_family: bool) -> String:
 
 
 func _thought_for(voice: String, beat: String, hook: String) -> String:
-	var look: String = hook if not hook.is_empty() else "one"
-	match beat:
-		"leaving":
-			match voice:
-				"family":
-					return "We're calling a car."
-				"children":
-					return "I want to go home."
-				_:
-					return "Calling a car."
-		"empty":
-			match voice:
-				"family":
-					return "The kids keep asking where the animals are."
-				"children":
-					return "Where are the animals?"
-				"tourists":
-					return "I came all this way for empty paddocks?"
-				"goths":
-					return "Empty cages. Almost atmospheric."
-				"creators":
-					return "Nothing to film yet."
-				"thrill":
-					return "Wake me when something's in a pen."
-				"scientists":
-					return "No specimens. Disappointing."
-				"parents":
-					return "Not much here for the kids yet."
-				_:
-					return "There's nothing in the pens."
-		"arrive":
-			match voice:
-				"family":
-					return "The kids want to see everything."
-				"children":
-					return "I wanna see a cute one!"
-				"tourists":
-					return "Hoping for something majestic."
-				"goths":
-					return "Show me the grim stuff."
-				"creators":
-					return "Hunting for a clip."
-				"thrill":
-					return "Looking for a scare."
-				"scientists":
-					return "Let's see how unusual this mix is."
-				"parents":
-					return "We'll follow the kids around."
-				_:
-					return "Let's see what they've got."
-		"like":
-			match voice:
-				"family":
-					return "The kids can't stop talking about the %s one." % look
-				"children":
-					return "The %s one is the BEST." % look
-				"tourists":
-					return "That's going on the postcard."
-				"goths":
-					return "Yes. Keep it weird."
-				"creators":
-					return "That's the clip."
-				"thrill":
-					return "That one actually looks dangerous."
-				"scientists":
-					return "A proper mix. Finally."
-				"parents":
-					return "The kids are having a good time."
-				_:
-					return "They're enjoying the %s." % look
-		"hate":
-			match voice:
-				"family":
-					return "The kids didn't like that. Too %s." % look
-				"children":
-					return "It's too %s. I don't like it." % look
-				"tourists":
-					return "Nothing majestic about that."
-				"goths":
-					return "Ugh. Too %s." % look
-				"creators":
-					return "Not filming that."
-				"thrill":
-					return "Too soft. Where's the bite?"
-				"scientists":
-					return "Too ordinary."
-				"parents":
-					return "Not sure this is a good one."
-				_:
-					return "Not a fan of the %s." % look
-		"scared":
-			match voice:
-				"family":
-					return "The kids are frightened. Too scary."
-				"children":
-					return "It's too scary. I want to go home."
-				_:
-					return "That exhibit is too scary."
-		"bored":
-			match voice:
-				"family":
-					return "The kids are bored. Time to go."
-				"children":
-					return "I'm bored."
-				_:
-					return "Nothing new. Not worth another ticket."
-		"done":
-			match voice:
-				"family":
-					return "We've seen the lot. Worth the trip."
-				"tourists":
-					return "Got the photos. Happy with that."
-				_:
-					return "We've seen it. Pretty good zoo."
-		"done_bad":
-			match voice:
-				"family":
-					return "We've seen the lot. The kids weren't impressed."
-				_:
-					return "We've seen it. Not our kind of zoo."
-		"wait":
-			match voice:
-				"family":
-					return "Still wandering. The kids want more."
-				"children":
-					return "Still looking for a cute one."
-				"tourists":
-					return "Still waiting for something majestic."
-				"goths":
-					return "Still hunting for something grim."
-				"scientists":
-					return "Still looking for something unusual."
-				_:
-					return "Still looking."
-		_:
-			return "Wondering about this zoo."
+	var key: String = "%s|%s|%s" % [voice, beat, hook]
+	if key != _thought_key:
+		_thought_key = key
+		_thought_line = GuestTalk.line(voice, beat, hook, get_instance_id())
+	return _thought_line
 
 
 func _want_word() -> String:
@@ -617,8 +580,8 @@ func _party_seen_tags() -> Dictionary:
 
 func overlaps_world_rect(world_rect: Rect2) -> bool:
 	var body := Rect2(
-		global_position + Vector2(-20.0, -DISPLAY_HEIGHT),
-		Vector2(40.0, DISPLAY_HEIGHT)
+		global_position + Vector2(-20.0, -_draw_height),
+		Vector2(40.0, _draw_height)
 	)
 	return world_rect.intersects(body)
 
@@ -642,11 +605,16 @@ func _process(delta: float) -> void:
 	var steer: bool = true
 	if _state == State.ENTER or _state == State.WANDER or _state == State.LOOK:
 		_tick_goth_scare(delta)
+		_tick_mating_scare(delta)
 		_notice_exhibits()
 		_drain_interest(delta)
 		if interest <= 0.0:
 			hail()
 			steer = false
+	if visitor_id == "camera" and is_leader() and not _leaving \
+			and _state != State.HAIL and _state != State.WAIT:
+		hail()
+		steer = false
 	if steer:
 		if not is_leader() and _state != State.HAIL and _state != State.WAIT:
 			_follow_leader(delta)
@@ -711,7 +679,7 @@ func is_scaring() -> bool:
 
 
 func _tick_goth_scare(delta: float) -> void:
-	if visitor_id == "goths" or _leaving:
+	if visitor_id == "goths" or _leaving or _panic:
 		return
 	if _state == State.HAIL or _state == State.WAIT:
 		return
@@ -721,19 +689,80 @@ func _tick_goth_scare(delta: float) -> void:
 		_flee_time = maxf(0.0, _flee_time - delta)
 		return
 	if _family_spooks_from_goths():
-		if is_leader():
-			_start_flee(goth)
-		interest = maxf(0.0, interest - 3.4 * delta)
-		if interest <= MAX_INTEREST * TICKET_PAY_FLOOR:
-			hail()
+		_panic_from_goth()
 		return
 	if visitor_id == "tourists":
 		interest = maxf(0.0, interest - 2.6 * delta)
 		if not _goth_said:
 			_goth_said = true
-			_say("This crowd is a bit much.")
+			_set_mood(GuestMoodArt.sweat())
+			_say(GuestTalk.blurt("tourist_goth", get_instance_id()))
 		if interest <= MAX_INTEREST * TICKET_PAY_FLOOR:
 			hail()
+
+
+func _tick_mating_scare(_delta: float) -> void:
+	if visitor_id != "parents" or _leaving or _panic:
+		return
+	if _state == State.HAIL or _state == State.WAIT:
+		return
+	if _nearest_courting_pen() == null:
+		return
+	_set_mood(GuestMoodArt.bang(), true)
+	_say(GuestTalk.blurt("parent_mate", get_instance_id()))
+	_bolt_home()
+
+
+func _nearest_courting_pen() -> Pen:
+	if not is_inside_tree():
+		return null
+	var best: Pen = null
+	var best_d: float = GOTH_SCARE_RANGE + 0.01
+	for node in get_tree().get_nodes_in_group("pens"):
+		var pen := node as Pen
+		if pen == null or not pen.is_courting():
+			continue
+		var d: float = _distance_to_rect(pen.world_rect())
+		if d <= GOTH_SCARE_RANGE and d < best_d:
+			best_d = d
+			best = pen
+	return best
+
+
+func _panic_from_goth() -> void:
+	if _panic:
+		return
+	for mate in party():
+		if mate == null or not is_instance_valid(mate):
+			continue
+		mate._stamp_goth_panic()
+	var lead := _leader()
+	if lead != null and lead != self:
+		lead._bolt_home()
+		return
+	_bolt_home()
+
+
+func _stamp_goth_panic() -> void:
+	_panic = true
+	_speed = maxf(_speed, PANIC_SPEED)
+	_flee_time = 3.0
+	if visitor_id == "children":
+		_set_mood(GuestMoodArt.tear(), true)
+	else:
+		_set_mood(GuestMoodArt.bang(), true)
+		_say(GuestTalk.blurt("parent_goth", get_instance_id()))
+
+
+func _bolt_home() -> void:
+	_panic = true
+	_speed = maxf(_speed, PANIC_SPEED)
+	if _street != null:
+		hail()
+		return
+	_leaving = true
+	_state = State.HAIL
+	_target = position + Vector2(0.0, 240.0)
 
 
 func _family_spooks_from_goths() -> bool:
@@ -744,51 +773,41 @@ func _family_spooks_from_goths() -> bool:
 func _nearest_scaring_goth() -> Visitor:
 	if not is_inside_tree():
 		return null
+	var spots: Array[Vector2] = []
+	for mate in party():
+		if mate != null and is_instance_valid(mate):
+			spots.append(mate.global_position)
+	if spots.is_empty():
+		spots.append(global_position)
 	var best: Visitor = null
-	var best_d: float = GOTH_SCARE_RANGE
+	var best_d: float = GOTH_SCARE_RANGE + 0.01
 	for node in get_tree().get_nodes_in_group("visitors"):
 		var other := node as Visitor
 		if other == null or other == self or not is_instance_valid(other):
 			continue
 		if not other.is_scaring():
 			continue
-		var d: float = position.distance_to(other.position)
-		if d < best_d:
-			best_d = d
-			best = other
+		for spot in spots:
+			var d: float = spot.distance_to(other.global_position)
+			if d <= GOTH_SCARE_RANGE and d < best_d:
+				best_d = d
+				best = other
+				break
 	return best
 
 
-func _start_flee(goth: Visitor) -> void:
-	if goth == null or not is_instance_valid(goth):
-		return
-	var away: Vector2 = position - goth.position
-	if away.length_squared() < 16.0:
-		away = Vector2.RIGHT.rotated(randf() * TAU)
-	_flee_time = 1.6
-	_has_via = false
-	_look_pen = null
-	_target = position + away.normalized() * 150.0
-	_state = State.WANDER
-	if _goth_said:
-		return
-	_goth_said = true
-	if visitor_id == "children":
-		_say("Scary people!")
-	else:
-		_say("Kids, this way!")
-
-
 func _post_creator_clip() -> void:
-	if _creator_boosted:
+	if visitor_id != "creators" or _creator_boosted:
 		return
 	_creator_boosted = true
 	if _street != null:
-		_street.add_hype(20.0)
+		_street.add_hype(CREATOR_HYPE_SECONDS)
 	WalletService.add_cash(CREATOR_CLIP_CASH, false, "Creator clip")
 	Events.creator_posted.emit(CREATOR_CLIP_CASH)
 	ZooFx.burst(self, ZooFx.Kind.GOLD, Vector2(0.0, -36.0))
-	_say("Posted. More guests are coming.")
+	_set_mood(GuestMoodArt.spark())
+	_say(GuestTalk.blurt("creator_clip", get_instance_id()))
+	_popup_hype()
 
 
 func _exhibit_count() -> int:
@@ -831,8 +850,16 @@ func _notice_exhibits() -> void:
 			_seen_poster = true
 		var quality: float = pen.enjoyment_factor() * pen.occupancy_factor()
 		interest = minf(MAX_INTEREST, interest + VIEW_BONUS * quality)
-		_say(party_thought())
-		if visitor_id == "creators":
+		var tags: Dictionary = pen.exhibit_tags()
+		_mood_from_tags(tags)
+		var liked: bool = visitor_id == "creators" and likes_exhibit(tags)
+		if _can_talk():
+			if visitor_id == "creators" and not liked:
+				_say(GuestTalk.line("creators", "film", "", get_instance_id()))
+			elif visitor_id != "creators":
+				_say(party_thought())
+		_pay_sight_bonus(pen, tags, signature)
+		if liked:
 			_post_creator_clip()
 
 
@@ -851,7 +878,9 @@ func _move_toward(target: Vector2, delta: float) -> void:
 			_has_via = true
 			dest = nxt
 	var dist: float = _speed * delta
-	if _flee_time > 0.0:
+	if _panic:
+		dist *= 1.4
+	elif _flee_time > 0.0:
 		dist *= 1.55
 	var step := _steer_step(position, dest, dist)
 	if step.distance_squared_to(position) <= 0.0001:
@@ -911,27 +940,88 @@ func _apply_look() -> void:
 			else:
 				tex = TEX_TOURIST_GUY
 				look_path = "res://art/visitors/tourist_guy.png"
+		"creators":
+			if randf() < 0.5:
+				tex = TEX_CREATOR_GIRL
+				look_path = "res://art/visitors/creator_girl.png"
+			else:
+				tex = TEX_CREATOR_GUY
+				look_path = "res://art/visitors/creator_guy.png"
+		"thrill":
+			if randf() < 0.5:
+				tex = TEX_THRILL_GIRL
+				look_path = "res://art/visitors/thrill_girl.png"
+			else:
+				tex = TEX_THRILL_GUY
+				look_path = "res://art/visitors/thrill_guy.png"
+		"camera":
+			tex = TEX_CAMERA_MAN
+			look_path = "res://art/visitors/camera_man.png"
 		_:
 			look_path = "res://art/visitors/patron.png"
 	_sprite.texture = tex
+	_draw_height = CHILD_HEIGHT if visitor_id == "children" else DISPLAY_HEIGHT
 	if tex.get_height() > 0:
-		_body_scale = DISPLAY_HEIGHT / float(tex.get_height())
+		var used_h: float = _texture_used_height(tex)
+		_body_scale = _draw_height / used_h
 		_sprite.centered = true
 		# Pivot near the head so a walk sway reads as stepping, not hovering.
 		_sprite.offset = Vector2(0.0, float(tex.get_height()) * 0.32)
-		_rest_pos = Vector2(0.0, -DISPLAY_HEIGHT * 0.82)
+		_rest_pos = Vector2(0.0, -_draw_height * 0.82)
 		_sprite.scale = Vector2(_body_scale, _body_scale)
 		_sprite.position = _rest_pos
 		_sprite.rotation = 0.0
-	if visitor_id in ["children", "parents", "goths", "tourists"]:
+	if visitor_id in ["children", "parents", "goths", "tourists", "creators", "thrill", "camera"]:
 		_sprite.modulate = Color.WHITE
 	else:
 		_sprite.modulate = fill_color.lerp(Color.WHITE, 0.18)
 	if _hit != null:
-		_hit.position = Vector2(0.0, -DISPLAY_HEIGHT * 0.4)
+		_hit.position = Vector2(0.0, -_draw_height * 0.4)
 		var circle := _hit.shape as CircleShape2D
 		if circle != null:
-			circle.radius = DISPLAY_HEIGHT * 0.32
+			circle.radius = _draw_height * 0.32
+	_layout_shadow()
+
+
+func draw_height() -> float:
+	return _draw_height
+
+
+func _layout_shadow() -> void:
+	if _shadow == null:
+		_shadow = get_node_or_null("Shadow") as Sprite2D
+	if _shadow == null:
+		return
+	_shadow.texture = ZooFx.ground_shadow_tex()
+	_shadow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_shadow.z_index = -1
+	_shadow.centered = true
+	_shadow.position = Vector2(0.0, 2.0)
+	var fit: float = _draw_height / DISPLAY_HEIGHT
+	_shadow_base = Vector2(0.46 * fit, 0.38 * fit)
+	_shadow.scale = _shadow_base
+	_shadow.modulate = Color(1, 1, 1, 1)
+	_shadow.visible = true
+
+
+func _texture_used_height(tex: Texture2D) -> float:
+	var key: String = tex.resource_path
+	if USED_HEIGHTS.has(key):
+		return float(USED_HEIGHTS[key])
+	if key.is_empty():
+		key = str(tex.get_instance_id())
+	if _used_height.has(key):
+		return float(_used_height[key])
+	var used: float = float(tex.get_height())
+	var img: Image = tex.get_image()
+	if img != null:
+		if img.is_compressed():
+			img.decompress()
+		var rect: Rect2i = img.get_used_rect()
+		if rect.size.y > 0:
+			used = float(rect.size.y)
+	_used_height[key] = used
+	return used
 
 
 func _steer_step(from: Vector2, to: Vector2, dist: float) -> Vector2:
@@ -1030,13 +1120,17 @@ func _start_look() -> void:
 		_look_time *= 1.65
 	if visitor_id == "children" and _seen_scary() >= TraitLibrary.CHILD_CRY_SCARY:
 		_look_time *= 0.45
-		_say("Too scary!")
+		_set_mood(GuestMoodArt.tear(), true)
+		_say(GuestTalk.blurt("too_scary", get_instance_id()))
 
 
 func _follow_leader(delta: float) -> void:
 	var lead := _leader()
 	if lead == null or not is_instance_valid(lead) or lead == self:
 		family_leader = null
+		if visitor_id == "camera" and not _leaving:
+			hail()
+			return
 		_pick_wander_target()
 		return
 	_target = lead.position + family_offset
@@ -1068,7 +1162,8 @@ func _pay_merch() -> void:
 		return
 	_merch_paid = true
 	WalletService.add_cash(1, false, "Souvenir")
-	_say("Souvenir!")
+	_set_mood(GuestMoodArt.spark())
+	_say(GuestTalk.blurt("souvenir", get_instance_id()))
 
 
 func _use_park_props() -> void:
@@ -1077,34 +1172,192 @@ func _use_park_props() -> void:
 		if snack != Vector2.INF:
 			_snack_used = true
 			WalletService.add_cash(1, false, "Snack stand")
-			_say("Snack run")
-			ZooFx.burst(self, ZooFx.Kind.STEAM, Vector2(0.0, -DISPLAY_HEIGHT * 0.35))
+			_say(GuestTalk.blurt("snack", get_instance_id()))
+			ZooFx.burst(self, ZooFx.Kind.STEAM, Vector2(0.0, -_draw_height * 0.35))
 	if GridService.has_bench(GridService.world_to_cell(position)) and _state == State.LOOK:
 		_look_time = maxf(_look_time, 0.8)
 
 
 func _say(line: String) -> void:
+	if not _can_talk():
+		return
 	var text := line.strip_edges()
 	if text.is_empty():
 		return
-	if _thought_label == null:
-		_thought_label = Label.new()
-		_thought_label.z_index = 12
-		_thought_label.position = Vector2(-36.0, -DISPLAY_HEIGHT - 10.0)
-		_thought_label.add_theme_font_size_override("font_size", 11)
-		_thought_label.add_theme_color_override("font_color", Color(0.12, 0.09, 0.06, 1))
-		add_child(_thought_label)
-	_thought_label.text = text
-	_thought_label.visible = true
-	_thought_time = 2.2
+	_ensure_talk()
+	if _talk == null or _bubble == null:
+		return
+	_talk.text = text
+	_bubble.visible = true
+	if _tail != null:
+		_tail.visible = true
+	_thought_time = 2.7
+	_layout_bubble.call_deferred()
+
+
+func _can_talk() -> bool:
+	return _family_speaker() == self
+
+
+func _family_speaker() -> Visitor:
+	var members: Array[Visitor] = party()
+	if members.size() <= 1:
+		return self
+	var parent_speaker: Visitor = null
+	for mate in members:
+		if mate == null or not is_instance_valid(mate):
+			continue
+		if mate.visitor_id != "parents":
+			continue
+		if mate.is_leader():
+			return mate
+		if parent_speaker == null:
+			parent_speaker = mate
+	if parent_speaker != null:
+		return parent_speaker
+	var lead := _leader()
+	return lead if lead != null else self
+
+
+func _ensure_talk() -> void:
+	if _talk == null:
+		_talk = get_node_or_null("Overhead/Bubble/Talk") as Label
+	if _bubble == null:
+		_bubble = get_node_or_null("Overhead/Bubble") as PanelContainer
+	if _tail == null:
+		_tail = get_node_or_null("Overhead/Tail") as Polygon2D
+	if _mood == null:
+		_mood = get_node_or_null("Overhead/Mood") as Sprite2D
+	if _overhead == null:
+		_overhead = get_node_or_null("Overhead") as Node2D
+	_style_talk()
+
+
+func _style_talk() -> void:
+	if _talk == null:
+		return
+	_talk.add_theme_font_override("font", TalkFont)
+	_talk.add_theme_font_size_override("font_size", 10)
+	_talk.add_theme_color_override("font_color", Color(0.11, 0.09, 0.063, 1))
+	_talk.custom_minimum_size = Vector2(48.0, 0.0)
+	_talk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_talk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
+func _layout_bubble() -> void:
+	if _bubble == null or _talk == null:
+		return
+	var min_size: Vector2 = _bubble.get_combined_minimum_size()
+	_bubble.size = Vector2(clampf(min_size.x, 36.0, 92.0), min_size.y)
+	_bubble.position = Vector2(-_bubble.size.x * 0.5, -_bubble.size.y - 5.0)
+
+
+func _set_mood(tex: Texture2D, persist: bool = false) -> void:
+	_ensure_talk()
+	if _mood == null or tex == null:
+		return
+	_mood.texture = tex
+	_mood.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	var wide: float = maxf(float(tex.get_width()), 1.0)
+	var mood_scale: float = MOOD_SIZE / wide
+	_mood.scale = Vector2(mood_scale, mood_scale)
+	_mood.visible = true
+	_mood_persist = persist
+	_mood_time = 8.0 if persist else 2.8
+
+
+func _mood_from_tags(tags: Dictionary) -> void:
+	if _panic:
+		return
+	var family: bool = is_family_party()
+	if (visitor_id == "children" or family) and int(tags.get("Scary", 0)) >= TraitLibrary.CHILD_CRY_SCARY:
+		_set_mood(GuestMoodArt.tear(), true)
+		return
+	for tag in TraitLibrary.loved_tags_for(visitor_id, family):
+		if int(tags.get(tag, 0)) > 0:
+			_set_mood(GuestMoodArt.heart())
+			return
+	for tag in TraitLibrary.hated_tags_for(visitor_id, family):
+		if int(tags.get(tag, 0)) > 0:
+			_set_mood(GuestMoodArt.tear())
+			return
+
+
+func _pay_sight_bonus(pen: Pen, tags: Dictionary, signature: String) -> void:
+	var speaker := _family_speaker()
+	if speaker == null or not is_instance_valid(speaker):
+		speaker = self
+	if speaker._sight_paid.has(signature):
+		return
+	speaker._sight_paid[signature] = true
+	var family: bool = is_family_party()
+	var cash: int = TraitLibrary.sight_bonus(speaker.visitor_id, tags, family)
+	if cash <= 0:
+		return
+	var look: String = str(pen.living_animals()[0].get_stats().get("archetype", "exhibit")) if not pen.living_animals().is_empty() else "exhibit"
+	var who: String = "Family" if family else TraitLibrary.visitor_display_name(speaker.visitor_id)
+	WalletService.add_cash(cash, false, "%s liked a %s" % [who, look])
+	speaker._mood_from_tags(tags)
+	speaker._popup_cash(cash)
+	ZooFx.burst(speaker, ZooFx.Kind.GOLD, Vector2(0.0, -speaker.draw_height() * 0.45))
+
+
+func _popup_cash(amount: int) -> void:
+	if amount <= 0:
+		return
+	var label := Label.new()
+	label.text = "+$%d" % amount
+	label.z_index = 24
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_override("font", TalkFont)
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", Color(0.28, 0.72, 0.32, 1))
+	label.add_theme_color_override("font_outline_color", Color(0.06, 0.16, 0.07, 0.85))
+	label.add_theme_constant_override("outline_size", 5)
+	add_child(label)
+	label.position = Vector2(-20.0, -_draw_height - 22.0)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y - 30.0, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 0.9).set_delay(0.18)
+	tween.chain().tween_callback(label.queue_free)
+
+
+func _popup_hype() -> void:
+	var label := Label.new()
+	label.text = "Engagement"
+	label.z_index = 24
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_override("font", TalkFont)
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", Color(0.78, 0.28, 0.72, 1))
+	label.add_theme_color_override("font_outline_color", Color(0.18, 0.05, 0.16, 0.85))
+	label.add_theme_constant_override("outline_size", 5)
+	add_child(label)
+	label.position = Vector2(-34.0, -_draw_height - 40.0)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y - 28.0, 1.0).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 1.0).set_delay(0.22)
+	tween.chain().tween_callback(label.queue_free)
 
 
 func _tick_thought(delta: float) -> void:
-	if _thought_label == null:
-		return
 	_thought_time -= delta
 	if _thought_time <= 0.0:
-		_thought_label.visible = false
+		if _bubble != null:
+			_bubble.visible = false
+		if _tail != null:
+			_tail.visible = false
+	if _mood != null and _mood.visible:
+		_mood_bob += delta * 5.2
+		_mood.position = Vector2(16.0, -20.0 + sin(_mood_bob) * 2.2)
+		if not _mood_persist:
+			_mood_time -= delta
+			if _mood_time <= 0.0:
+				_mood.visible = false
+	if _overhead != null:
+		_overhead.position = Vector2(0.0, -_draw_height - 8.0)
 
 
 func _animate_gait(delta: float, moving: bool) -> void:
@@ -1114,6 +1367,8 @@ func _animate_gait(delta: float, moving: bool) -> void:
 		var cadence: float = clampf(_speed * 0.09, 4.0, 7.4)
 		if visitor_id == "children":
 			cadence *= 1.18
+		if _panic:
+			cadence *= 1.45
 		_gait_phase += delta * cadence
 		var step: float = sin(_gait_phase)
 		# sin² bounce: two footfalls per cycle, smooth troughs instead of a tick.
@@ -1123,6 +1378,9 @@ func _animate_gait(delta: float, moving: bool) -> void:
 		var squash: float = 1.0 + bounce * 0.035
 		var stretch: float = 1.0 - bounce * 0.03
 		_sprite.scale = Vector2(_body_scale * squash, _body_scale * stretch)
+		if _shadow != null:
+			_shadow.scale = Vector2(_shadow_base.x * (1.0 + bounce * 0.1), _shadow_base.y * (1.0 - bounce * 0.16))
+			_shadow.modulate = Color(1, 1, 1, 1.0 - bounce * 0.2)
 	else:
 		_gait_phase += delta * 1.7
 		var idle: float = sin(_gait_phase)
@@ -1131,3 +1389,6 @@ func _animate_gait(delta: float, moving: bool) -> void:
 		var breathe: float = 1.0 + idle * 0.018
 		var rest := Vector2(_body_scale, _body_scale * breathe)
 		_sprite.scale = _sprite.scale.lerp(rest, clampf(delta * 8.0, 0.0, 1.0))
+		if _shadow != null:
+			_shadow.scale = _shadow.scale.lerp(_shadow_base, clampf(delta * 8.0, 0.0, 1.0))
+			_shadow.modulate = _shadow.modulate.lerp(Color(1, 1, 1, 1), clampf(delta * 8.0, 0.0, 1.0))

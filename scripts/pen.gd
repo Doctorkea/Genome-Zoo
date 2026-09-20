@@ -8,11 +8,14 @@ class_name Pen
 const BRICK_SCALE: float = 0.5
 const FENCE_LAYER: int = 4 # bit for "fences" — animals set collision_mask to this
 
+const ANIMAL_SCENE: PackedScene = preload("res://scenes/Animal.tscn")
+const ZooFx := preload("res://scripts/fx.gd")
+const BREED_ROLL: float = 0.035
+const BREED_CHECK: float = 4.0
 const TEX_FLAT: Texture2D = preload("res://art/tiles/pen/brick_flat.png")
 const TEX_UP: Texture2D = preload("res://art/tiles/pen/brick_up.png")
 const TEX_TOP_CORNER: Texture2D = preload("res://art/tiles/pen/brick_top_corner.png")
 const TEX_BOTTOM_CORNER: Texture2D = preload("res://art/tiles/pen/brick_bottom_corner.png")
-const ZooFx := preload("res://scripts/fx.gd")
 
 @export var footprint_cells: Vector2i = Vector2i(4, 3)
 
@@ -21,14 +24,30 @@ var catalog_id: String = ""
 var listed_capacity: int = -1
 var enjoyment_bonus: float = 0.0
 var animals: Array[Node] = []
-var _showtime_cd: float = 18.0
-var _show_label: Label = null
+var _mate_a: Animal = null
+var _mate_b: Animal = null
+var _meet: Vector2 = Vector2.ZERO
+var _breed_wait: float = 0.0
 
 
 func _ready() -> void:
 	add_to_group("pens")
 	_build_walls()
-	_showtime_cd = randf_range(16.0, 26.0)
+	_breed_wait = randf_range(1.0, BREED_CHECK)
+
+
+func _process(delta: float) -> void:
+	if _mate_a != null:
+		_tick_courtship()
+		return
+	if animal_capacity() <= 2:
+		return
+	_breed_wait -= delta
+	if _breed_wait > 0.0:
+		return
+	_breed_wait = BREED_CHECK
+	if randf() <= BREED_ROLL:
+		try_start_mating()
 
 
 func get_size_pixels() -> Vector2:
@@ -128,12 +147,14 @@ func get_interior_bounds() -> Rect2:
 ## Tighter than the grass interior so a 40px animal body stays off the bricks.
 func get_wander_bounds() -> Rect2:
 	var inner := get_interior_bounds()
-	var pad: float = 52.0
-	var rect := inner.grow(-pad)
-	if rect.size.x < 32.0 or rect.size.y < 32.0:
-		var size := Vector2(maxf(32.0, inner.size.x * 0.35), maxf(32.0, inner.size.y * 0.35))
-		return Rect2(inner.position + (inner.size - size) * 0.5, size)
-	return rect
+	var keep: float = maxf(8.0, (wall_thickness() + Animal.BODY_RADIUS) - inner.position.x)
+	var size := Vector2(inner.size.x - keep * 2.0, inner.size.y - keep * 2.0)
+	if size.x < 24.0:
+		size.x = maxf(24.0, inner.size.x - 8.0)
+	if size.y < 16.0:
+		size.y = maxf(16.0, inner.size.y - 8.0)
+	var pos := inner.position + (inner.size - size) * 0.5
+	return Rect2(pos, size)
 
 
 func world_rect() -> Rect2:
@@ -149,6 +170,17 @@ func exhibit_signature() -> String:
 		bits.append(animal.exhibit_id())
 	bits.sort()
 	return " ".join(bits)
+
+
+func exhibit_tags() -> Dictionary:
+	var counts: Dictionary = {}
+	for tag in TraitLibrary.TAGS:
+		counts[tag] = 0
+	for animal in living_animals():
+		var tags: Dictionary = animal.get_stats().get("tags", {})
+		for tag in TraitLibrary.TAGS:
+			counts[tag] = int(counts.get(tag, 0)) + int(tags.get(tag, 0))
+	return counts
 
 
 func frontage_point() -> Vector2:
@@ -197,86 +229,123 @@ func register_animal(animal: Node) -> void:
 
 func unregister_animal(animal: Node) -> void:
 	animals.erase(animal)
+	if animal == _mate_a or animal == _mate_b:
+		_stop_courtship()
 
 
-func _process(delta: float) -> void:
-	if occupant_count() <= 0:
+func can_breed() -> bool:
+	if animal_capacity() <= 2:
+		return false
+	var herd: Array[Animal] = living_animals()
+	return herd.size() >= 2 and herd.size() + 1 <= animal_capacity() and _mate_a == null
+
+
+func is_courting() -> bool:
+	return _mate_a != null and is_instance_valid(_mate_a)
+
+
+func courtship_point() -> Vector2:
+	return to_global(_meet)
+
+
+func try_start_mating() -> bool:
+	if not can_breed():
+		return false
+	var herd: Array[Animal] = living_animals()
+	herd.shuffle()
+	return start_courtship(herd[0], herd[1])
+
+
+func start_courtship(first: Animal, second: Animal) -> bool:
+	if first == null or second == null or first == second:
+		return false
+	if not can_breed():
+		return false
+	_mate_a = first
+	_mate_b = second
+	_meet = get_wander_bounds().get_center()
+	first.steer_to(_meet + Vector2(-18.0, 0.0))
+	second.steer_to(_meet + Vector2(18.0, 0.0))
+	return true
+
+
+func finish_courtship() -> Animal:
+	if _mate_a == null or _mate_b == null:
+		return null
+	if not is_instance_valid(_mate_a) or not is_instance_valid(_mate_b):
+		_stop_courtship()
+		return null
+	if not can_accept_animal():
+		_stop_courtship()
+		return null
+	var child := _spawn_child(_mate_a, _mate_b)
+	_burst_hearts()
+	_stop_courtship()
+	return child
+
+
+func _tick_courtship() -> void:
+	if _mate_a == null or _mate_b == null or not is_instance_valid(_mate_a) or not is_instance_valid(_mate_b):
+		_stop_courtship()
 		return
-	var street := get_tree().get_first_node_in_group("street") as Street
-	if street == null or not street.is_open:
-		return
-	_showtime_cd -= delta
-	if _showtime_cd <= 0.0:
-		_showtime_cd = randf_range(22.0, 32.0)
-		_do_showtime()
+	if _mate_a.has_arrived() and _mate_b.has_arrived():
+		finish_courtship()
 
 
-func _do_showtime() -> void:
-	var herd := living_animals()
-	if herd.is_empty():
-		return
-	var animal: Animal = herd[0]
-	var arch: String = str(animal.get_stats().get("archetype", "Unspecialized"))
-	if arch == "Tanky" or arch == "Unspecialized":
-		return
-	var payout: int = 6
-	match arch:
-		"Nimble":
-			payout = 7
-		"Predator":
-			payout = 8
-			_scare_nearby_families()
-		"Novelty":
-			payout = 6
-		"Showpiece":
-			payout = 7
-	WalletService.add_cash(payout, false, "%s showtime" % arch)
-	Events.showtime_performed.emit(self, arch, payout)
-	_flash_showtime(arch, payout)
-	_burst_showtime(arch)
+func _stop_courtship() -> void:
+	if _mate_a != null and is_instance_valid(_mate_a):
+		_mate_a.clear_busy()
+	if _mate_b != null and is_instance_valid(_mate_b):
+		_mate_b.clear_busy()
+	_mate_a = null
+	_mate_b = null
 
 
-func _scare_nearby_families() -> void:
-	for node in get_tree().get_nodes_in_group("visitors"):
-		var guest := node as Visitor
-		if guest == null or not is_instance_valid(guest):
-			continue
-		if guest.position.distance_to(world_rect().get_center()) > 140.0:
-			continue
-		guest.on_roar()
+func _burst_hearts() -> void:
+	var mid: Vector2 = _meet
+	if _mate_a != null and is_instance_valid(_mate_a):
+		ZooFx.burst(_mate_a, ZooFx.Kind.HEART, Vector2(0.0, -28.0))
+	if _mate_b != null and is_instance_valid(_mate_b):
+		ZooFx.burst(_mate_b, ZooFx.Kind.HEART, Vector2(0.0, -28.0))
+	var marker := Node2D.new()
+	add_child(marker)
+	marker.position = mid
+	ZooFx.burst(marker, ZooFx.Kind.HEART, Vector2.ZERO)
+	var tree := get_tree()
+	if tree != null:
+		tree.create_timer(1.4).timeout.connect(func() -> void:
+			if is_instance_valid(marker):
+				marker.queue_free()
+		)
 
 
-func _flash_showtime(arch: String, payout: int) -> void:
-	if _show_label == null:
-		_show_label = Label.new()
-		_show_label.z_index = 8
-		add_child(_show_label)
-	_show_label.position = Vector2(get_size_pixels().x * 0.5 - 70.0, 8.0)
-	_show_label.text = "%s  +$%d" % [arch, payout]
-	_show_label.add_theme_font_size_override("font_size", 16)
-	_show_label.add_theme_color_override("font_color", Color(0.98, 0.94, 0.72, 1))
-	_show_label.visible = true
-	var tween := create_tween()
-	tween.tween_interval(1.6)
-	tween.tween_callback(func() -> void:
-		if is_instance_valid(_show_label):
-			_show_label.visible = false
-	)
+func _spawn_child(first: Animal, second: Animal) -> Animal:
+	var child := ANIMAL_SCENE.instantiate() as Animal
+	add_child(child)
+	child.position = _meet
+	child.set_pen(self)
+	child.catalog_id = "born"
+	child.creature_name = SaveService.child_name(first.creature_name, second.creature_name)
+	var mixed: Dictionary = _mix_loadout(first, second)
+	child.visuals.apply_loadout(mixed.get("parts", {}), int(mixed.get("color", 0)), mixed.get("hidden", []))
+	register_animal(child)
+	Events.animal_born.emit(child)
+	Events.placement_succeeded.emit("born")
+	return child
 
 
-func _burst_showtime(arch: String) -> void:
-	var mid: Vector2 = get_size_pixels() * 0.5
-	match arch:
-		"Predator":
-			ZooFx.burst(self, ZooFx.Kind.SHOCK, mid)
-		"Showpiece":
-			ZooFx.burst(self, ZooFx.Kind.GOLD, mid)
-		"Novelty":
-			ZooFx.burst(self, ZooFx.Kind.SPARK, mid, Color(0.72, 0.42, 0.86, 1))
-		"Nimble":
-			ZooFx.burst(self, ZooFx.Kind.SPARK, mid, Color(0.95, 0.95, 0.9, 1))
-		_:
-			ZooFx.burst(self, ZooFx.Kind.DUST, mid)
+func _mix_loadout(first: Animal, second: Animal) -> Dictionary:
+	var parts: Dictionary = {}
+	var hidden: Array = []
+	var vis_a: CreatureVisuals = first.visuals
+	var vis_b: CreatureVisuals = second.visuals
+	for slot in vis_a.get_slots():
+		var src: CreatureVisuals = vis_a if randf() < 0.5 else vis_b
+		parts[slot] = src.get_current_index(slot)
+		if not src.is_slot_visible(slot):
+			hidden.append(slot)
+	var color_index: int = vis_a.get_current_palette_index() if randf() < 0.5 else vis_b.get_current_palette_index()
+	return {"parts": parts, "hidden": hidden, "color": color_index}
 
 
 func snapshot() -> Dictionary:

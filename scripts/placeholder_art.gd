@@ -14,7 +14,6 @@ const ART_FILES: Dictionary = {
 		"res://art/creatures/parts/body_jimmothy.png",
 	],
 	"head": [
-		"res://art/creatures/parts/head_jimothy.png",
 		"res://art/creatures/parts/head_gorilla.png",
 		"res://art/creatures/parts/head_lizard.png",
 		"res://art/creatures/parts/head_jimmothy.png",
@@ -37,7 +36,6 @@ const ART_FILES: Dictionary = {
 		"res://art/creatures/parts/back_legs_sheep.png",
 		"res://art/creatures/parts/back_legs_horse.png",
 		"res://art/creatures/parts/back_legs_jimmothy.png",
-		"res://art/creatures/parts/back_legs_frog.png",
 		"res://art/creatures/parts/back_legs_bird.png",
 		"res://art/creatures/parts/back_legs_elephant.png",
 		"res://art/creatures/parts/back_legs_gorilla.png",
@@ -111,7 +109,7 @@ func _normalize_part(tex: Texture2D) -> Texture2D:
 		img.decompress()
 	var width: int = img.get_width()
 	var height: int = img.get_height()
-	const INK_CUT: float = 0.30
+	const INK_CUT: float = 0.32
 	var sum: float = 0.0
 	var count: int = 0
 	for y in range(height):
@@ -127,8 +125,8 @@ func _normalize_part(tex: Texture2D) -> Texture2D:
 	if count < 8:
 		return tex
 	var mean: float = sum / float(count)
-	var target: float = 0.74
-	var contrast: float = 0.55
+	var target: float = 0.72
+	var contrast: float = 0.75
 	for y in range(height):
 		for x in range(width):
 			var pixel: Color = img.get_pixel(x, y)
@@ -137,11 +135,98 @@ func _normalize_part(tex: Texture2D) -> Texture2D:
 			var lum: float = pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114
 			var mapped: float
 			if lum < INK_CUT:
-				mapped = clampf(lum * 0.72, 0.02, 0.22)
+				mapped = clampf(pow(lum, 1.45) * 0.38, 0.0, 0.08)
 			else:
-				mapped = clampf((lum - mean) * contrast + target, 0.34, 0.94)
+				mapped = clampf((lum - mean) * contrast + target, 0.34, 0.82)
 			img.set_pixel(x, y, Color(mapped, mapped, mapped, pixel.a))
+	_thicken_base_ink(img)
+	_ink_outer_rim(img)
+	var mip_err := img.generate_mipmaps()
+	if mip_err != OK:
+		push_warning("PlaceholderArt: could not build mipmaps for a part")
 	return ImageTexture.create_from_image(img)
+
+
+## Grow the sprite's own dark strokes by a few source pixels so they still
+## read after the 400px Fresco parts are scaled onto a 100px grass cell.
+## Only paints over existing fill — never a second offset outline.
+func _thicken_base_ink(img: Image) -> void:
+	var width: int = img.get_width()
+	var height: int = img.get_height()
+	var radius: int = clampi(int(round(float(width) / 220.0)), 1, 3)
+	var radius_sq: int = radius * radius
+	var ink := PackedByteArray()
+	ink.resize(width * height)
+	for y in range(height):
+		for x in range(width):
+			var pixel: Color = img.get_pixel(x, y)
+			if pixel.a < 0.12:
+				continue
+			var lum: float = pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114
+			if lum < 0.12:
+				ink[y * width + x] = 1
+	var thickened: Image = img.duplicate()
+	for y in range(height):
+		for x in range(width):
+			if ink[y * width + x] == 1:
+				continue
+			var pixel: Color = img.get_pixel(x, y)
+			if pixel.a < 0.2:
+				continue
+			var near_ink := false
+			for oy in range(-radius, radius + 1):
+				for ox in range(-radius, radius + 1):
+					if ox * ox + oy * oy > radius_sq:
+						continue
+					var nx: int = x + ox
+					var ny: int = y + oy
+					if nx < 0 or ny < 0 or nx >= width or ny >= height:
+						continue
+					if ink[ny * width + nx] == 1:
+						near_ink = true
+						break
+				if near_ink:
+					break
+			if not near_ink:
+				continue
+			thickened.set_pixel(x, y, Color(0.04, 0.04, 0.04, pixel.a))
+	img.copy_from(thickened)
+
+
+## Light anti-aliased fringes read as white hairlines on the grass. Crush
+## the silhouette ring to ink so the back copies and outer edge stay black.
+func _ink_outer_rim(img: Image) -> void:
+	var width: int = img.get_width()
+	var height: int = img.get_height()
+	var edge := PackedByteArray()
+	edge.resize(width * height)
+	for y in range(height):
+		for x in range(width):
+			var pixel: Color = img.get_pixel(x, y)
+			if pixel.a < 0.03:
+				continue
+			var on_edge: bool = pixel.a < 0.55
+			if not on_edge:
+				for d: Vector2i in [
+					Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+					Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)
+				]:
+					var nx: int = x + d.x
+					var ny: int = y + d.y
+					if nx < 0 or ny < 0 or nx >= width or ny >= height:
+						on_edge = true
+						break
+					if img.get_pixel(nx, ny).a < 0.12:
+						on_edge = true
+						break
+			if on_edge:
+				edge[y * width + x] = 1
+	for y in range(height):
+		for x in range(width):
+			if edge[y * width + x] != 1:
+				continue
+			var pixel: Color = img.get_pixel(x, y)
+			img.set_pixel(x, y, Color(0.03, 0.03, 0.03, maxf(pixel.a, 0.92)))
 
 
 func _make_gradient_palette(base: Color) -> ImageTexture:

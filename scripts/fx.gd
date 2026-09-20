@@ -7,7 +7,7 @@ extends RefCounted
 ## billow, then fade. Bursts (dust, sparks, coins, poofs) are one-shot.
 ## Loops (exhaust, steam, lamp motes) stay emitting on their host.
 
-enum Kind { DUST, SMOKE, STEAM, SPARK, GOLD, EMBER, SHOCK, CLOUD }
+enum Kind { DUST, SMOKE, STEAM, SPARK, GOLD, EMBER, SHOCK, CLOUD, HEART }
 
 const PUFF_SIZE: int = 32
 const CLOUD_SIZE: int = 80
@@ -16,6 +16,7 @@ const PUFF_FRAMES: int = 4
 static var _puff: Texture2D
 static var _speck: Texture2D
 static var _cloud: Texture2D
+static var _ground_shadow: Texture2D
 static var _grow: CurveTexture
 static var _billow: CurveTexture
 static var _smoke_fade: GradientTexture1D
@@ -37,6 +38,28 @@ static func cloud_tex() -> Texture2D:
 	if _cloud == null:
 		_cloud = _cloud_blob()
 	return _cloud
+
+
+static func ground_shadow_tex() -> Texture2D:
+	if _ground_shadow != null:
+		return _ground_shadow
+	const W: int = 64
+	const H: int = 32
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var mid := Vector2(float(W) * 0.5, float(H) * 0.5)
+	for y in range(H):
+		for x in range(W):
+			var p := Vector2(
+				(float(x) + 0.5 - mid.x) / (float(W) * 0.46),
+				(float(y) + 0.5 - mid.y) / (float(H) * 0.44)
+			)
+			var t: float = clampf(1.0 - p.length(), 0.0, 1.0)
+			if t <= 0.0:
+				continue
+			img.set_pixel(x, y, Color(0.07, 0.06, 0.04, t * t * 0.42))
+	_ground_shadow = ImageTexture.create_from_image(img)
+	return _ground_shadow
 
 
 static func burst(host: Node2D, kind: int, local_pos: Vector2 = Vector2.ZERO, tint: Color = Color.WHITE) -> GPUParticles2D:
@@ -133,6 +156,8 @@ static func make(kind: int, one_shot: bool, tint: Color = Color.WHITE) -> GPUPar
 		particles.texture = speck_tex()
 	elif kind == Kind.CLOUD:
 		particles.texture = cloud_tex()
+	elif kind == Kind.HEART:
+		particles.texture = load("res://art/ui/mood/heart.png")
 	else:
 		particles.texture = puff_tex()
 	particles.one_shot = one_shot
@@ -199,6 +224,12 @@ static func make(kind: int, one_shot: bool, tint: Color = Color.WHITE) -> GPUPar
 			particles.randomness = 0.45
 			particles.z_index = 8
 			particles.visibility_rect = Rect2(-220.0, -280.0, 440.0, 460.0)
+		Kind.HEART:
+			particles.amount = 14
+			particles.lifetime = 0.9
+			particles.explosiveness = 0.82
+			particles.randomness = 0.55
+			particles.z_index = 8
 		_:
 			particles.amount = 8
 			particles.lifetime = 0.6
@@ -318,6 +349,19 @@ static func _material(kind: int, tint: Color) -> ParticleProcessMaterial:
 			mat.anim_speed_max = 1.45
 			mat.anim_offset_min = 0.0
 			mat.anim_offset_max = 0.7
+		Kind.HEART:
+			mat.direction = Vector3(0, -1, 0)
+			mat.spread = 70.0
+			mat.emission_sphere_radius = 18.0
+			mat.initial_velocity_min = 18.0
+			mat.initial_velocity_max = 42.0
+			mat.gravity = Vector3(0, -48.0, 0)
+			mat.damping_min = 2.0
+			mat.damping_max = 6.0
+			mat.scale_min = 0.22
+			mat.scale_max = 0.42
+			mat.color = Color(1.0, 0.55, 0.72, 1.0)
+			mat.color_ramp = _fade_ramp(Color(1.0, 0.72, 0.82, 1.0), Color(1.0, 0.4, 0.6, 0.0))
 		_:
 			mat.gravity = Vector3(0, 20.0, 0)
 	if tint != Color.WHITE and kind != Kind.DUST and kind != Kind.SPARK and kind != Kind.CLOUD:

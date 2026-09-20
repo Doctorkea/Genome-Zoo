@@ -10,6 +10,7 @@ const INK := Color(0.11, 0.09, 0.063, 1)
 const MUTED := Color(0.42, 0.36, 0.26, 1)
 const QuestBadges := preload("res://scripts/quest_badge_art.gd")
 const ZooFx := preload("res://scripts/fx.gd")
+const SavePickerScript := preload("res://scripts/save_picker.gd")
 
 @onready var _wallet_label: Label = %WalletLabel
 @onready var _wallet_drip: Label = %WalletDrip
@@ -58,9 +59,11 @@ const ZooFx := preload("res://scripts/fx.gd")
 @onready var _lab_scrim: ColorRect = %LabScrim
 @onready var _lab_panel: PanelContainer = %LabPanel
 @onready var _lab_card_host: Control = %LabCardHost
-@onready var _lab_slots: Container = %LabSlots
 @onready var _lab_hint: Label = %LabHint
 @onready var _lab_subject: Label = %LabSubject
+@onready var _lab_name: Label = %LabName
+@onready var _lab_name_edit: LineEdit = %LabNameEdit
+@onready var _clone_animal: Button = %CloneAnimal
 @onready var _dna_strand: DnaStrand = %DnaStrand
 @onready var _shop_scrim: ColorRect = %ShopScrim
 @onready var _shop_panel: PanelContainer = %ShopPanel
@@ -82,13 +85,17 @@ const ZooFx := preload("res://scripts/fx.gd")
 @onready var _cat_pens: Button = %CatPens
 @onready var _cat_animals: Button = %CatAnimals
 @onready var _cat_paths: Button = %CatPaths
-@onready var _cat_park: Button = %CatPark
 @onready var _dock: Control = %Dock
+@onready var _zoo_name: Label = %ZooName
+@onready var _zoo_name_edit: LineEdit = %ZooNameEdit
 @onready var _coach_panel: PanelContainer = %CoachPanel
 @onready var _coach_copy: Label = %CoachCopy
 @onready var _coach_title: Label = %CoachTitle
 @onready var _coach_progress: Label = %CoachProgress
 @onready var _pause_scrim: ColorRect = %PauseScrim
+@onready var _pause_center: CenterContainer = %PauseCenter
+@onready var _pause_note: Label = %PauseNote
+@onready var _save_picker: SavePickerScript = %SavePicker
 @onready var _cancel_build: Button = %CancelBuild
 
 var _selected_animal: Animal = null
@@ -96,7 +103,6 @@ var _selected_pen: Pen = null
 var _selected_guest: Visitor = null
 var _build_mode: BuildMode = null
 var _active_lab_slot: String = ""
-var _slot_buttons: Dictionary = {} # slot -> Button
 var _tile_buttons: Dictionary = {} # item_id -> Button
 var _open_category: String = ""
 var _open_card_section: String = ""
@@ -108,6 +114,8 @@ var _quest_open: bool = false
 var _ledger_open: bool = false
 var _paused: bool = false
 var _mutation_busy: bool = false
+var _zoo_name_busy: bool = false
+var _lab_name_busy: bool = false
 
 
 func _ready() -> void:
@@ -129,7 +137,7 @@ func _ready() -> void:
 	_ink_paper_labels(_hours_panel)
 	_style_paper_toggle(_audience_toggle)
 	_style_paper_toggle(_looks_toggle)
-	_build_lab_slots()
+	_dna_strand.slot_hovered.connect(_on_strand_hovered)
 	Events.animal_selected.connect(_on_animal_selected)
 	Events.visitor_selected.connect(_on_visitor_selected)
 	Events.pen_selected.connect(_on_pen_selected)
@@ -142,6 +150,19 @@ func _ready() -> void:
 	Events.creator_posted.connect(_on_creator_posted)
 	Events.zoo_hours_changed.connect(_on_zoo_hours_changed)
 	Events.tutorial_changed.connect(_refresh_coach)
+	Events.zoo_renamed.connect(_on_zoo_renamed)
+	Events.creature_renamed.connect(_on_creature_renamed)
+	_zoo_name.text = SaveService.zoo_name
+	_zoo_name.gui_input.connect(_on_zoo_name_gui_input)
+	_zoo_name_edit.text_submitted.connect(_on_zoo_name_submitted)
+	_zoo_name_edit.focus_exited.connect(_on_zoo_name_focus_exited)
+	_zoo_name_edit.gui_input.connect(_on_zoo_name_edit_gui_input)
+	_lab_name.gui_input.connect(_on_lab_name_gui_input)
+	_lab_name_edit.text_submitted.connect(_on_lab_name_submitted)
+	_lab_name_edit.focus_exited.connect(_on_lab_name_focus_exited)
+	_lab_name_edit.gui_input.connect(_on_lab_name_edit_gui_input)
+	_save_picker.save_chosen.connect(_on_save_chosen)
+	_save_picker.closed.connect(_on_save_picker_closed)
 	_on_money_changed(WalletService.money)
 	_on_vials_changed(GeneTree.stock)
 	_refresh_quest()
@@ -299,10 +320,6 @@ func _on_cat_paths() -> void:
 	_toggle_category(BuildCatalog.CAT_PATHS)
 
 
-func _on_cat_park() -> void:
-	_toggle_category(BuildCatalog.CAT_PARK)
-
-
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse := event as InputEventMouseButton
@@ -312,6 +329,10 @@ func _input(event: InputEvent) -> void:
 
 func _dismiss_open_menu() -> void:
 	var hovered: Control = get_viewport().gui_get_hovered_control()
+	if _zoo_name_edit.visible and not _is_on_panel(hovered, _zoo_name_edit):
+		_commit_zoo_name(_zoo_name_edit.text)
+	if _lab_name_edit.visible and not _is_on_panel(hovered, _lab_name_edit):
+		_commit_lab_name(_lab_name_edit.text)
 	if _hours_panel.visible and not _is_on_panel(hovered, _hours_panel):
 		_on_dismiss_hours()
 		_eat_world_click(hovered)
@@ -365,7 +386,6 @@ func _toggle_category(category: String) -> void:
 	_cat_pens.set_pressed_no_signal(category == BuildCatalog.CAT_PENS)
 	_cat_animals.set_pressed_no_signal(category == BuildCatalog.CAT_ANIMALS)
 	_cat_paths.set_pressed_no_signal(category == BuildCatalog.CAT_PATHS)
-	_cat_park.set_pressed_no_signal(category == BuildCatalog.CAT_PARK)
 	_refresh_cancel_build()
 	_sync_quest_popup()
 
@@ -383,7 +403,6 @@ func _close_catalog() -> void:
 	_cat_pens.set_pressed_no_signal(false)
 	_cat_animals.set_pressed_no_signal(false)
 	_cat_paths.set_pressed_no_signal(false)
-	_cat_park.set_pressed_no_signal(false)
 	_clear_catalog_tiles()
 	_refresh_cancel_build()
 	_sync_quest_popup()
@@ -411,11 +430,14 @@ func _make_catalog_tile(item: Dictionary) -> Button:
 	btn.toggle_mode = true
 	btn.custom_minimum_size = Vector2(118, 92)
 	btn.clip_contents = false
-	btn.text = "%s\n%s\n$%d" % [
-		str(item.get("name", "?")),
-		str(item.get("blurb", "")),
-		cost,
-	]
+	if str(item.get("kind", "")) == "delete_path":
+		btn.text = "%s\n%s" % [str(item.get("name", "?")), str(item.get("blurb", ""))]
+	else:
+		btn.text = "%s\n%s\n$%d" % [
+			str(item.get("name", "?")),
+			str(item.get("blurb", "")),
+			cost,
+		]
 	if locked:
 		btn.disabled = true
 		btn.focus_mode = Control.FOCUS_NONE
@@ -449,7 +471,9 @@ func _paint_tile(btn: Button, item: Dictionary) -> void:
 	btn.disabled = false
 	var can_buy := WalletService.can_afford(cost)
 	btn.modulate = Color.WHITE if can_buy else Color(1, 1, 1, 0.45)
-	if can_buy:
+	if str(item.get("kind", "")) == "delete_path":
+		btn.tooltip_text = "Click a path to remove it."
+	elif can_buy:
 		btn.tooltip_text = "%s — $%d. Left click to place." % [item.get("name", "?"), cost]
 	else:
 		btn.tooltip_text = "Need $%d for a %s." % [cost, item.get("name", "item")]
@@ -489,7 +513,7 @@ func _on_placement_rejected(_reason: String) -> void:
 func _on_creator_posted(cash: int) -> void:
 	if _wallet_drip == null:
 		return
-	_wallet_drip.text = "+$%d clip" % cash
+	_wallet_drip.text = "Engagement · +$%d" % cash
 	_wallet_drip.add_theme_color_override("font_color", FILL_GOOD)
 
 
@@ -1085,21 +1109,24 @@ func _on_mutate_pressed() -> void:
 	_dock_card(true)
 	_refresh_lab_header()
 	_active_lab_slot = ""
-	_dna_strand.arm("")
-	_refresh_slot_toggles()
+	_dna_strand.highlight("")
 	_refresh_lab_hint()
 	_refresh_lab_tray()
 	_refresh_shop()
 	TutorialService.on_lab_opened()
 	_sync_quest_popup()
+	call_deferred("_pop_lab")
 
 
 func _on_close_lab() -> void:
+	if _lab_name_edit.visible:
+		_cancel_lab_name_edit()
 	_lab_scrim.visible = false
 	_lab_panel.visible = false
+	_lab_panel.scale = Vector2.ONE
+	_lab_panel.modulate = Color.WHITE
 	_active_lab_slot = ""
-	_dna_strand.arm("")
-	_refresh_slot_toggles()
+	_dna_strand.highlight("")
 	_dock_card(false)
 	_sync_quest_popup()
 
@@ -1110,9 +1137,23 @@ func _dock_card(in_lab: bool) -> void:
 		_stats_panel.get_parent().remove_child(_stats_panel)
 		host.add_child(_stats_panel)
 		_restore_owner(_stats_panel)
+	_stats_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if in_lab else 0
+	_stats_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_edit_dna_btn.visible = not in_lab
 	if _deselect_btn != null:
 		_deselect_btn.visible = not in_lab
+
+
+func _pop_lab() -> void:
+	if _lab_panel == null or not _lab_panel.visible:
+		return
+	_lab_panel.pivot_offset = _lab_panel.size * 0.5
+	_lab_panel.scale = Vector2(0.96, 0.96)
+	_lab_panel.modulate = Color(1, 1, 1, 0)
+	var tw := create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_property(_lab_panel, "modulate:a", 1.0, 0.16)
+	tw.parallel().tween_property(_lab_panel, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _restore_owner(node: Node) -> void:
@@ -1125,136 +1166,89 @@ func _refresh_lab_header() -> void:
 	_refresh_lab_parts()
 	if _selected_animal == null:
 		_lab_subject.text = ""
+		if _lab_name != null:
+			_lab_name.text = "Unnamed"
 		return
+	if _lab_name != null and not _lab_name_edit.visible:
+		_lab_name.text = _selected_animal.creature_name
 	var stats: Dictionary = _selected_animal.get_stats()
 	var arch: String = str(stats.get("archetype", "Unspecialized"))
 	var lead: Dictionary = TraitLibrary.prominent_look(stats.get("tags", {}))
 	if lead.is_empty():
-		_lab_subject.text = "%s  ·  %s" % [_selected_animal.creature_name, arch]
+		_lab_subject.text = arch
 	else:
-		_lab_subject.text = "%s  ·  %s from majority %s" % [
-			_selected_animal.creature_name,
-			arch,
-			str(lead.get("name", "")),
-		]
+		_lab_subject.text = "%s from majority %s" % [arch, str(lead.get("name", ""))]
 
 
 func _refresh_lab_hint() -> void:
 	if _selected_animal == null:
-		_lab_hint.text = "Select an animal, then pick a part."
+		_lab_hint.text = "Select an animal, then drag a serum onto a DNA pair."
 		return
-	if _active_lab_slot.is_empty():
-		var stats: Dictionary = _selected_animal.get_stats()
-		_lab_hint.text = "Each part has one look. Majority %s makes this animal %s. Pick a part, then a vial." % [
-			str(TraitLibrary.prominent_look(stats.get("tags", {})).get("name", "none")),
-			str(stats.get("archetype", "Unspecialized")),
-		]
+	_lab_hint.text = "Hover a pair to inspect it. Drag a serum onto the limb you want to change."
+
+
+func _on_strand_hovered(slot: String) -> void:
+	if not _lab_panel.visible:
 		return
-	var current := _current_index_for_slot(_active_lab_slot)
-	var option: Dictionary = TraitLibrary.get_option(_active_lab_slot, current)
-	var look: String = TraitLibrary.option_look(_active_lab_slot, current)
-	var buff: String = TraitLibrary.look_buff(look)
-	var overall: String = TraitLibrary.overall_for_look(look)
-	var slot_name: String = TraitLibrary.slot_display_name(_active_lab_slot).to_lower()
-	if look.is_empty():
-		_lab_hint.text = "Editing %s — now %s. Click a serum." % [
-			slot_name,
-			option.get("name", "?"),
-		]
+	if slot.is_empty() or _selected_animal == null:
+		_refresh_lab_hint()
 		return
-	var buff_line: String = buff.to_lower() if not buff.is_empty() else look.to_lower()
-	_lab_hint.text = "Editing %s — %s is %s (%s). Stack %s to make the animal %s." % [
-		slot_name,
-		option.get("name", "?"),
-		look.to_lower(),
-		buff_line,
-		look.to_lower(),
-		overall,
-	]
-
-
-func _build_lab_slots() -> void:
-	for child in _lab_slots.get_children():
-		child.queue_free()
-	_slot_buttons.clear()
-	var slots: Array[String] = TraitLibrary.LAB_SLOTS.duplicate()
-	slots.append(TraitLibrary.COLOR_SLOT)
-	for slot in slots:
-		var btn := Button.new()
-		btn.toggle_mode = true
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.clip_text = false
-		btn.autowrap_mode = TextServer.AUTOWRAP_OFF
-		btn.custom_minimum_size = Vector2(132, 64)
-		btn.text = TraitLibrary.slot_display_name(slot)
-		btn.pressed.connect(_on_lab_slot_pressed.bind(slot))
-		_lab_slots.add_child(btn)
-		_slot_buttons[slot] = btn
-	_refresh_lab_parts()
-
-
-func _lab_slot_caption(slot: String) -> String:
-	var heading: String = TraitLibrary.slot_display_name(slot)
-	if _selected_animal == null:
-		return heading
 	var index := _current_index_for_slot(slot)
 	var option: Dictionary = TraitLibrary.get_option(slot, index)
 	var look: String = TraitLibrary.option_look(slot, index)
+	var buff: String = TraitLibrary.look_buff(look)
+	var heading: String = TraitLibrary.slot_display_name(slot)
+	var part_name: String = str(option.get("name", "?"))
 	if look.is_empty():
-		return "%s\n%s" % [heading, option.get("name", "?")]
-	return "%s\n%s\n%s" % [heading, option.get("name", "?"), look]
+		_lab_hint.text = "%s is %s. Drag a serum onto this pair." % [heading, part_name]
+	elif buff.is_empty():
+		_lab_hint.text = "%s is %s | %s. Drag a serum onto this pair." % [heading, part_name, look]
+	else:
+		_lab_hint.text = "%s is %s | %s. %s. Drag a serum onto this pair." % [heading, part_name, look, buff]
+
+
+func _lab_limb_slots() -> Array[String]:
+	var slots: Array[String] = TraitLibrary.LAB_SLOTS.duplicate()
+	slots.append(TraitLibrary.COLOR_SLOT)
+	return slots
+
+
+func _refresh_limb_notes() -> void:
+	if _dna_strand == null:
+		return
+	if _selected_animal == null:
+		_dna_strand.set_parts({})
+		return
+	var parts: Dictionary = {}
+	for slot in _lab_limb_slots():
+		if slot != TraitLibrary.COLOR_SLOT and _selected_animal != null \
+				and not _selected_animal.visuals.is_slot_visible(slot):
+			parts[slot] = {"name": "None", "look": ""}
+			continue
+		var index := _current_index_for_slot(slot)
+		var option: Dictionary = TraitLibrary.get_option(slot, index)
+		parts[slot] = {
+			"name": str(option.get("name", "?")),
+			"look": TraitLibrary.option_look(slot, index),
+		}
+	_dna_strand.set_parts(parts)
 
 
 func _refresh_lab_parts() -> void:
-	for slot in _slot_buttons:
-		var btn: Button = _slot_buttons[slot]
-		if not is_instance_valid(btn):
-			continue
-		btn.text = _lab_slot_caption(slot)
-		if _selected_animal == null:
-			btn.tooltip_text = ""
-			continue
-		var look: String = TraitLibrary.option_look(slot, _current_index_for_slot(slot))
-		var buff: String = TraitLibrary.look_buff(look)
-		if buff.is_empty():
-			btn.tooltip_text = look
-		else:
-			btn.tooltip_text = "%s — %s. Majority %s makes the animal %s." % [
-				look,
-				buff.to_lower(),
-				look.to_lower(),
-				TraitLibrary.overall_for_look(look),
-			]
+	_refresh_limb_notes()
 
 
-func _on_lab_slot_pressed(slot: String) -> void:
-	if _selected_animal == null:
-		_refresh_slot_toggles()
-		return
-	_active_lab_slot = slot
-	_dna_strand.arm(slot)
-	_refresh_lab_parts()
-	_refresh_slot_toggles()
-	_refresh_lab_hint()
-	_refresh_lab_tray()
-
-
-func _refresh_slot_toggles() -> void:
-	for slot in _slot_buttons:
-		var btn: Button = _slot_buttons[slot]
-		if is_instance_valid(btn):
-			btn.set_pressed_no_signal(slot == _active_lab_slot)
-
-
-func _on_vial_dropped(vial_id: String) -> void:
-	_apply_vial(vial_id)
+func _on_vial_dropped(vial_id: String, slot: String = "") -> void:
+	_apply_vial(vial_id, slot)
 
 
 func _on_vial_clicked(vial_id: String) -> void:
-	_apply_vial(vial_id)
+	var vial: Dictionary = GeneTree.get_vial(vial_id)
+	var vial_name: String = str(vial.get("name", "serum"))
+	_lab_hint.text = "Drag %s onto a labelled DNA pair." % vial_name
 
 
-func _apply_vial(vial_id: String) -> void:
+func _apply_vial(vial_id: String, slot: String = "") -> void:
 	var vial: Dictionary = GeneTree.get_vial(vial_id)
 	if vial.is_empty():
 		return
@@ -1269,18 +1263,20 @@ func _apply_vial(vial_id: String) -> void:
 		_lab_hint.text = "No %s left. Buy one from the vial shop." % vial_name
 		return
 	var kind: String = str(vial.get("kind", ""))
+	if slot.is_empty():
+		_lab_hint.text = "Drag the serum onto the DNA pair for that limb."
+		return
+	_active_lab_slot = slot
+	_dna_strand.highlight(slot)
 	if kind == GeneTree.VIAL_KIND_PERK:
 		_apply_perk_vial(vial_id, vial)
 		return
-	if _active_lab_slot.is_empty():
-		_lab_hint.text = "Pick a body part first."
-		return
-	var current := _current_index_for_slot(_active_lab_slot)
+	var current := _current_index_for_slot(slot)
 	var next_index: int = current
-	var slot_name: String = TraitLibrary.slot_display_name(_active_lab_slot).to_lower()
+	var slot_name: String = TraitLibrary.slot_display_name(slot).to_lower()
 	if kind == GeneTree.VIAL_KIND_EXOTIC:
 		next_index = TraitLibrary.pick_other_from_ids(
-			_active_lab_slot, current, vial.get("pool", [])
+			slot, current, vial.get("pool", [])
 		)
 		if next_index == current:
 			_lab_hint.text = "This %s has no exotic form yet." % slot_name
@@ -1288,7 +1284,7 @@ func _apply_vial(vial_id: String) -> void:
 	else:
 		var tag: String = str(vial.get("tag", ""))
 		next_index = TraitLibrary.pick_other_with_tag(
-			_active_lab_slot, current, tag, int(vial.get("rarity_min", 0))
+			slot, current, tag, int(vial.get("rarity_min", 0))
 		)
 		if next_index == current:
 			_lab_hint.text = "This %s has no %s form yet." % [slot_name, tag.to_lower()]
@@ -1296,7 +1292,6 @@ func _apply_vial(vial_id: String) -> void:
 	if not GeneTree.consume_vial(vial_id):
 		return
 	var animal: Animal = _selected_animal
-	var slot: String = _active_lab_slot
 	var index: int = next_index
 	var animal_id: int = animal.get_instance_id()
 	_mutation_busy = true
@@ -1347,7 +1342,7 @@ func _finish_serum(animal: Animal, slot: String, index: int) -> void:
 	Events.creature_mutated.emit(animal, slot)
 	_refresh_inspect()
 	_refresh_quest()
-	_dna_strand.arm(slot)
+	_dna_strand.flash(slot)
 	_refresh_lab_header()
 	_refresh_lab_tray()
 	var option: Dictionary = TraitLibrary.get_option(slot, index)
@@ -1411,7 +1406,6 @@ func _on_claim_quest() -> void:
 	_refresh_quest()
 	if not _open_category.is_empty():
 		_rebuild_catalog()
-	SaveService.save_from_tree()
 
 
 func _on_open_shop() -> void:
@@ -1447,20 +1441,14 @@ func _paint_vial_chip(chip: VialChip, vial: Dictionary) -> void:
 	chip.modulate = Color.WHITE
 	var kind: String = str(vial.get("kind", ""))
 	if kind == GeneTree.VIAL_KIND_PERK:
-		chip.tooltip_text = "Click to graft %s." % vial.get("name", "perk")
+		chip.tooltip_text = "Drag to graft %s onto any labelled pair." % vial.get("name", "perk")
 		return
-	var current := _current_index_for_slot(_active_lab_slot)
 	var tag: String = str(vial.get("tag", "that"))
-	if not TraitLibrary.vial_can_apply(vial, _active_lab_slot, current):
-		chip.disabled = true
-		chip.modulate = Color(1, 1, 1, 0.4)
-		chip.tooltip_text = "This part has no %s form yet." % tag.to_lower()
+	var buff: String = TraitLibrary.look_buff(tag)
+	if buff.is_empty():
+		chip.tooltip_text = "Drag onto a DNA pair to apply %s." % vial.get("name", "serum")
 	else:
-		chip.disabled = false
-		chip.tooltip_text = "%s. %s" % [
-			TraitLibrary.look_buff(tag),
-			"Click to apply %s." % vial.get("name", "serum"),
-		]
+		chip.tooltip_text = "%s. Drag onto a DNA pair." % buff
 
 
 func _on_thumb_gui_input(event: InputEvent) -> void:
@@ -1471,20 +1459,7 @@ func _on_thumb_gui_input(event: InputEvent) -> void:
 		return
 	if not _lab_panel.visible or _selected_animal == null:
 		return
-	var wrap: Control = %ThumbContainer
-	var size: Vector2 = wrap.size
-	if size.y <= 0.0:
-		return
-	var local: Vector2 = wrap.get_local_mouse_position()
-	var t: float = local.y / size.y
-	if t < 0.32:
-		_on_lab_slot_pressed("head")
-	elif t < 0.55:
-		_on_lab_slot_pressed(TraitLibrary.COLOR_SLOT)
-	elif t < 0.78:
-		_on_lab_slot_pressed("front_legs" if local.x > size.x * 0.5 else "back_legs")
-	else:
-		_on_lab_slot_pressed("tail")
+	_lab_hint.text = "Drag a serum onto the DNA pair for that limb."
 
 
 func _sync_journey_pad() -> void:
@@ -1646,6 +1621,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func handle_escape() -> void:
+	if _save_picker != null and _save_picker.visible:
+		_save_picker.close()
+		return
 	if _paused:
 		_on_resume()
 		return
@@ -1676,10 +1654,157 @@ func handle_escape() -> void:
 func _set_paused(want: bool) -> void:
 	_paused = want
 	get_tree().paused = want
+	if _save_picker != null and not want:
+		_save_picker.visible = false
+	if _pause_center != null:
+		_pause_center.visible = true
+	if _pause_note != null and not want:
+		_pause_note.text = ""
 	if _pause_scrim != null:
 		_pause_scrim.visible = want
 	Events.game_paused.emit(want)
 	_sync_quest_popup()
+
+
+func _on_zoo_name_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		if mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT:
+			_begin_zoo_name_edit()
+			accept_event()
+
+
+func _on_zoo_name_edit_gui_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		_cancel_zoo_name_edit()
+		accept_event()
+
+
+func _begin_zoo_name_edit() -> void:
+	_zoo_name.visible = false
+	_zoo_name_edit.text = _zoo_name.text
+	_zoo_name_edit.visible = true
+	_zoo_name_edit.grab_focus()
+	_zoo_name_edit.caret_column = _zoo_name_edit.text.length()
+	_zoo_name_edit.select_all()
+
+
+func _cancel_zoo_name_edit() -> void:
+	_zoo_name_busy = true
+	_hide_zoo_name_edit()
+	_zoo_name_busy = false
+
+
+func _hide_zoo_name_edit() -> void:
+	_zoo_name_edit.release_focus()
+	_zoo_name_edit.visible = false
+	_zoo_name.visible = true
+
+
+func _on_zoo_name_submitted(new_text: String) -> void:
+	_commit_zoo_name(new_text)
+
+
+func _on_zoo_name_focus_exited() -> void:
+	if _zoo_name_busy or not _zoo_name_edit.visible:
+		return
+	_commit_zoo_name(_zoo_name_edit.text)
+
+
+func _commit_zoo_name(new_text: String) -> void:
+	SaveService.set_zoo_name(new_text)
+	_zoo_name.text = SaveService.zoo_name
+	if _zoo_name_edit.visible:
+		_zoo_name_busy = true
+		_hide_zoo_name_edit()
+		_zoo_name_busy = false
+
+
+func _on_zoo_renamed(new_name: String) -> void:
+	if _zoo_name_edit.visible:
+		return
+	if _zoo_name.text != new_name:
+		_zoo_name.text = new_name
+
+
+func _on_creature_renamed(animal: Node) -> void:
+	if animal != _selected_animal:
+		return
+	_refresh_inspect()
+	if _lab_panel.visible:
+		_refresh_lab_header()
+		_refresh_lab_hint()
+
+
+func _on_clone_animal() -> void:
+	if _selected_animal == null or not is_instance_valid(_selected_animal):
+		return
+	var item: Dictionary = SaveService.add_clone_from(_selected_animal)
+	if item.is_empty():
+		_lab_hint.text = "Could not clone this animal."
+		return
+	_lab_hint.text = "%s added to Animals." % str(item.get("name", "Clone"))
+	if _open_category == BuildCatalog.CAT_ANIMALS:
+		_rebuild_catalog()
+	else:
+		_refresh_catalog_tiles()
+
+
+func _on_lab_name_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		if mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT:
+			_begin_lab_name_edit()
+			accept_event()
+
+
+func _on_lab_name_edit_gui_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		_cancel_lab_name_edit()
+		accept_event()
+
+
+func _begin_lab_name_edit() -> void:
+	if _selected_animal == null:
+		return
+	_lab_name.visible = false
+	_lab_name_edit.text = _selected_animal.creature_name
+	_lab_name_edit.visible = true
+	_lab_name_edit.grab_focus()
+	_lab_name_edit.caret_column = _lab_name_edit.text.length()
+	_lab_name_edit.select_all()
+
+
+func _cancel_lab_name_edit() -> void:
+	_lab_name_busy = true
+	_hide_lab_name_edit()
+	_lab_name_busy = false
+
+
+func _hide_lab_name_edit() -> void:
+	_lab_name_edit.release_focus()
+	_lab_name_edit.visible = false
+	_lab_name.visible = true
+
+
+func _on_lab_name_submitted(new_text: String) -> void:
+	_commit_lab_name(new_text)
+
+
+func _on_lab_name_focus_exited() -> void:
+	if _lab_name_busy or not _lab_name_edit.visible:
+		return
+	_commit_lab_name(_lab_name_edit.text)
+
+
+func _commit_lab_name(new_text: String) -> void:
+	if _selected_animal != null and is_instance_valid(_selected_animal):
+		_selected_animal.set_creature_name(new_text)
+		_lab_name.text = _selected_animal.creature_name
+	if _lab_name_edit.visible:
+		_lab_name_busy = true
+		_hide_lab_name_edit()
+		_lab_name_busy = false
 
 
 func _on_resume() -> void:
@@ -1687,14 +1812,30 @@ func _on_resume() -> void:
 
 
 func _on_pause_save() -> void:
-	SaveService.save_from_tree()
+	if SaveService.save_from_tree():
+		_pause_note.text = "Saved %s" % SaveService.zoo_name
+	else:
+		_pause_note.text = "Couldn't save the zoo"
+
+
+func _on_pause_load() -> void:
+	if _pause_scrim != null:
+		_pause_scrim.visible = false
+	_save_picker.open.call_deferred()
+
+
+func _on_save_picker_closed() -> void:
+	if _paused and _pause_scrim != null:
+		_pause_scrim.visible = true
+		if _pause_center != null:
+			_pause_center.visible = true
+
+
+func _on_save_chosen(path: String) -> void:
+	_set_paused(false)
+	SaveService.continue_from(path)
 
 
 func _on_pause_title() -> void:
 	_set_paused(false)
 	SaveService.return_to_title()
-
-
-func _on_pause_quit() -> void:
-	SaveService.save_from_tree()
-	get_tree().quit()

@@ -8,6 +8,16 @@ script = ExtResource("1")
 [node name="Tail" type="Sprite2D" parent="."]
 centered = true
 
+[node name="FarBackLegs" type="Sprite2D" parent="."]
+centered = true
+position = Vector2(6, -3)
+modulate = Color(0.72, 0.7, 0.68, 1)
+
+[node name="FarFrontLegs" type="Sprite2D" parent="."]
+centered = true
+position = Vector2(-4, -3)
+modulate = Color(0.72, 0.7, 0.68, 1)
+
 [node name="BackLegs" type="Sprite2D" parent="."]
 centered = true
 

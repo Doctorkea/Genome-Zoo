@@ -123,7 +123,6 @@ const OPTIONS: Dictionary = {
 		{"id": "jimmothy", "name": "Jimmothy Body", "tags": ["Cute"], "rarity": 0},
 	],
 	"head": [
-		{"id": "jimothy", "name": "Jimothy Head", "tags": ["Cute"], "rarity": 0},
 		{"id": "gorilla", "name": "Gorilla Head", "tags": ["Scary"], "rarity": 2},
 		{"id": "lizard", "name": "Lizard Head", "tags": ["Weird"], "rarity": 1},
 		{"id": "jimmothy", "name": "Horse Head", "tags": ["Majestic"], "rarity": 1},
@@ -146,7 +145,6 @@ const OPTIONS: Dictionary = {
 		{"id": "sheep", "name": "Sheep Leg", "tags": ["Cute"], "rarity": 0},
 		{"id": "horse", "name": "Horse Leg", "tags": ["Majestic"], "rarity": 1},
 		{"id": "jimmothy", "name": "Clawed Leg", "tags": ["Scary"], "rarity": 1},
-		{"id": "frog", "name": "Frog Leg", "tags": ["Weird"], "rarity": 1},
 		{"id": "bird", "name": "Bird Leg", "tags": ["Weird"], "rarity": 1},
 		{"id": "elephant", "name": "Elephant Leg", "tags": ["Bulky"], "rarity": 1},
 		{"id": "gorilla", "name": "Gorilla Leg", "tags": ["Bulky"], "rarity": 1},
@@ -174,8 +172,9 @@ const OPTIONS: Dictionary = {
 			"base": Color(0.40, 0.48, 0.22), "mark": Color(0.22, 0.28, 0.10),
 			"pattern": 4, "pattern_scale": 2.8, "pattern_amount": 0.38},
 		{"id": "spots", "name": "Leopard Spots", "tags": ["Cute"], "rarity": 0,
-			"base": Color(0.82, 0.62, 0.34), "mark": Color(0.18, 0.10, 0.06),
-			"pattern": 1, "pattern_scale": 4.6, "pattern_amount": 0.72},
+			"base": Color(0.82, 0.62, 0.34), "mark": Color(0.28, 0.12, 0.04),
+			"pattern": 9, "pattern_scale": 0.72, "pattern_amount": 0.88,
+			"pattern_tex": "res://art/creatures/coats/leopard.png"},
 		{"id": "stripes", "name": "Tiger Stripes", "tags": ["Scary"], "rarity": 1,
 			"base": Color(0.84, 0.48, 0.16), "mark": Color(0.08, 0.05, 0.03),
 			"pattern": 2, "pattern_scale": 3.6, "pattern_amount": 0.78},
@@ -185,24 +184,43 @@ const OPTIONS: Dictionary = {
 		{"id": "sleek", "name": "Seal Coat", "tags": ["Majestic"], "rarity": 1,
 			"base": Color(0.52, 0.56, 0.60), "mark": Color(0.32, 0.34, 0.38),
 			"pattern": 0, "pattern_scale": 5.0, "pattern_amount": 0.08},
-		{"id": "patches", "name": "Piebald Patches", "tags": ["Weird"], "rarity": 0,
-			"base": Color(0.90, 0.88, 0.82), "mark": Color(0.12, 0.09, 0.07),
-			"pattern": 6, "pattern_scale": 1.8, "pattern_amount": 0.82},
+		{"id": "patches", "name": "Cow Spots", "tags": ["Weird"], "rarity": 0,
+			"base": Color(0.94, 0.92, 0.88), "mark": Color(0.08, 0.07, 0.06),
+			"pattern": 9, "pattern_scale": 0.62, "pattern_amount": 0.92,
+			"pattern_tex": "res://art/creatures/coats/cow.png"},
 		{"id": "oil", "name": "Zebra Stripes", "tags": ["Majestic"], "rarity": 1,
-			"base": Color(0.92, 0.90, 0.86), "mark": Color(0.06, 0.05, 0.04),
-			"pattern": 7, "pattern_scale": 4.8, "pattern_amount": 0.85},
+			"base": Color(0.94, 0.93, 0.90), "mark": Color(0.08, 0.07, 0.06),
+			"pattern": 9, "pattern_scale": 0.68, "pattern_amount": 0.94,
+			"pattern_tex": "res://art/creatures/coats/zebra.png"},
 		{"id": "bristles", "name": "Tabby Streaks", "tags": ["Cute"], "rarity": 1,
 			"base": Color(0.62, 0.40, 0.20), "mark": Color(0.16, 0.10, 0.06),
 			"pattern": 8, "pattern_scale": 3.8, "pattern_amount": 0.48},
 		{"id": "mould", "name": "Toad Mottling", "tags": ["Gross"], "rarity": 1,
 			"base": Color(0.40, 0.44, 0.20), "mark": Color(0.18, 0.22, 0.10),
 			"pattern": 4, "pattern_scale": 2.2, "pattern_amount": 0.4},
+		{"id": "giraffe", "name": "Giraffe Spots", "tags": ["Majestic"], "rarity": 1,
+			"base": Color(0.86, 0.64, 0.28), "mark": Color(0.36, 0.16, 0.06),
+			"pattern": 9, "pattern_scale": 0.58, "pattern_amount": 0.9,
+			"pattern_tex": "res://art/creatures/coats/giraffe.png"},
+		{"id": "starry", "name": "Starry Night", "tags": ["Weird"], "rarity": 1,
+			"base": Color(0.08, 0.09, 0.16), "mark": Color(0.92, 0.94, 1.0),
+			"pattern": 10, "pattern_scale": 0.85, "pattern_amount": 0.95,
+			"pattern_tex": "res://art/creatures/coats/stars.png"},
 	],
 }
+
+var _pattern_tex_cache: Dictionary = {} # path -> Texture2D with mipmaps
 
 
 ## Flat placeholder colours so a circle on the grass reads as a visitor type.
 func visitor_spec(visitor_id: String) -> Dictionary:
+	if visitor_id == "camera":
+		return {
+			"id": "camera",
+			"name": "Camera operator",
+			"loves": [],
+			"hates": [],
+		}
 	for spec in VISITORS:
 		if str(spec.get("id", "")) == visitor_id:
 			return spec
@@ -220,6 +238,97 @@ func visitor_approval(visitor_id: String, counts: Dictionary) -> int:
 	return int(_score_visitors(counts).get(visitor_id, 0))
 
 
+## Families and kids are common, so Cute pays least. Scarce guests and
+## harder looks (Scary / Predator) pay more when they actually see a match.
+func sight_bonus(visitor_id: String, tags: Dictionary, is_family: bool = false) -> int:
+	if (is_family or visitor_id == "children") and int(tags.get("Scary", 0)) >= CHILD_CRY_SCARY:
+		return 0
+	var best_tag: String = ""
+	var best_score: float = 0.0
+	for tag in loved_tags_for(visitor_id, is_family):
+		var n: int = int(tags.get(tag, 0))
+		if n <= 0:
+			continue
+		var score: float = sight_tag_weight(tag) * (1.0 + 0.06 * float(n - 1))
+		if score > best_score:
+			best_score = score
+			best_tag = tag
+	if best_tag.is_empty():
+		return 0
+	var cash: int = maxi(1, int(round(sight_guest_weight(visitor_id, is_family) * sight_tag_weight(best_tag))))
+	if best_tag != "Cute" and int(tags.get(best_tag, 0)) >= 3:
+		cash += 1
+	return cash
+
+
+func loved_tags_for(visitor_id: String, is_family: bool = false) -> PackedStringArray:
+	var loves := PackedStringArray()
+	var spec: Dictionary = visitor_spec(visitor_id)
+	for tag in spec.get("loves", []):
+		var word: String = str(tag)
+		if not loves.has(word):
+			loves.append(word)
+	if is_family or visitor_id == "children":
+		if not loves.has("Cute"):
+			loves.append("Cute")
+	return loves
+
+
+func hated_tags_for(visitor_id: String, is_family: bool = false) -> PackedStringArray:
+	var hates := PackedStringArray()
+	var spec: Dictionary = visitor_spec(visitor_id)
+	for tag in spec.get("hates", []):
+		var word: String = str(tag)
+		if not hates.has(word):
+			hates.append(word)
+	if is_family or visitor_id == "children":
+		if not hates.has("Scary"):
+			hates.append("Scary")
+	return hates
+
+
+func sight_guest_weight(visitor_id: String, is_family: bool = false) -> float:
+	if is_family:
+		return 1.0
+	match visitor_id:
+		"children":
+			return 1.0
+		"parents":
+			return 1.15
+		"tourists":
+			return 1.55
+		"thrill":
+			return 2.35
+		"creators":
+			return 2.75
+		"camera":
+			return 1.0
+		"goths":
+			return 3.15
+		"scientists":
+			return 3.5
+		_:
+			return 1.4
+
+
+func sight_tag_weight(tag: String) -> float:
+	match tag:
+		"Cute":
+			return 1.0
+		"Bulky":
+			return 1.3
+		"Majestic":
+			return 1.45
+		"Weird":
+			return 1.5
+		"Gross":
+			return 1.65
+		"Scary":
+			return 1.85
+		_:
+			return 1.0
+
+
 func visitor_color(visitor_id: String) -> Color:
 	match visitor_id:
 		"children":
@@ -232,6 +341,8 @@ func visitor_color(visitor_id: String) -> Color:
 			return Color(0.28, 0.18, 0.38)
 		"creators":
 			return Color(0.85, 0.30, 0.65)
+		"camera":
+			return Color(0.55, 0.58, 0.62)
 		"thrill":
 			return Color(0.85, 0.15, 0.16)
 		"scientists":
@@ -261,6 +372,20 @@ func visitor_sprite_paths(visitor_id: String) -> PackedStringArray:
 			return PackedStringArray([
 				"res://art/visitors/tourist_girl.png",
 				"res://art/visitors/tourist_guy.png",
+			])
+		"creators":
+			return PackedStringArray([
+				"res://art/visitors/creator_girl.png",
+				"res://art/visitors/creator_guy.png",
+			])
+		"thrill":
+			return PackedStringArray([
+				"res://art/visitors/thrill_girl.png",
+				"res://art/visitors/thrill_guy.png",
+			])
+		"camera":
+			return PackedStringArray([
+				"res://art/visitors/camera_man.png",
 			])
 		_:
 			return PackedStringArray(["res://art/visitors/patron.png"])
@@ -305,13 +430,14 @@ func park_rating() -> int:
 		- int(counts.get("Scary", 0)) - int(counts.get("Gross", 0))
 
 
-func random_solo_id() -> String:
+func random_solo_id(allow_creator: bool = true) -> String:
 	var weights: Dictionary = {
 		"tourists": 62,
 		"thrill": 20,
-		"creators": 10,
 		"goths": 6,
 	}
+	if allow_creator:
+		weights["creators"] = 10
 	var totals := zoo_tag_totals()
 	var dark: int = int(totals.get("Scary", 0)) + int(totals.get("Gross", 0))
 	if dark >= 4 or park_rating() < 0:
@@ -485,6 +611,30 @@ func coat_mark_color(option: Dictionary) -> Color:
 	return _as_color(option.get("mark", Color(0.35, 0.22, 0.12)))
 
 
+func coat_pattern_texture(option: Dictionary) -> Texture2D:
+	var path: String = str(option.get("pattern_tex", ""))
+	if path.is_empty():
+		return null
+	if _pattern_tex_cache.has(path):
+		return _pattern_tex_cache[path]
+	var loaded := load(path) as Texture2D
+	if loaded == null:
+		return null
+	var img := loaded.get_image()
+	if img == null:
+		_pattern_tex_cache[path] = loaded
+		return loaded
+	img = img.duplicate()
+	if img.is_compressed():
+		img.decompress()
+	var mip_err := img.generate_mipmaps()
+	if mip_err != OK:
+		push_warning("TraitLibrary: could not build mipmaps for %s" % path)
+	var tex := ImageTexture.create_from_image(img)
+	_pattern_tex_cache[path] = tex
+	return tex
+
+
 func _as_color(value: Variant) -> Color:
 	if value is Color:
 		return value
@@ -505,6 +655,8 @@ func option_label(slot: String, index: int) -> String:
 func score_visuals(visuals: CreatureVisuals) -> Dictionary:
 	var indices: Dictionary = {}
 	for slot in SHAPE_SLOTS:
+		if not visuals.is_slot_visible(slot):
+			continue
 		indices[slot] = visuals.get_current_index(slot)
 	return score_loadout(indices, visuals.get_current_palette_index())
 
@@ -512,6 +664,8 @@ func score_visuals(visuals: CreatureVisuals) -> Dictionary:
 func score_loadout(slot_indices: Dictionary, color_index: int) -> Dictionary:
 	var counts := _empty_counts()
 	for slot in SHAPE_SLOTS:
+		if not slot_indices.has(slot):
+			continue
 		var index: int = int(slot_indices.get(slot, 0))
 		_add_option_tags(counts, slot, index)
 	_add_option_tags(counts, COLOR_SLOT, color_index)

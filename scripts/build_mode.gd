@@ -4,11 +4,10 @@ class_name BuildMode
 ## Pen and animal placement from the bottom catalog. Cash is spent on a
 ## successful place. Ghost preview snaps to the grid. See docs/DEMO.md.
 
-enum Mode { NONE, PLACE_PEN_SMALL, PLACE_PEN_LARGE, PLACE_ANIMAL, PLACE_PATH, PLACE_PARK }
+enum Mode { NONE, PLACE_PEN_SMALL, PLACE_PEN_LARGE, PLACE_ANIMAL, PLACE_PATH, DELETE_PATH }
 
 const PEN_SCENE: PackedScene = preload("res://scenes/Pen.tscn")
 const ANIMAL_SCENE: PackedScene = preload("res://scenes/Animal.tscn")
-const PARK_SCRIPT: GDScript = preload("res://scripts/park_object.gd")
 const ZooFx := preload("res://scripts/fx.gd")
 const PATH_TEXTURES: Array[Texture2D] = [
 	preload("res://art/tiles/paths/path_1.png"),
@@ -23,7 +22,6 @@ var current_item_id: String = ""
 var _pens: Array[Pen] = []
 var _animal_count: int = 0
 var _path_tiles: Dictionary = {} # Vector2i -> Sprite2D
-var _park_objects: Dictionary = {} # Vector2i -> ParkObject
 var _last_path_cell := Vector2i(-999, -999)
 
 @onready var _ghost: Polygon2D = Polygon2D.new()
@@ -34,6 +32,7 @@ func _ready() -> void:
 	_ghost.color = Color(1, 1, 1, 0.35)
 	_ghost.visible = false
 	add_child(_ghost)
+	Events.animal_born.connect(_on_animal_born)
 
 
 func set_item(item_id: String) -> void:
@@ -69,7 +68,7 @@ func set_mode(mode: int) -> void:
 		Mode.PLACE_PEN_LARGE:
 			set_item("pen_large")
 		Mode.PLACE_ANIMAL:
-			set_item("jimothy")
+			set_item("horse")
 		_:
 			clear_tool()
 
@@ -85,13 +84,13 @@ func _sync_mode() -> void:
 			current_mode = Mode.PLACE_ANIMAL
 		"path":
 			current_mode = Mode.PLACE_PATH
-		"park":
-			current_mode = Mode.PLACE_PARK
+		"delete_path":
+			current_mode = Mode.DELETE_PATH
 		_:
 			current_mode = Mode.NONE
 
 
-## Test helper: places a small pen and one Jimothy without charging cash.
+## Test helper: places a small pen and one Horse without charging cash.
 func spawn_starter_exhibit() -> Animal:
 	var origin_cell := Vector2i(4, 2)
 	var size_cells := Vector2i(4, 3)
@@ -110,8 +109,8 @@ func spawn_starter_exhibit() -> Animal:
 	var interior: Rect2 = pen.get_interior_bounds()
 	animal.position = interior.position + interior.size * 0.5
 	animal.set_pen(pen)
-	_apply_species(animal, BuildCatalog.get_item("jimothy"))
-	animal.catalog_id = "jimothy"
+	_apply_species(animal, BuildCatalog.get_item("horse"))
+	animal.catalog_id = "horse"
 	_animal_count += 1
 	pen.register_animal(animal)
 	return animal
@@ -129,31 +128,27 @@ func _process(_delta: float) -> void:
 		_update_pen_ghost()
 	if current_mode == Mode.PLACE_PATH and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_try_place_path()
+	elif current_mode == Mode.DELETE_PATH and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_try_remove_path()
 
 
 func _update_pen_ghost() -> void:
-	var item: Dictionary = BuildCatalog.get_item(current_item_id)
-	var size_cells: Vector2i = item.get("size_cells", Vector2i(4, 3))
-	if current_mode == Mode.PLACE_PATH:
+	if current_mode == Mode.PLACE_PATH or current_mode == Mode.DELETE_PATH:
 		var path_cell := GridService.world_to_path_cell(get_global_mouse_position())
 		var path_px := float(GridService.PATH_CELL_SIZE)
 		_ghost.position = GridService.path_cell_to_world(path_cell)
 		_ghost.polygon = PackedVector2Array([
 			Vector2(0, 0), Vector2(path_px, 0), Vector2(path_px, path_px), Vector2(0, path_px)
 		])
-		var path_ok := GridService.is_path_placeable(path_cell)
-		_ghost.color = Color(0.2, 1.0, 0.3, 0.35) if path_ok else Color(1.0, 0.2, 0.2, 0.35)
+		if current_mode == Mode.DELETE_PATH:
+			var has_path := GridService.has_path_cell(path_cell)
+			_ghost.color = Color(1.0, 0.28, 0.18, 0.42) if has_path else Color(0.7, 0.7, 0.7, 0.16)
+		else:
+			var path_ok := GridService.is_path_placeable(path_cell)
+			_ghost.color = Color(0.2, 1.0, 0.3, 0.35) if path_ok else Color(1.0, 0.2, 0.2, 0.35)
 		return
-	if current_mode == Mode.PLACE_PARK:
-		var prop_cell := GridService.world_to_cell(get_global_mouse_position())
-		var cell_px := float(GridService.CELL_SIZE)
-		_ghost.position = GridService.cell_to_world(prop_cell)
-		_ghost.polygon = PackedVector2Array([
-			Vector2(0, 0), Vector2(cell_px, 0), Vector2(cell_px, cell_px), Vector2(0, cell_px)
-		])
-		var prop_ok := GridService.is_prop_placeable(prop_cell)
-		_ghost.color = Color(0.2, 1.0, 0.3, 0.35) if prop_ok else Color(1.0, 0.2, 0.2, 0.35)
-		return
+	var item: Dictionary = BuildCatalog.get_item(current_item_id)
+	var size_cells: Vector2i = item.get("size_cells", Vector2i(4, 3))
 	var origin_cell := GridService.world_to_cell(get_global_mouse_position())
 	var world_pos := GridService.cell_to_world(origin_cell)
 	var size_px := Vector2(size_cells.x * GridService.CELL_SIZE, size_cells.y * GridService.CELL_SIZE)
@@ -189,8 +184,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			Mode.PLACE_PATH:
 				_last_path_cell = Vector2i(-999, -999)
 				_try_place_path()
-			Mode.PLACE_PARK:
-				_try_place_park()
+			Mode.DELETE_PATH:
+				_last_path_cell = Vector2i(-999, -999)
+				_try_remove_path()
 			Mode.NONE:
 				var pen := _find_pen_at(get_global_mouse_position())
 				if pen != null:
@@ -222,7 +218,6 @@ func _try_place_pen() -> void:
 	add_child(pen)
 	GridService.occupy_area(origin_cell, size_cells, pen)
 	_clear_path_sprites(origin_cell, size_cells)
-	_clear_park_objects(origin_cell, size_cells)
 	_pens.append(pen)
 	crush_visitors_in_rect(pen.world_rect())
 	Events.placement_succeeded.emit(current_item_id)
@@ -237,6 +232,10 @@ func _try_place_animal() -> void:
 
 func _try_place_path() -> void:
 	place_path_at(GridService.world_to_path_cell(get_global_mouse_position()))
+
+
+func _try_remove_path() -> void:
+	remove_path_at(GridService.world_to_path_cell(get_global_mouse_position()))
 
 
 func place_path_at(cell: Vector2i) -> bool:
@@ -263,6 +262,26 @@ func place_path_at(cell: Vector2i) -> bool:
 	Events.placement_succeeded.emit(str(item.get("id", "path_stone")))
 	ZooFx.burst(sprite, ZooFx.Kind.DUST)
 	_clear_if_broke(item)
+	return true
+
+
+func remove_path_at(cell: Vector2i) -> bool:
+	if current_mode != Mode.DELETE_PATH and str(BuildCatalog.get_item(current_item_id).get("kind", "")) != "delete_path":
+		return false
+	if cell == _last_path_cell:
+		return false
+	if not GridService.has_path_cell(cell):
+		return false
+	GridService.remove_path(cell)
+	var sprite: Sprite2D = _path_tiles.get(cell) as Sprite2D
+	_path_tiles.erase(cell)
+	var puff_at: Vector2 = GridService.path_cell_center(cell)
+	if sprite != null and is_instance_valid(sprite):
+		puff_at = sprite.position
+		sprite.queue_free()
+	ZooFx.burst(self, ZooFx.Kind.DUST, puff_at)
+	_last_path_cell = cell
+	Events.placement_succeeded.emit("path_delete")
 	return true
 
 
@@ -324,6 +343,8 @@ func place_animal_at(world_pos: Vector2) -> bool:
 	animal.set_pen(pen)
 	animal.catalog_id = str(item.get("id", ""))
 	_apply_species(animal, item)
+	for perk in item.get("perks", []):
+		animal.add_perk(str(perk))
 	_animal_count += 1
 	pen.register_animal(animal)
 	Events.placement_succeeded.emit(current_item_id)
@@ -335,9 +356,25 @@ func place_animal_at(world_pos: Vector2) -> bool:
 
 func _apply_species(animal: Animal, item: Dictionary) -> void:
 	animal.creature_name = str(item.get("name", "Unnamed"))
-	var parts: Dictionary = item.get("parts", {})
+	var parts: Dictionary = _resolve_catalog_parts(item.get("parts", {}))
 	var hidden: Array = item.get("hide", [])
 	animal.visuals.apply_loadout(parts, int(item.get("color", 0)), hidden)
+
+
+func _resolve_catalog_parts(raw: Dictionary) -> Dictionary:
+	var parts: Dictionary = {}
+	for slot in raw.keys():
+		var key := str(slot)
+		var value: Variant = raw[slot]
+		if value is String:
+			var idx: int = TraitLibrary.option_index_for_id(key, str(value))
+			if idx < 0:
+				push_warning("BuildMode: unknown %s option '%s'" % [key, value])
+				idx = 0
+			parts[key] = idx
+		else:
+			parts[key] = int(value)
+	return parts
 
 
 func _clear_if_broke(item: Dictionary) -> void:
@@ -354,6 +391,10 @@ func delete_animal(animal: Animal) -> void:
 		pen.unregister_animal(animal)
 	_animal_count = maxi(0, _animal_count - 1)
 	animal.queue_free()
+
+
+func _on_animal_born(_animal: Animal) -> void:
+	_animal_count += 1
 
 
 func delete_pen(pen: Pen) -> void:
@@ -389,54 +430,6 @@ func _find_pen_at(world_pos: Vector2) -> Pen:
 	return null
 
 
-func _try_place_park() -> void:
-	place_park_at(GridService.world_to_cell(get_global_mouse_position()))
-
-
-func place_park_at(cell: Vector2i) -> bool:
-	var item: Dictionary = BuildCatalog.get_item(current_item_id)
-	if str(item.get("kind", "")) != "park" or not BuildCatalog.is_unlocked(item):
-		return false
-	if not GridService.is_prop_placeable(cell):
-		Events.placement_rejected.emit("That spot is taken.")
-		return false
-	var cost: int = int(item.get("cost", 0))
-	if not WalletService.spend(cost, str(item.get("name", "object"))):
-		Events.placement_rejected.emit("Need $%d for a %s." % [cost, item.get("name", "object")])
-		clear_tool()
-		return false
-	_spawn_park(str(item.get("id", "")), cell)
-	Events.placement_succeeded.emit(str(item.get("id", "")))
-	var prop: Node2D = _park_objects.get(cell) as Node2D
-	if prop != null:
-		ZooFx.burst(prop, ZooFx.Kind.DUST, Vector2(GridService.CELL_SIZE, GridService.CELL_SIZE) * 0.5)
-	clear_tool()
-	return true
-
-
-func _spawn_park(item_id: String, cell: Vector2i, _paid: bool = true) -> Node2D:
-	if item_id.is_empty():
-		return null
-	GridService.add_prop(cell, item_id)
-	var prop: Node2D = PARK_SCRIPT.new()
-	add_child(prop)
-	prop.call("setup", item_id, cell)
-	_park_objects[cell] = prop
-	return prop
-
-
-func _clear_park_objects(origin_cell: Vector2i, size_cells: Vector2i) -> void:
-	for x in range(size_cells.x):
-		for y in range(size_cells.y):
-			var cell := origin_cell + Vector2i(x, y)
-			if not _park_objects.has(cell):
-				continue
-			var prop: Node2D = _park_objects[cell]
-			_park_objects.erase(cell)
-			if prop != null and is_instance_valid(prop):
-				prop.queue_free()
-
-
 func snapshot_world() -> Dictionary:
 	var pens: Array = []
 	for pen in _pens:
@@ -450,13 +443,7 @@ func snapshot_world() -> Dictionary:
 		if sprite != null and sprite.has_meta("tex_index"):
 			tex_index = int(sprite.get_meta("tex_index"))
 		paths.append({"x": c.x, "y": c.y, "tex": tex_index})
-	var props: Array = []
-	for cell in _park_objects.keys():
-		var c: Vector2i = cell
-		var prop: Node2D = _park_objects[cell]
-		if prop != null and is_instance_valid(prop):
-			props.append({"x": c.x, "y": c.y, "id": str(prop.get("catalog_id"))})
-	return {"pens": pens, "paths": paths, "props": props}
+	return {"pens": pens, "paths": paths}
 
 
 func restore_world(data: Dictionary) -> void:
@@ -475,11 +462,6 @@ func restore_world(data: Dictionary) -> void:
 		var sprite := _make_path_sprite(cell, int(row.get("tex", 0)))
 		add_child(sprite)
 		_path_tiles[cell] = sprite
-	for row in data.get("props", []):
-		if not (row is Dictionary):
-			continue
-		var cell := Vector2i(int(row.get("x", 0)), int(row.get("y", 0)))
-		_spawn_park(str(row.get("id", "")), cell, false)
 
 
 func _restore_pen(row: Dictionary) -> void:
@@ -509,7 +491,7 @@ func _restore_animal(pen: Pen, row: Dictionary) -> void:
 	animal.position = Vector2(float(row.get("x", 40.0)), float(row.get("y", 40.0)))
 	animal.set_pen(pen)
 	var parts: Dictionary = row.get("parts", {})
-	animal.visuals.apply_loadout(parts, int(row.get("color", 0)), [])
+	animal.visuals.apply_loadout(parts, int(row.get("color", 0)), row.get("hidden", []))
 	for perk in row.get("perks", []):
 		animal.add_perk(str(perk))
 	pen.register_animal(animal)
@@ -524,11 +506,6 @@ func clear_world() -> void:
 		if sprite != null and is_instance_valid(sprite):
 			sprite.queue_free()
 	_path_tiles.clear()
-	for cell in _park_objects.keys():
-		var prop: Node2D = _park_objects[cell]
-		if prop != null and is_instance_valid(prop):
-			prop.queue_free()
-	_park_objects.clear()
 	GridService.clear_paths()
 	GridService.reset()
 	_pens.clear()

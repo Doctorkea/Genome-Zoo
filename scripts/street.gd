@@ -27,6 +27,11 @@ func _ready() -> void:
 	z_index = 0
 	_layout_stalls()
 	queue_redraw()
+	Events.quest_changed.connect(_on_quest_changed)
+
+
+func _on_quest_changed() -> void:
+	_sync_stalls()
 
 
 func has_exhibit() -> bool:
@@ -81,6 +86,18 @@ func visitor_count() -> int:
 
 func visitor_cap() -> int:
 	return GeneTree.visitor_cap()
+
+
+func stall_count() -> int:
+	return 9 if GeneTree.has_zoo_perk(GeneTree.PERK_MORE_PARKING) else STALL_COUNT
+
+
+func has_creator() -> bool:
+	for child in get_children():
+		var guest := child as Visitor
+		if guest != null and is_instance_valid(guest) and guest.visitor_id == "creators":
+			return true
+	return false
 
 
 func westbound_y() -> float:
@@ -195,7 +212,7 @@ func drop_visitor(car: Car) -> void:
 	if visitor_count() <= visitor_cap() - 3 and TraitLibrary.arrival_is_family():
 		spawn_family(start)
 	else:
-		_make_guest(TraitLibrary.random_solo_id(), start)
+		_spawn_solo(start)
 	if not is_open:
 		send_guests_home()
 
@@ -224,6 +241,28 @@ func spawn_family(start: Vector2) -> Visitor:
 			if guest.visitor_id == "children":
 				guest._speed *= 0.88
 	return leader
+
+
+func spawn_creator_crew(start: Vector2) -> Visitor:
+	var fid: int = _next_family_id
+	_next_family_id += 1
+	var lead := _make_guest("creators", start)
+	lead.family_id = fid
+	lead.family_leader = null
+	var cam := _make_guest("camera", start + Vector2(-22.0, 10.0))
+	cam.family_id = fid
+	cam.family_offset = Vector2(-22.0, 10.0)
+	cam.family_leader = lead
+	return lead
+
+
+func _spawn_solo(start: Vector2) -> Visitor:
+	var kind := TraitLibrary.random_solo_id(not has_creator())
+	if kind == "creators":
+		if visitor_count() > visitor_cap() - 2:
+			return _make_guest(TraitLibrary.random_solo_id(false), start)
+		return spawn_creator_crew(start)
+	return _make_guest(kind, start)
 
 
 func _make_guest(kind: String, start: Vector2) -> Visitor:
@@ -324,7 +363,7 @@ func spawn_pickup() -> Car:
 
 
 func add_hype(seconds: float = 15.0) -> void:
-	hype_time = maxf(hype_time, seconds)
+	hype_time = minf(40.0, hype_time + maxf(0.0, seconds))
 
 
 func _process(delta: float) -> void:
@@ -338,7 +377,7 @@ func _process(delta: float) -> void:
 	_kerb_timer -= delta
 	var scale: float = GeneTree.spawn_time_scale()
 	if hype_time > 0.0:
-		scale *= 0.7
+		scale *= 0.55
 	if _traffic_timer <= 0.0:
 		spawn_traffic(-1)
 		_traffic_timer = randf_range(2.0, 3.4) * scale
@@ -500,15 +539,30 @@ func _layout_stalls() -> void:
 	_bays.clear()
 	var park := GridService.parking_rect()
 	var stall := Vector2(Car.SIZE.x + 14.0, Car.SIZE.y + 10.0)
-	var row_width: float = float(STALL_COUNT) * stall.x + float(STALL_COUNT - 1) * STALL_GAP
+	var count: int = stall_count()
+	var row_width: float = float(count) * stall.x + float(maxi(count - 1, 0)) * STALL_GAP
 	var x: float = (park.size.x - row_width) * 0.5
 	var y: float = park.position.y + (park.size.y - stall.y) * 0.5
-	for _i in range(STALL_COUNT):
+	for _i in range(count):
 		_bays.append({
 			"rect": Rect2(x, y, stall.x, stall.y),
 			"occupied": false,
 		})
 		x += stall.x + STALL_GAP
+
+
+func _sync_stalls() -> void:
+	var want: int = stall_count()
+	if _bays.size() == want:
+		return
+	var held: Dictionary = {}
+	for i in range(_bays.size()):
+		held[i] = bool(_bays[i].get("occupied", false))
+	_layout_stalls()
+	for i in range(_bays.size()):
+		if bool(held.get(i, false)):
+			_bays[i]["occupied"] = true
+	queue_redraw()
 
 
 func _draw() -> void:

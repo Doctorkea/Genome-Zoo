@@ -51,8 +51,16 @@ const QUESTS: Array[Dictionary] = [
 		"goal": "pens",
 		"amount": 2,
 		"reward_cash": 0,
-		"reward_perk": "open_longer",
-		"reward_build": ["pen_large", "park_lamp"],
+		"reward_build": ["pen_large"],
+	},
+	{
+		"id": "lots",
+		"title": "More parking spaces",
+		"brief": "Earn $25 from guest tickets so the car park can grow.",
+		"goal": "tickets",
+		"amount": 25,
+		"reward_cash": 0,
+		"reward_perk": "more_parking",
 	},
 	{
 		"id": "fright",
@@ -64,7 +72,6 @@ const QUESTS: Array[Dictionary] = [
 		"archetype": "Predator",
 		"reward_cash": 10,
 		"reward_vial": "weird",
-		"reward_build": ["chimory"],
 	},
 	{
 		"id": "odd",
@@ -85,7 +92,15 @@ const QUESTS: Array[Dictionary] = [
 		"amount": 40,
 		"reward_cash": 0,
 		"reward_perk": "ticket_booth",
-		"reward_build": ["park_snack"],
+	},
+	{
+		"id": "ads",
+		"title": "More advertising",
+		"brief": "Earn $50 from guest tickets so more people hear about the zoo.",
+		"goal": "tickets",
+		"amount": 50,
+		"reward_cash": 0,
+		"reward_perk": "more_ads",
 	},
 	{
 		"id": "heft",
@@ -125,7 +140,6 @@ const QUESTS: Array[Dictionary] = [
 		"amount": 80,
 		"reward_cash": 0,
 		"reward_vial": "poster",
-		"reward_build": ["park_poster"],
 	},
 	{
 		"id": "mix",
@@ -158,16 +172,25 @@ const QUESTS: Array[Dictionary] = [
 		"reward_cash": 0,
 		"reward_perk": "crowd_pull",
 	},
+	{
+		"id": "brood",
+		"title": "Let nature take the wheel",
+		"brief": "Let two animals mate in a roomy pen.",
+		"goal": "breed",
+		"reward_cash": 15,
+	},
 ]
 
 var index: int = 0
 var mutated: bool = false
+var born: bool = false
 var ready_to_claim: bool = false
 
 
 func _ready() -> void:
 	Events.placement_succeeded.connect(_on_world_changed)
 	Events.creature_mutated.connect(_on_mutated)
+	Events.animal_born.connect(_on_born)
 	Events.money_changed.connect(_on_money)
 	Events.zoo_hours_changed.connect(_on_hours_changed)
 	call_deferred("evaluate")
@@ -176,6 +199,7 @@ func _ready() -> void:
 func reset() -> void:
 	index = 0
 	mutated = false
+	born = false
 	ready_to_claim = false
 	evaluate()
 	Events.quest_changed.emit()
@@ -185,6 +209,7 @@ func snapshot() -> Dictionary:
 	return {
 		"index": index,
 		"mutated": mutated,
+		"born": born,
 		"ready_to_claim": ready_to_claim,
 	}
 
@@ -192,6 +217,7 @@ func snapshot() -> Dictionary:
 func apply_state(data: Dictionary) -> void:
 	index = int(data.get("index", 0))
 	mutated = bool(data.get("mutated", false))
+	born = bool(data.get("born", false))
 	ready_to_claim = bool(data.get("ready_to_claim", false))
 	Events.quest_changed.emit()
 
@@ -237,12 +263,14 @@ func reward_text(quest: Dictionary = {}) -> String:
 		var vial_name: String = str(vial.get("name", vial_id))
 		bits.append("%s unlocked" % vial_name)
 	var perk_id: String = str(quest.get("reward_perk", ""))
-	if perk_id == GeneTree.PERK_OPEN_LONGER:
-		bits.append("Open longer")
-	elif perk_id == GeneTree.PERK_TICKET_BOOTH:
-		bits.append("Ticket booth")
+	if perk_id == GeneTree.PERK_TICKET_BOOTH:
+		bits.append("Guest tickets pay more")
 	elif perk_id == GeneTree.PERK_CROWD_PULL:
 		bits.append("Crowd pull")
+	elif perk_id == GeneTree.PERK_MORE_PARKING:
+		bits.append("More parking")
+	elif perk_id == GeneTree.PERK_MORE_ADS:
+		bits.append("More advertising")
 	elif not perk_id.is_empty():
 		bits.append(perk_id.capitalize())
 	for build_id in quest.get("reward_build", []):
@@ -279,6 +307,8 @@ func progress_text() -> String:
 			return "Tickets: $%d / $%d" % [WalletService.tickets_earned, need_cash]
 		"zoo_open":
 			return "Zoo open" if _zoo_is_open() else "Zoo still closed"
+		"breed":
+			return "A cub born" if born else "No cubs yet"
 		_:
 			return ""
 
@@ -319,6 +349,11 @@ func _on_mutated(_animal: Node, _slot: String) -> void:
 	evaluate()
 
 
+func _on_born(_animal: Node) -> void:
+	born = true
+	evaluate()
+
+
 func _on_money(_amount: int) -> void:
 	evaluate()
 
@@ -347,6 +382,8 @@ func _goal_met(quest: Dictionary) -> bool:
 			return WalletService.tickets_earned >= int(quest.get("amount", 0))
 		"zoo_open":
 			return _zoo_is_open()
+		"breed":
+			return born
 		_:
 			return false
 

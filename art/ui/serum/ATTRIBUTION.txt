@@ -1,0 +1,5 @@
+Custom conical flask PNG for every serum vial.
+Liquid colours are re-tinted in-game to match each serum.
+
+Older Kenney Generic Items flasks in this folder are unused leftovers.
+https://kenney.nl/assets/generic-items

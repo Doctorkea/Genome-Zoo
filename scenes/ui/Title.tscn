@@ -1,26 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Theme" path="res://art/ui/zoo_theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/title.gd" id="2_script"]
-
-[sub_resource type="StyleBoxFlat" id="paper"]
-content_margin_left = 28.0
-content_margin_top = 24.0
-content_margin_right = 28.0
-content_margin_bottom = 24.0
-bg_color = Color(0.937, 0.894, 0.769, 0.97)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.769, 0.639, 0.353, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-shadow_color = Color(0.05, 0.04, 0.02, 0.4)
-shadow_size = 8
-shadow_offset = Vector2(0, 4)
+[ext_resource type="PackedScene" path="res://scenes/ui/SavePicker.tscn" id="3_picker"]
+[ext_resource type="Texture2D" path="res://art/ui/title_home.png" id="4_art"]
 
 [node name="Title" type="Control"]
 layout_mode = 3
@@ -39,7 +22,21 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.42, 0.62, 0.28, 1)
+mouse_filter = 2
+color = Color(0.424, 0.62, 0.278, 1)
+
+[node name="Art" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_art")
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
 
 [node name="Center" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -48,46 +45,67 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="Center"]
-custom_minimum_size = Vector2(420, 360)
+[node name="Menu" type="MarginContainer" parent="Center"]
+custom_minimum_size = Vector2(380, 300)
 layout_mode = 2
-theme_override_styles/panel = SubResource("paper")
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 12
 
-[node name="Column" type="VBoxContainer" parent="Center/Panel"]
+[node name="Column" type="VBoxContainer" parent="Center/Menu"]
 layout_mode = 2
-theme_override_constants/separation = 14
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+alignment = 1
 
-[node name="TitleLabel" type="Label" parent="Center/Panel/Column"]
+[node name="TitleLabel" type="Label" parent="Center/Menu/Column"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PaperLabel"
-theme_override_font_sizes/font_size = 36
-text = "Evolution Zoo"
+theme_override_font_sizes/font_size = 32
+text = "GenomeZoo"
 horizontal_alignment = 1
 
-[node name="Tag" type="Label" parent="Center/Panel/Column"]
+[node name="Tag" type="Label" parent="Center/Menu/Column"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"PaperMuted"
-text = "Mutate the stock. Fill the park."
+theme_override_font_sizes/font_size = 13
+text = "\"There is grandeur in this view of life...\" — Charles Darwin"
 horizontal_alignment = 1
 autowrap_mode = 3
 
-[node name="NewButton" type="Button" parent="Center/Panel/Column"]
-custom_minimum_size = Vector2(0, 44)
-layout_mode = 2
-text = "New zoo"
-
-[node name="ContinueButton" type="Button" parent="Center/Panel/Column"]
+[node name="NewButton" type="Button" parent="Center/Menu/Column"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-text = "Continue"
+text = "New Game"
 
-[node name="QuitButton" type="Button" parent="Center/Panel/Column"]
-custom_minimum_size = Vector2(0, 44)
+[node name="LoadSaveButton" type="Button" parent="Center/Menu/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-text = "Quit"
+text = "Load Save"
 
-[connection signal="pressed" from="Center/Panel/Column/NewButton" to="." method="_on_new_zoo"]
-[connection signal="pressed" from="Center/Panel/Column/ContinueButton" to="." method="_on_continue"]
-[connection signal="pressed" from="Center/Panel/Column/QuitButton" to="." method="_on_quit"]
+[node name="QuitButton" type="Button" parent="Center/Menu/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Exit"
+
+[node name="SavePicker" parent="." instance=ExtResource("3_picker")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[connection signal="pressed" from="Center/Menu/Column/NewButton" to="." method="_on_new_game"]
+[connection signal="pressed" from="Center/Menu/Column/LoadSaveButton" to="." method="_on_load_save"]
+[connection signal="pressed" from="Center/Menu/Column/QuitButton" to="." method="_on_quit"]
