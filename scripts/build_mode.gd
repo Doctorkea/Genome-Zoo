@@ -33,6 +33,7 @@ func _ready() -> void:
 	_ghost.visible = false
 	add_child(_ghost)
 	Events.animal_born.connect(_on_animal_born)
+	set_process(false)
 
 
 func set_item(item_id: String) -> void:
@@ -88,6 +89,9 @@ func _sync_mode() -> void:
 			current_mode = Mode.DELETE_PATH
 		_:
 			current_mode = Mode.NONE
+	set_process(current_mode != Mode.NONE)
+	if current_mode == Mode.NONE:
+		_ghost.visible = false
 
 
 ## Test helper: places a small pen and one Horse without charging cash.

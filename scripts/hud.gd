@@ -123,9 +123,15 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_thumb_viewport.world_2d = get_tree().root.world_2d
+	_thumb_viewport.disable_3d = true
+	_thumb_viewport.gui_disable_input = true
+	_thumb_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_thumb_camera.make_current()
 	GridService.apply_camera_limits(_thumb_camera)
 	_guest_thumb_viewport.world_2d = get_tree().root.world_2d
+	_guest_thumb_viewport.disable_3d = true
+	_guest_thumb_viewport.gui_disable_input = true
+	_guest_thumb_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_guest_thumb_camera.make_current()
 	GridService.apply_camera_limits(_guest_thumb_camera)
 	_ink_paper_labels(_stats_panel)
@@ -728,6 +734,7 @@ func _on_animal_selected(animal: Node) -> void:
 	_selected_animal = typed
 	_on_close_pen()
 	_stats_panel.visible = true
+	_thumb_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	set_process(true)
 	_refresh_inspect()
 	if _lab_panel.visible:
@@ -746,6 +753,7 @@ func _on_visitor_selected(visitor: Node) -> void:
 	if not typed.tree_exiting.is_connected(_on_guest_leaving):
 		typed.tree_exiting.connect(_on_guest_leaving)
 	_guest_panel.visible = true
+	_guest_thumb_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	set_process(true)
 	_refresh_guest()
 	_refresh_coach()
@@ -873,6 +881,7 @@ func _on_close_guest() -> void:
 			_selected_guest.tree_exiting.disconnect(_on_guest_leaving)
 	_selected_guest = null
 	_guest_panel.visible = false
+	_guest_thumb_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	if _selected_animal == null:
 		set_process(false)
 	_refresh_coach()
@@ -1094,6 +1103,7 @@ func _on_delete_pen() -> void:
 func _on_deselect() -> void:
 	_selected_animal = null
 	_stats_panel.visible = false
+	_thumb_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_set_card_section("")
 	_on_close_guest()
 	_on_close_lab()

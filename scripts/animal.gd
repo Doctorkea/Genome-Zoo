@@ -36,6 +36,7 @@ var _bob_height: float = 4.5
 var _prev_hop: float = 1.0
 var _shadow_base: Vector2 = Vector2(1.7, 1.12)
 var _busy: String = ""
+var _dust: GPUParticles2D
 
 
 func _ready() -> void:
@@ -111,6 +112,15 @@ func _layout_shadow() -> void:
 	_shadow.visible = true
 
 
+func _puff_dust() -> void:
+	if _dust == null or not is_instance_valid(_dust):
+		_dust = ZooFx.make(ZooFx.Kind.DUST, true)
+		_dust.position = Vector2(0.0, 22.0)
+		add_child(_dust)
+	_dust.restart()
+	_dust.emitting = true
+
+
 func has_perk(perk_id: String) -> bool:
 	return perks.has(perk_id)
 
@@ -172,7 +182,7 @@ func _animate(delta: float, moving: bool) -> void:
 		var stretch: float = 1.0 - hop * 0.045
 		visuals.scale = Vector2(_facing * squash, stretch)
 		if hop < 0.14 and _prev_hop >= 0.14:
-			ZooFx.burst(self, ZooFx.Kind.DUST, Vector2(0.0, 22.0))
+			_puff_dust()
 		_prev_hop = hop
 		if _shadow != null:
 			_shadow.scale = Vector2(_shadow_base.x * (1.0 + hop * 0.08), _shadow_base.y * (1.0 - hop * 0.18))

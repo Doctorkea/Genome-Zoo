@@ -13,6 +13,9 @@ const FAR_LIMB_OFFSETS: Dictionary = {
 	"back_legs": Vector2(6.0, -3.0),
 	"front_legs": Vector2(-4.0, -3.0),
 }
+const SKIN_SHADER: Shader = preload("res://scripts/shaders/palette_swap.gdshader")
+
+static var _skin_pool: Dictionary = {}
 
 @onready var _slot_nodes: Dictionary = {
 	"tail": $Tail,
@@ -35,16 +38,12 @@ var _skin_material: ShaderMaterial
 
 
 func _ready() -> void:
-	_skin_material = ShaderMaterial.new()
-	_skin_material.shader = load("res://scripts/shaders/palette_swap.gdshader")
-
 	_palette_options = PlaceholderArt.get_palette_options()
 
 	for slot in SLOTS:
 		_options[slot] = PlaceholderArt.get_shape_options(slot)
 		_current_index[slot] = 0
 		var sprite: Sprite2D = _slot_nodes[slot]
-		sprite.material = _skin_material
 		if not _options[slot].is_empty():
 			_apply_slot_texture(sprite, _options[slot][0])
 		_sync_far_limb(slot)
@@ -142,12 +141,35 @@ func set_skin(option_index: int) -> void:
 	if _palette_options.is_empty():
 		return
 	_current_palette_index = option_index % _palette_options.size()
-	_skin_material.set_shader_parameter("palette", _palette_options[_current_palette_index])
-	var look: Dictionary = TraitLibrary.get_option(TraitLibrary.COLOR_SLOT, _current_palette_index)
-	_skin_material.set_shader_parameter("mark_color", TraitLibrary.coat_mark_color(look))
-	_skin_material.set_shader_parameter("pattern", int(look.get("pattern", 0)))
-	_skin_material.set_shader_parameter("pattern_amount", float(look.get("pattern_amount", 0.25)))
-	_skin_material.set_shader_parameter("pattern_scale", float(look.get("pattern_scale", 4.0)))
+	_skin_material = _skin_for(_current_palette_index)
+	_apply_skin_material()
+
+
+func _skin_for(option_index: int) -> ShaderMaterial:
+	if _skin_pool.has(option_index):
+		return _skin_pool[option_index]
+	var mat := ShaderMaterial.new()
+	mat.shader = SKIN_SHADER
+	var look: Dictionary = TraitLibrary.get_option(TraitLibrary.COLOR_SLOT, option_index)
+	mat.set_shader_parameter("palette", _palette_options[option_index])
+	mat.set_shader_parameter("mark_color", TraitLibrary.coat_mark_color(look))
+	mat.set_shader_parameter("pattern", int(look.get("pattern", 0)))
+	mat.set_shader_parameter("pattern_amount", float(look.get("pattern_amount", 0.25)))
+	mat.set_shader_parameter("pattern_scale", float(look.get("pattern_scale", 4.0)))
 	var pattern_tex: Texture2D = TraitLibrary.coat_pattern_texture(look)
 	if pattern_tex != null:
-		_skin_material.set_shader_parameter("pattern_map", pattern_tex)
+		mat.set_shader_parameter("pattern_map", pattern_tex)
+	_skin_pool[option_index] = mat
+	return mat
+
+
+func _apply_skin_material() -> void:
+	if _skin_material == null:
+		return
+	for slot in SLOTS:
+		var sprite: Sprite2D = _slot_nodes.get(slot)
+		if sprite != null:
+			sprite.material = _skin_material
+		var far: Sprite2D = _far_limb_nodes.get(slot)
+		if far != null:
+			far.material = _skin_material

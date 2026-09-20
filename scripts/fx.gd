@@ -20,6 +20,7 @@ static var _ground_shadow: Texture2D
 static var _grow: CurveTexture
 static var _billow: CurveTexture
 static var _smoke_fade: GradientTexture1D
+static var _mats: Dictionary = {}
 
 
 static func puff_tex() -> Texture2D:
@@ -166,7 +167,10 @@ static func make(kind: int, one_shot: bool, tint: Color = Color.WHITE) -> GPUPar
 	particles.fract_delta = true
 	particles.visibility_rect = Rect2(-72.0, -96.0, 144.0, 140.0)
 	particles.z_index = 4
-	particles.process_material = _material(kind, tint)
+	var mat := _material(kind, tint)
+	if kind == Kind.CLOUD:
+		mat = mat.duplicate()
+	particles.process_material = mat
 	if kind == Kind.CLOUD:
 		_soft_draw(particles, true)
 	elif kind == Kind.SMOKE:
@@ -237,6 +241,15 @@ static func make(kind: int, one_shot: bool, tint: Color = Color.WHITE) -> GPUPar
 
 
 static func _material(kind: int, tint: Color) -> ParticleProcessMaterial:
+	if tint == Color.WHITE and _mats.has(kind):
+		return _mats[kind]
+	var mat := _build_material(kind, tint)
+	if tint == Color.WHITE:
+		_mats[kind] = mat
+	return mat
+
+
+static func _build_material(kind: int, tint: Color) -> ParticleProcessMaterial:
 	var mat := ParticleProcessMaterial.new()
 	mat.particle_flag_disable_z = true
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE

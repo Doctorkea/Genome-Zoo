@@ -34,6 +34,7 @@ func _ready() -> void:
 	add_to_group("pens")
 	_build_walls()
 	_breed_wait = randf_range(1.0, BREED_CHECK)
+	set_process(animal_capacity() > 2)
 
 
 func _process(delta: float) -> void:

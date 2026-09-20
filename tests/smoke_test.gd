@@ -167,6 +167,7 @@ func _test_floor_tiles() -> void:
 	assert(max_side > 60.0 and max_side < 110.0, "tufts should read bigger than blades, max side %s" % max_side)
 	for q in quadrants:
 		assert(q > 400, "grass should cover every quadrant, got %s" % [quadrants])
+	assert(floor.get("_baked") != null, "lawn should bake to one texture")
 	floor.queue_free()
 	print("Floor tiles OK — stamps=%d flipped=%d cell=%d" % [placed.size(), flipped, GridService.CELL_SIZE])
 

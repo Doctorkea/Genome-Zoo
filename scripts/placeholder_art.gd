@@ -65,6 +65,21 @@ var _shape_cache: Dictionary = {} # slot (String) -> Array[Texture2D]
 var _palette_cache: Array[Texture2D] = []
 
 
+func _ready() -> void:
+	warmup()
+
+
+func warmup() -> void:
+	get_palette_options()
+	for slot in ART_FILES.keys():
+		get_shape_options(str(slot))
+	var fx := preload("res://scripts/fx.gd")
+	fx.puff_tex()
+	fx.speck_tex()
+	fx.cloud_tex()
+	fx.ground_shadow_tex()
+
+
 func get_canvas_size() -> int:
 	return CANVAS_SIZE
 
@@ -107,40 +122,47 @@ func _normalize_part(tex: Texture2D) -> Texture2D:
 	img = img.duplicate()
 	if img.is_compressed():
 		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
 	var width: int = img.get_width()
 	var height: int = img.get_height()
+	var data: PackedByteArray = img.get_data()
 	const INK_CUT: float = 0.32
 	var sum: float = 0.0
 	var count: int = 0
-	for y in range(height):
-		for x in range(width):
-			var pixel: Color = img.get_pixel(x, y)
-			if pixel.a < 0.08:
-				continue
-			var lum: float = pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114
-			if lum < INK_CUT:
-				continue
-			sum += lum
-			count += 1
+	var n: int = width * height
+	for i in range(n):
+		var o: int = i * 4
+		var a: float = float(data[o + 3]) / 255.0
+		if a < 0.08:
+			continue
+		var lum: float = (float(data[o]) * 0.299 + float(data[o + 1]) * 0.587 + float(data[o + 2]) * 0.114) / 255.0
+		if lum < INK_CUT:
+			continue
+		sum += lum
+		count += 1
 	if count < 8:
 		return tex
 	var mean: float = sum / float(count)
 	var target: float = 0.72
 	var contrast: float = 0.75
-	for y in range(height):
-		for x in range(width):
-			var pixel: Color = img.get_pixel(x, y)
-			if pixel.a < 0.04:
-				continue
-			var lum: float = pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114
-			var mapped: float
-			if lum < INK_CUT:
-				mapped = clampf(pow(lum, 1.45) * 0.38, 0.0, 0.08)
-			else:
-				mapped = clampf((lum - mean) * contrast + target, 0.34, 0.82)
-			img.set_pixel(x, y, Color(mapped, mapped, mapped, pixel.a))
-	_thicken_base_ink(img)
-	_ink_outer_rim(img)
+	for i in range(n):
+		var o: int = i * 4
+		var a: float = float(data[o + 3]) / 255.0
+		if a < 0.04:
+			continue
+		var lum: float = (float(data[o]) * 0.299 + float(data[o + 1]) * 0.587 + float(data[o + 2]) * 0.114) / 255.0
+		var mapped: float
+		if lum < INK_CUT:
+			mapped = clampf(pow(lum, 1.45) * 0.38, 0.0, 0.08)
+		else:
+			mapped = clampf((lum - mean) * contrast + target, 0.34, 0.82)
+		var gray: int = clampi(int(round(mapped * 255.0)), 0, 255)
+		data[o] = gray
+		data[o + 1] = gray
+		data[o + 2] = gray
+	data = _thicken_base_ink(data, width, height)
+	data = _ink_outer_rim(data, width, height)
+	img.set_data(width, height, false, Image.FORMAT_RGBA8, data)
 	var mip_err := img.generate_mipmaps()
 	if mip_err != OK:
 		push_warning("PlaceholderArt: could not build mipmaps for a part")
@@ -150,62 +172,60 @@ func _normalize_part(tex: Texture2D) -> Texture2D:
 ## Grow the sprite's own dark strokes by a few source pixels so they still
 ## read after the 400px Fresco parts are scaled onto a 100px grass cell.
 ## Only paints over existing fill — never a second offset outline.
-func _thicken_base_ink(img: Image) -> void:
-	var width: int = img.get_width()
-	var height: int = img.get_height()
+func _thicken_base_ink(data: PackedByteArray, width: int, height: int) -> PackedByteArray:
+	var n: int = width * height
 	var radius: int = clampi(int(round(float(width) / 220.0)), 1, 3)
 	var radius_sq: int = radius * radius
 	var ink := PackedByteArray()
-	ink.resize(width * height)
-	for y in range(height):
-		for x in range(width):
-			var pixel: Color = img.get_pixel(x, y)
-			if pixel.a < 0.12:
-				continue
-			var lum: float = pixel.r * 0.299 + pixel.g * 0.587 + pixel.b * 0.114
-			if lum < 0.12:
-				ink[y * width + x] = 1
-	var thickened: Image = img.duplicate()
-	for y in range(height):
-		for x in range(width):
-			if ink[y * width + x] == 1:
-				continue
-			var pixel: Color = img.get_pixel(x, y)
-			if pixel.a < 0.2:
-				continue
-			var near_ink := false
-			for oy in range(-radius, radius + 1):
-				for ox in range(-radius, radius + 1):
-					if ox * ox + oy * oy > radius_sq:
-						continue
-					var nx: int = x + ox
-					var ny: int = y + oy
-					if nx < 0 or ny < 0 or nx >= width or ny >= height:
-						continue
-					if ink[ny * width + nx] == 1:
-						near_ink = true
-						break
-				if near_ink:
-					break
-			if not near_ink:
-				continue
-			thickened.set_pixel(x, y, Color(0.04, 0.04, 0.04, pixel.a))
-	img.copy_from(thickened)
+	ink.resize(n)
+	var seeds: PackedInt32Array = PackedInt32Array()
+	for i in range(n):
+		var o: int = i * 4
+		var a: float = float(data[o + 3]) / 255.0
+		if a < 0.12:
+			continue
+		var lum: float = (float(data[o]) * 0.299 + float(data[o + 1]) * 0.587 + float(data[o + 2]) * 0.114) / 255.0
+		if lum < 0.12:
+			ink[i] = 1
+			seeds.append(i)
+	var thickened := data.duplicate()
+	for i in seeds:
+		var x: int = i % width
+		var y: int = int(i / width)
+		for oy in range(-radius, radius + 1):
+			for ox in range(-radius, radius + 1):
+				if ox * ox + oy * oy > radius_sq:
+					continue
+				var nx: int = x + ox
+				var ny: int = y + oy
+				if nx < 0 or ny < 0 or nx >= width or ny >= height:
+					continue
+				var ni: int = ny * width + nx
+				if ink[ni] == 1:
+					continue
+				var o: int = ni * 4
+				if float(data[o + 3]) / 255.0 < 0.2:
+					continue
+				thickened[o] = 10
+				thickened[o + 1] = 10
+				thickened[o + 2] = 10
+	return thickened
 
 
 ## Light anti-aliased fringes read as white hairlines on the grass. Crush
 ## the silhouette ring to ink so the back copies and outer edge stay black.
-func _ink_outer_rim(img: Image) -> void:
-	var width: int = img.get_width()
-	var height: int = img.get_height()
+func _ink_outer_rim(data: PackedByteArray, width: int, height: int) -> PackedByteArray:
+	var n: int = width * height
 	var edge := PackedByteArray()
-	edge.resize(width * height)
+	edge.resize(n)
 	for y in range(height):
 		for x in range(width):
-			var pixel: Color = img.get_pixel(x, y)
-			if pixel.a < 0.03:
+			var i: int = y * width + x
+			var o: int = i * 4
+			var a: float = float(data[o + 3]) / 255.0
+			if a < 0.03:
 				continue
-			var on_edge: bool = pixel.a < 0.55
+			var on_edge: bool = a < 0.55
 			if not on_edge:
 				for d: Vector2i in [
 					Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
@@ -216,17 +236,21 @@ func _ink_outer_rim(img: Image) -> void:
 					if nx < 0 or ny < 0 or nx >= width or ny >= height:
 						on_edge = true
 						break
-					if img.get_pixel(nx, ny).a < 0.12:
+					var na: float = float(data[(ny * width + nx) * 4 + 3]) / 255.0
+					if na < 0.12:
 						on_edge = true
 						break
 			if on_edge:
-				edge[y * width + x] = 1
-	for y in range(height):
-		for x in range(width):
-			if edge[y * width + x] != 1:
-				continue
-			var pixel: Color = img.get_pixel(x, y)
-			img.set_pixel(x, y, Color(0.03, 0.03, 0.03, maxf(pixel.a, 0.92)))
+				edge[i] = 1
+	for i in range(n):
+		if edge[i] != 1:
+			continue
+		var o: int = i * 4
+		data[o] = 8
+		data[o + 1] = 8
+		data[o + 2] = 8
+		data[o + 3] = maxi(data[o + 3], 235)
+	return data
 
 
 func _make_gradient_palette(base: Color) -> ImageTexture:
