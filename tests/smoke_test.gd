@@ -63,16 +63,16 @@ func _test_build_catalog() -> void:
 	assert(GridService.PATH_CELL_SIZE == GridService.CELL_SIZE / 2, "a path tile should sit on half a grass cell")
 	assert(str(BuildCatalog.get_item("pen_large").get("unlock_quest", "")) == "expand", "large pens should wait on Another enclosure")
 	assert(str(BuildCatalog.get_item("pen_gallery").get("unlock_quest", "")) == "stay", "gallery should wait on a later quest")
-	assert(str(BuildCatalog.get_item("loin").get("unlock_quest", "")) == "stock", "Loin should wait on the second quest")
+	assert(str(BuildCatalog.get_item("loin").get("unlock_quest", "")) == "stock", "Lion should wait on the second quest")
 	assert(str(BuildCatalog.get_item("gorllia").get("unlock_quest", "")) == "gates", "Gorllia should wait on the third quest")
 	assert(BuildCatalog.is_unlocked(BuildCatalog.get_item("pen_tiny")), "tiny pens should start unlocked")
 	assert(BuildCatalog.is_unlocked(BuildCatalog.get_item("horse")), "Horse should start unlocked")
 	assert(not BuildCatalog.is_unlocked(BuildCatalog.get_item("pen_large")), "large pens should start locked")
-	assert(not BuildCatalog.is_unlocked(BuildCatalog.get_item("loin")), "Loin should start locked")
+	assert(not BuildCatalog.is_unlocked(BuildCatalog.get_item("loin")), "Lion should start locked")
 	assert(not BuildCatalog.is_unlocked(BuildCatalog.get_item("gorllia")), "Gorllia should start locked")
 	assert(BuildCatalog.unlock_hint(BuildCatalog.get_item("pen_large")).contains("Another enclosure"),
 		"locked tiles should name the quest that opens them")
-	assert(BuildCatalog.get_item("loin").get("name") == "Loin", "loin should be a base animal")
+	assert(BuildCatalog.get_item("loin").get("name") == "Lion", "lion should be a base animal")
 	assert(BuildCatalog.get_item("gorllia").get("name") == "Gorllia", "gorllia should be a base animal")
 	assert(int(BuildCatalog.get_item("horse").get("cost", 0)) == 25, "horse should cost $25")
 	assert(int(BuildCatalog.get_item("pen_tiny").get("capacity", 0)) == 1, "tiny pen should hold one")
@@ -725,11 +725,11 @@ func _test_quests() -> void:
 	assert(WalletService.money == money_before + 10, "claiming should pay the cash reward")
 	assert(QuestBoard.current().get("id") == "stock", "next quest should ask for an animal")
 	assert(not BuildCatalog.is_unlocked(BuildCatalog.get_item("loin")),
-		"Loin should stay locked until the second quest is claimed")
+		"Lion should stay locked until the second quest is claimed")
 	assert(QuestBoard.reward_text().contains("$10"), "stock quest should show its reward")
 	assert(QuestBoard.claim(), "a placed animal should complete Something to look at")
 	assert(BuildCatalog.is_unlocked(BuildCatalog.get_item("loin")),
-		"Loin should unlock after the second quest")
+		"Lion should unlock after the second quest")
 	assert(not BuildCatalog.is_unlocked(BuildCatalog.get_item("gorllia")),
 		"Gorllia should stay locked until the zoo opens")
 	assert(QuestBoard.current().get("id") == "gates", "third quest should ask to open the zoo")
@@ -969,17 +969,17 @@ func _test_hud(animal: Animal) -> Control:
 	assert(build_mode.current_item_id == "", "clicking Pens again should drop the place tool")
 	assert(not hud.get_node("%CancelBuild").visible, "cancel should hide once the tool is dropped")
 	hud._on_cat_animals()
-	var locked_loin := false
+	var locked_lion := false
 	var locked_gorllia := false
 	for child in hud.get_node("%CatalogRow").get_children():
-		if child is Button and (child as Button).text.contains("Loin"):
-			assert((child as Button).disabled, "Loin should stay locked until the second quest")
+		if child is Button and (child as Button).text.contains("Lion"):
+			assert((child as Button).disabled, "Lion should stay locked until the second quest")
 			assert(child.get_node_or_null("Padlock") != null, "locked animals should show a padlock")
-			locked_loin = true
+			locked_lion = true
 		if child is Button and (child as Button).text.contains("Gorllia"):
 			assert((child as Button).disabled, "Gorllia should stay locked until the third quest")
 			locked_gorllia = true
-	assert(locked_loin, "Animals ribbon should include locked Loin")
+	assert(locked_lion, "Animals ribbon should include locked Lion")
 	assert(locked_gorllia, "Animals ribbon should include locked Gorllia")
 	hud._on_cat_paths()
 	assert(hud.get_node("%CatalogRow").get_child_count() == 2, "Paths ribbon should show stone path and delete")

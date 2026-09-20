@@ -67,7 +67,7 @@ const ITEMS: Array[Dictionary] = [
 		"id": "loin",
 		"category": CAT_ANIMALS,
 		"kind": "animal",
-		"name": "Loin",
+		"name": "Lion",
 		"blurb": "All lion parts",
 		"cost": 50,
 		"parts": {"body": "jimmothy", "head": "lion", "front_legs": "lion", "back_legs": "lion", "tail": "lion"},
